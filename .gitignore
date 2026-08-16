@@ -24,7 +24,6 @@ backend/*/*/__pycache__/
 backend/.pytest_cache/
 backend/app.db
 backend/examgen.db
-backend/alembic.ini
 
 # Frontend (Next.js/React)
 frontend/node_modules/
