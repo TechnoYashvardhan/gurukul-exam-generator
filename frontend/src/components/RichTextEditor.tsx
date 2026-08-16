@@ -204,7 +204,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     if (editor && content) {
       const normalized = formatInitialContent(content);
       if (normalized !== editor.getHTML()) {
-        editor.commands.setContent(normalized, false);
+        editor.commands.setContent(normalized, { emitUpdate: false });
       }
     }
   }, [content, editor]);
