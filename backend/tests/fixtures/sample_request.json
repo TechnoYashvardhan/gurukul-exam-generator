@@ -1,0 +1,37 @@
+{
+  "template": {
+    "subject": "Physics",
+    "grade": "Grade 10",
+    "difficulty": "medium",
+    "total_marks": 50,
+    "duration_minutes": 120,
+    "sections": [
+      {
+        "id": "s1",
+        "title": "Section A — Multiple Choice",
+        "type": "mcq",
+        "num_questions": 10,
+        "marks_per_question": 1,
+        "instructions": "Choose the single best answer. Each question carries 1 mark."
+      },
+      {
+        "id": "s2",
+        "title": "Section B — Short Answer",
+        "type": "short_answer",
+        "num_questions": 4,
+        "marks_per_question": 5,
+        "instructions": "Answer in 3-5 sentences. Show working where applicable."
+      },
+      {
+        "id": "s3",
+        "title": "Section C — Long Answer",
+        "type": "long_answer",
+        "num_questions": 2,
+        "marks_per_question": 10,
+        "instructions": "Answer in detail. Diagrams and derivations will be credited."
+      }
+    ]
+  },
+  "syllabus_text": "Chapter 1: Motion — Distance and Displacement. Distance is the total path length travelled by an object, while displacement is the shortest straight-line distance from the initial to the final position, along with direction. Displacement is a vector quantity; distance is a scalar. The SI unit of both is metres (m). Speed is the rate of change of distance: speed = distance / time. Velocity is the rate of change of displacement: velocity = displacement / time. Velocity is a vector; speed is a scalar. Average speed = total distance / total time. Average velocity = total displacement / total time. Acceleration is the rate of change of velocity: a = (v - u) / t, where v is final velocity, u is initial velocity, t is time. The SI unit of acceleration is m/s². Equations of motion for uniform acceleration: (1) v = u + at, (2) s = ut + ½at², (3) v² = u² + 2as, where s is displacement. Free fall: objects fall under gravity with acceleration g ≈ 9.8 m/s² (downward). Air resistance is neglected for idealized problems. Newton's First Law: An object remains at rest or in uniform motion unless acted upon by a net external force. Newton's Second Law: F = ma, where F is net force in Newtons (N), m is mass in kg, a is acceleration in m/s². Newton's Third Law: For every action there is an equal and opposite reaction. The law of gravitation: F = G m1 m2 / r², where G = 6.674 × 10⁻¹¹ N·m²/kg². Weight W = mg. Mass is the amount of matter; weight is the gravitational force on that mass. Momentum p = mv. Impulse = F × t = change in momentum. Conservation of momentum: in a closed system, total momentum is constant. Work W = F × d × cos θ. Power P = W / t. Kinetic energy KE = ½mv². Potential energy PE = mgh. Conservation of energy: energy cannot be created or destroyed, only converted.",
+  "source_type": "hardcoded"
+}
