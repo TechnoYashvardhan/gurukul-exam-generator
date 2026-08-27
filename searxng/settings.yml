@@ -1,0 +1,70 @@
+# SearXNG settings — mounted into the container at /etc/searxng/settings.yml
+# Docs: https://docs.searxng.org/admin/settings/index.html
+
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "ExamGen Search"
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+  enable_metrics: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "en"
+  ban_time_on_fail: 5
+  max_ban_time_on_fail: 120
+  formats:
+    - html
+    - json          # required for API access from our backend
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  secret_key: "change_me_in_production"  # overridden by SEARXNG_SECRET_KEY env var
+  limiter: false    # disable rate limiter for internal use
+  image_proxy: false
+  method: "GET"
+
+ui:
+  static_use_hash: true
+  default_locale: en
+  query_in_title: false
+  infinite_scroll: false
+  center_alignment: false
+  results_on_new_tab: false
+  theme_args:
+    simple_style: auto
+
+# Enable only the engines useful for syllabus fetching
+engines:
+  - name: google
+    engine: google
+    shortcut: g
+    disabled: false
+
+  - name: bing
+    engine: bing
+    shortcut: b
+    disabled: false
+
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    disabled: false
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false
+
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 30.0
+  useragent_suffix: ""
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true

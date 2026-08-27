@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 { color: #ea580c; border-bottom: 2px solid #ea580c; padding-bottom: 10px; }
+        h2 { color: #3b82f6; margin-top: 30px; }
+        h3 { color: #0f172a; }
+        img { max-width: 100%; height: auto; }
+        .phase-done { color: #10b981; font-weight: bold; }
+        .phase-pend { color: #f59e0b; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Gurukul Exam Generator - Architecture & Workflow</h1>
+    
+    <h2>Project Purpose</h2>
+    <p>To provide teachers with a 100% private, eco-friendly, and highly intelligent exam generation pipeline without relying on external cloud APIs or complex technical setups.</p>
+    
+    <h2>Core Phases & Timeline</h2>
+    <ul>
+        <li><strong>Phase 1 (<span class="phase-done">Done</span>)</strong>: Next.js Frontend UI + Tailwind Cyber-Vedic Theme, Basic Pydantic Schemas.</li>
+        <li><strong>Phase 2 (<span class="phase-done">Done</span>)</strong>: FastAPI Backend integration with Agentic LLM Orchestration (Groq, Gemini, Ollama), JSON Auto-healing, and LocalStorage history.</li>
+        <li><strong>Phase 3 (<span class="phase-pend">Pending</span>)</strong>: RAG Pipeline with FAISS Vector Database and SQLite for local document processing.</li>
+        <li><strong>Phase 4 (<span class="phase-pend">Pending</span>)</strong>: Authentication & Advanced Export functionality.</li>
+    </ul>
+
+    <h2>System Architecture Diagram</h2>
+    <img src="https://mermaid.ink/svg/pako:eNqNVFFvmzAQ_isWT1QakYA97aFSgKaLRNcsdH1hfbjAFbyCnRrTJYry33cGFJlIk2oJyfj7fHffd7ZPTiFLdL4xp1Kwr9lT8lswGl2_GxdWSgqNomS5v2Bxw1Fo5rEfeNCLP93LSDZj6efPvDwCgU_Y7hvQOIOD_F6B0DXhKd8pUEcbDfMtFLUwu-9RoAItlY1_zdea19AR_p13BNq70yx3IyX_dqhYKgtoWEYMqPBmVh_zFt4tke2w8zWSeaU-guJtEB8sLnOPraDTy83aih757rTItrLXqLobCwzcRBZ9a6zbKFlg10ll46G7rAjkBXtURY2dHvRbjCTyczf7mXKNNLdlJVGQu6vlOsvYMxa0a9A-U56mDyf6qGqDH8__03p3oLoFuZeHC7PJ1PrBS9JiBYt96qN8Z3P5MXVXyqpB6l7LBb-Gw_yxaaCFsT0vVxUsA-Z57Ne-kVCyTbKiv1tydAJDA06HAtkW33syaEaJfENZi8oAF6cHRjAxhgyDM-wBNZSgYSAklxgW467dYVlyUXUTJ7DzTB0ku6Adk4QTPFS6Ra04fiCLzb056KsQczVx3Yu3MQsZPlKM8yYNKGgabOjOyb40ugda7H-KFcxYmTGNzhf1drwfFx6V7nxhTouqBV7SM3BydI3t8CCU-Ap9o53z-R8N4C8u" alt="System Architecture">
+
+    <h2>The 4-Step Pipeline Workflow</h2>
+    
+    <h3>1. Vidya (Template Creation)</h3>
+    <p>The user defines the structure of the exam using the Template Builder UI. They specify the subject, grade, difficulty, Bloom's Taxonomy targeting, and section blocks (e.g., "10 MCQs for 1 mark each", "5 Long Answers for 5 marks each"). These templates are saved directly in the <strong>Browser Local Storage</strong> for instant retrieval.</p>
+    
+    <h3>2. Granth (Knowledge Base) <strong>[Phase 3 Target]</strong></h3>
+    <p>The user uploads a textbook PDF or provides a URL. The FastAPI backend processes it:</p>
+    <ol>
+        <li>Extracts text using <code>PyMuPDF</code> (with OCR fallbacks).</li>
+        <li>Chunks the text into semantic blocks using Langchain.</li>
+        <li>Computes vector embeddings using a local HuggingFace <code>sentence-transformer</code> model.</li>
+        <li>Stores the text embeddings in a local <strong>FAISS Vector Store</strong> and tracks the document metadata in a simple <strong>SQLite</strong> database.</li>
+    </ol>
+    
+    <h3>3. Rachna (Agentic Generation)</h3>
+    <p>The user combines a Template and a Document. The backend's <strong>Agentic Orchestrator</strong> takes over:</p>
+    <ul>
+        <li>It fetches the exact syllabus text relevant to the custom topic from FAISS.</li>
+        <li>It chunks the generation task asynchronously. Instead of overwhelming the LLM with a 100-question request, it maps over each section in the <code>ExamTemplate</code> and fires independent LLM generation calls <em>per section</em> in parallel.</li>
+        <li>The <code>LLM Factory</code> routes the request dynamically based on <code>.env</code> (Groq, Gemini, or Ollama).</li>
+        <li>It receives the JSON chunks, auto-heals any token truncation issues, and stitches the sections together into a perfect <code>GeneratedExam</code> payload.</li>
+    </ul>
+    
+    <h3>4. Itihas (History)</h3>
+    <p>The completed exam paper is handed back to the Next.js frontend, instantly rendered with the Cyber-Vedic print styling, and saved to the browser's local storage so it can be retrieved, edited, exported, or printed later without consuming more LLM tokens.</p>
+</body>
+</html>

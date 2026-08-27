@@ -1,0 +1,212 @@
+import type {
+  SaveTemplateRequest,
+  TemplateDetail,
+  TemplateSummary,
+  GeneratedExam,
+} from "@/types/template";
+import type { DocumentSummary, GenerateWithSourceRequest } from "@/types/document";
+import type {
+  AuthResponse,
+  QuizListItem,
+  QuizResult,
+  StudentStats,
+  User,
+} from "@/types/auth";
+
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API = `${BASE}/api/v1`;
+
+function getAuthHeader(): Record<string, string> {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("gk_token");
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+  }
+  return {};
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const opts: RequestInit = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+  };
+  if (body) {
+    opts.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(`${API}${path}`, opts);
+  if (!res.ok) {
+    let errText = await res.text();
+    try {
+      const parsed = JSON.parse(errText);
+      errText = parsed.detail?.message || parsed.detail || errText;
+    } catch {}
+    throw new Error(errText);
+  }
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return {} as T;
+  }
+  const text = await res.text();
+  if (!text) return {} as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return {} as T;
+  }
+}
+
+export const templatesApi = {
+  list: (role?: "admin" | "teacher" | string) =>
+    request<TemplateSummary[]>("GET", `/templates/${role ? `?role=${role}` : ""}`),
+  get: (id: string) => request<TemplateDetail>("GET", "/templates/" + id),
+  create: (payload: SaveTemplateRequest, role?: "admin" | "teacher" | string) =>
+    request<{ id: string }>("POST", `/templates/${role ? `?role=${role}` : ""}`, payload),
+  delete: (id: string) => request<void>("DELETE", "/templates/" + id),
+};
+
+export const documentsApi = {
+  list: () => request<DocumentSummary[]>("GET", "/documents/"),
+  get: (id: string) => request<DocumentSummary>("GET", "/documents/" + id),
+  upload: async (file: File, subject: string = "", grade: string = ""): Promise<DocumentSummary> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (subject) formData.append("subject", subject);
+    if (grade) formData.append("grade", grade);
+
+    const res = await fetch(`${API}/documents/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      let errText = await res.text();
+      try {
+        const parsed = JSON.parse(errText);
+        errText = parsed.detail?.message || parsed.detail || errText;
+      } catch {}
+      throw new Error(errText);
+    }
+    return res.json();
+  },
+  waitReady: async (id: string): Promise<DocumentSummary> => {
+    for (let i = 0; i < 60; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const doc = await documentsApi.get(id);
+      if (doc.status === "ready" || doc.status === "error") return doc;
+    }
+    throw new Error("Document processing timed out after 2 minutes.");
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const res = await fetch(`${API}/documents/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      let errText = await res.text();
+      try {
+        const parsed = JSON.parse(errText);
+        errText = parsed.detail ?? errText;
+      } catch {}
+      throw new Error(errText);
+    }
+  },
+
+  webFetch: async (payload: { subject: string; grade: string; extra_keywords?: string }): Promise<DocumentSummary> => {
+    const res = await fetch(`${API}/documents/web-fetch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      let errText = await res.text();
+      try {
+        const parsed = JSON.parse(errText);
+        errText = parsed.detail ?? errText;
+      } catch {}
+      throw new Error(errText);
+    }
+    return res.json();
+  },
+};
+
+export const generationApi = {
+  generate: async (payload: GenerateWithSourceRequest, onProgress?: (msg: string) => void): Promise<GeneratedExam> => {
+    const res = await fetch(`${API}/generate/exam`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!res.ok) {
+      let errText = await res.text();
+      try {
+        const parsed = JSON.parse(errText);
+        errText = parsed.detail?.message || parsed.detail || errText;
+      } catch {}
+      throw new Error(errText);
+    }
+    
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let finalExam: GeneratedExam | null = null;
+
+    if (!reader) throw new Error("No response body from server.");
+
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? ""; // keep last partial line in buffer
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const data = JSON.parse(line);
+          if (data.status && onProgress) onProgress(data.status);
+          if (data.exam) finalExam = data.exam as GeneratedExam;
+          if (data.error) throw new Error(data.error as string);
+        } catch (e) {
+          if (e instanceof SyntaxError) continue; // partial JSON chunk, skip
+          throw e;
+        }
+      }
+    }
+
+    if (!finalExam) throw new Error("Generation finished but no exam was returned.");
+    return finalExam;
+  },
+  publish: (id: string, publish: boolean = true) =>
+    request<{ status: string; exam_id: string; is_published: boolean; message: string }>(
+      "POST",
+      `/generate/exam/${id}/publish?publish=${publish}`
+    ),
+};
+
+export const healthApi = {
+  check: (): Promise<{ status: string; llm_provider: string; llm_model: string }> =>
+    request("GET", "/health"),
+};
+
+export const authApi = {
+  signup: (payload: { email: string; password: string; full_name?: string; role: string }) =>
+    request<AuthResponse>("POST", "/auth/signup", payload),
+  login: (payload: { email: string; password: string }) =>
+    request<AuthResponse>("POST", "/auth/login", payload),
+  me: () => request<User>("GET", "/auth/me"),
+};
+
+export const studentApi = {
+  listQuizzes: () => request<QuizListItem[]>("GET", "/student/quizzes"),
+  getQuiz: (id: string) => request<GeneratedExam & { id: string }>("GET", `/student/quiz/${id}`),
+  submitQuiz: (id: string, payload: { answers: Record<string, any>; time_spent_seconds: number }) =>
+    request<QuizResult>("POST", `/student/quiz/${id}/submit`, payload),
+  getAttempt: (attemptId: string) => request<QuizResult>("GET", `/student/attempt/${attemptId}`),
+  getStats: () => request<StudentStats>("GET", "/student/stats"),
+};
+
