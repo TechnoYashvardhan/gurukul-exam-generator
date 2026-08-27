@@ -1,285 +1,165 @@
-# 🎓 AI-Powered Exam Generator
+# 🕉️ Gurukul AI Exam Generator & Assessment Sanctuary
+> *"विद्या ददाति विनयम्"* — Knowledge bestows humility, humility brings worthiness.
 
-A full-stack web application that lets teachers generate customized exam papers using AI. Built on a fully **free and open-source** stack.
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Docker Compose Stack                     │
-│                                                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  │
-│  │ Postgres │  │  Redis   │  │ SearXNG  │  │  FastAPI  │  │
-│  │ +pgvector│  │ (cache)  │  │ (search) │  │ (backend) │  │
-│  │  :5432   │  │  :6379   │  │  :8080   │  │  :8000    │  │
-│  └──────────┘  └──────────┘  └──────────┘  └───────────┘  │
-└─────────────────────────────────────────────────────────────┘
-              ▲
-              │ (Phase 2+)
-    ┌─────────────────────┐
-    │  Next.js Frontend   │
-    │       :3000         │
-    └─────────────────────┘
-```
+A full-stack, institutional-grade AI Examination and Assessment platform designed for schools, universities, and educators worldwide. Built on a privacy-first, free, and open-source architecture supporting **Teacher Paper Generation**, **Student Quiz Arena**, and **Admin Institutional Analytics**.
 
 ---
 
-## Quick Start
+## 🏛️ Ecosystem Overview
 
-### Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
-- A free Groq API key (see below)
-
-### Step 1 — Get a Free Groq API Key
-
-1. Go to [console.groq.com](https://console.groq.com)
-2. Sign up (no credit card required)
-3. Navigate to **API Keys → Create API Key**
-4. Copy the key — it starts with `gsk_`
-
-**Free tier:** ~14,400 requests/day on Llama 3.3 70B · 6,000 tokens/minute
-
-### Step 2 — Configure Environment
-
-```bash
-cd backend
-cp .env.example .env
 ```
-
-Open `backend/.env` and set your key:
-```
-GROQ_API_KEY=gsk_your_actual_key_here
-```
-
-> The rest of the defaults work out of the box for local development.
-
-### Step 3 — Start the Stack
-
-```bash
-# From the project root (where docker-compose.yml lives)
-docker compose up -d
-```
-
-This spins up:
-| Service | URL | Purpose |
-|---------|-----|---------|
-| FastAPI backend | http://localhost:8000 | API + LLM pipeline |
-| API Docs (Swagger) | http://localhost:8000/docs | Interactive API explorer |
-| SearXNG | http://localhost:8080 | Syllabus web search (Phase 3) |
-| Postgres | localhost:5432 | Database + embeddings |
-| Redis | localhost:6379 | Document cache |
-
-Database migrations run automatically on backend startup.
-
-### Step 4 — Test the Generation Endpoint
-
-```bash
-curl -X POST http://localhost:8000/api/v1/generate/exam \
-  -H "Content-Type: application/json" \
-  -d @backend/tests/fixtures/sample_request.json | python -m json.tool
-```
-
-Or open **http://localhost:8000/docs** and try the `/generate/exam` endpoint interactively.
-
----
-
-## Switching LLM Providers
-
-Change one line in `backend/.env` — no code changes needed:
-
-```bash
-# Use Groq (default — fastest free option)
-LLM_PROVIDER=groq
-
-# Use Gemini 1.5 Flash (1,500 req/day free)
-# Get key at: https://aistudio.google.com
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=AIza_your_key_here
-
-# Use local Ollama (completely free, runs on your machine)
-# Install: https://ollama.ai → then: ollama pull llama3.2
-LLM_PROVIDER=ollama
-```
-
-Then restart the backend:
-```bash
-docker compose restart backend
+                                  ┌───────────────────────────────┐
+                                  │      Gurukul Web Portal       │
+                                  │       (Next.js + React)       │
+                                  │             :3000             │
+                                  └───────────────┬───────────────┘
+                                                  │
+                      ┌───────────────────────────┼───────────────────────────┐
+                      ▼                           ▼                           ▼
+        ┌───────────────────────────┐ ┌───────────────────────────┐ ┌───────────────────────────┐
+        │     👑 Admin Sanctuary    │ │     📜 Teacher Panel      │ │     🎯 Student Arena      │
+        │ • Institutional Rosters   │ │ • AI Exam Generation      │ │ • Interactive Test Arena  │
+        │ • 7-Digit Scholar IDs     │ │ • Custom Blueprint Engine │ │ • Live Timer & Scoring    │
+        │ • Class-Wise Analytics    │ │ • RAG Syllabus Ingestion  │ │ • AI Semantic Grading     │
+        │ • Student Deep-Dive Rpt   │ │ • Multi-Format Export     │ │ • Persistent Breakdown    │
+        └───────────────────────────┘ └───────────────────────────┘ └───────────────────────────┘
+                                                  │
+                                                  ▼
+                                  ┌───────────────────────────────┐
+                                  │     FastAPI AI Microservice   │
+                                  │       (Python 3.11/3.12)      │
+                                  │             :8000             │
+                                  └───────────────┬───────────────┘
+                                                  │
+                      ┌───────────────────────────┼───────────────────────────┐
+                      ▼                           ▼                           ▼
+        ┌───────────────────────────┐ ┌───────────────────────────┐ ┌───────────────────────────┐
+        │       Database & Cache    │ │       LLM Engine Suite    │ │      Semantic Search      │
+        │ • SQLite / PostgreSQL     │ │ • Google Gemini 1.5/2.5   │ │ • SearXNG Search Engine   │
+        │ • SQLAlchemy (Async)      │ │ • Groq (Llama 3.3 70B)    │ │ • Document Chunk Embeds   │
+        │ • Redis Cache             │ │ • Local Ollama Models     │ │   (HuggingFace MiniLM)    │
+        └───────────────────────────┘ └───────────────────────────┘ └───────────────────────────┘
 ```
 
 ---
 
-## Development (without Docker)
+## ✨ Key Features & Current Progress
 
+### 👑 1. Admin Sanctuary & Institutional Governance
+- **Role Isolation**: Strictly separated Admin and Teacher template stores and workflows.
+- **Dedicated Admin Authentication**: Secure institutional access via `Admin_DSVV01`.
+- **Targeted Quiz Deployment**: Assign exams and quizzes directly to specific classes/courses.
+- **Student Performance Hub**: Monitor class average mastery, completion rates, and individual report cards.
+
+### 📜 2. Teacher Panel & Offline Paper Generator
+- **AI Paper Generation (Vidya / Rachna)**: Generate rigorous, curriculum-aligned exam papers with customizable marks distributions and sections (MCQs, True/False, Short Answer, Long Answer, Case Studies).
+- **Template Blueprint Builder**: Create reusable exam blueprints with custom section weightage and Bloom's taxonomy difficulty levels.
+- **RAG Syllabus Ingestion (Granthagar)**: Upload course syllabus PDFs or fetch web curricula to ground question generation in authentic material.
+- **Rich Text & KaTeX Math Editor**: Edit questions, diagrams, formulas, and spreadsheet cell references (`$A$1`, `E10`) with live KaTeX rendering.
+- **Multi-Format Export**: One-click download as PDF, Word (.docx), or Markdown.
+
+### 🎯 3. Student Arena (Aashram) & AI Answer Evaluation
+- **Interactive Quiz Player**: Clean, distraction-free test-taking arena with live countdown timers and progress tracking.
+- **AI Semantic Answer Evaluation**: Automatic grading of fill-in-the-blanks and one-word answers using AI semantic comparison (e.g. recognizing equivalent phrasing or spelling variations).
+- **Detailed Question Breakdown & Review**: Question-by-question review highlighting:
+  - 🟢 **Correct Answer** with full option text and KaTeX formulas.
+  - 🔴 **Student's Selection** with instantaneous correctness indicators.
+  - ✨ **AI Evaluation Rationale**: Clear explanations showing why marks were awarded.
+- **Persistent Attempt History**: Students can inspect past exam breakdowns anytime from their dashboard.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | Next.js 16 (Turbopack, App Router), React 19, TypeScript, Lucide Icons, KaTeX MathText |
+| **Backend** | Python 3.12, FastAPI, SQLAlchemy (Async), Pydantic v2, Uvicorn |
+| **AI / LLM** | Google Gemini (1.5 Flash / 2.5 Flash), Groq (Llama 3.3 70B), Ollama (Local) |
+| **Embeddings & Search** | SentenceTransformers (`all-MiniLM-L6-v2`), SearXNG, PyPDF |
+| **Database & Cache** | SQLite (development) / PostgreSQL with pgvector (production), Redis |
+
+---
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+- **Python 3.11+**
+- **Node.js 18+** & `npm`
+- Free API Key for **Google Gemini** ([Google AI Studio](https://aistudio.google.com)) or **Groq** ([Groq Console](https://console.groq.com))
+
+### 2. Backend Setup
 ```bash
 cd backend
 
-# Create virtual environment
+# Create & activate virtual environment
 python -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate     # Mac/Linux
+.venv\Scripts\activate      # Windows
+# source .venv/bin/activate # Mac / Linux
 
+# Install dependencies
 pip install -r requirements.txt
 
-# Start Postgres+Redis+SearXNG only
-docker compose up postgres redis searxng -d
-
-# Copy env and set DATABASE_URL to use localhost
+# Configure environment variables
 cp .env.example .env
-# Edit .env: change postgres/redis hosts from service names to localhost
-
-# Run migrations
-alembic upgrade head
-
-# Start dev server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Run Tests
+Edit `backend/.env` with your API key:
+```ini
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=models/gemini-1.5-flash
+```
 
+Start the backend server:
 ```bash
-cd backend
-pytest tests/ -v
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
+API Documentation: **[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)**
 
-Tests use mock LLM clients — **no API key or database needed** to run the test suite.
+### 3. Frontend Setup
+```bash
+cd frontend
 
----
+# Install dependencies
+npm install
 
-## Project Structure
+# Configure environment
+cp .env.local.example .env.local
 
+# Start development server
+npm run dev
 ```
-Question Paper Generator/
-├── docker-compose.yml          # Full stack orchestration
-├── searxng/
-│   └── settings.yml            # SearXNG configuration
-├── README.md
-└── backend/
-    ├── Dockerfile
-    ├── requirements.txt
-    ├── alembic.ini
-    ├── pytest.ini
-    ├── .env.example             # ← copy to .env and fill in keys
-    ├── alembic/
-    │   ├── env.py
-    │   └── versions/
-    │       └── 001_initial_schema.py
-    ├── app/
-    │   ├── main.py              # FastAPI app + logging
-    │   ├── config.py            # pydantic-settings
-    │   ├── database.py          # async SQLAlchemy engine
-    │   ├── llm/
-    │   │   ├── base.py          # Abstract LLMClient interface
-    │   │   ├── groq_client.py   # Groq (Llama 3.3 70B)
-    │   │   ├── gemini_client.py # Gemini 1.5 Flash
-    │   │   ├── ollama_client.py # Local Ollama
-    │   │   └── factory.py       # get_llm_client() — the single switch
-    │   ├── models/
-    │   │   └── db.py            # SQLAlchemy ORM (all 5 tables)
-    │   ├── schemas/
-    │   │   ├── template.py      # ExamTemplate, Section
-    │   │   └── exam.py          # GeneratedExam, Question, MCQOption
-    │   ├── services/
-    │   │   └── exam_generator.py # Generation + validation + retry
-    │   └── routers/
-    │       └── generate.py      # POST /api/v1/generate/exam
-    └── tests/
-        ├── fixtures/
-        │   └── sample_request.json
-        └── test_generate.py
-```
+Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 
 ---
 
-## API Reference
+## 🔑 Default Portals & Roles
 
-### `GET /api/v1/health`
-Returns the configured LLM provider and model.
-
-### `POST /api/v1/generate/exam`
-Generate a complete exam paper from a template + syllabus text.
-
-**Request body:**
-```json
-{
-  "template": {
-    "subject": "Physics",
-    "grade": "Grade 10",
-    "difficulty": "medium",
-    "total_marks": 50,
-    "duration_minutes": 120,
-    "sections": [
-      {
-        "id": "s1",
-        "title": "Section A — MCQ",
-        "type": "mcq",
-        "num_questions": 10,
-        "marks_per_question": 1,
-        "instructions": "Choose one answer."
-      },
-      {
-        "id": "s2",
-        "title": "Section B — Short Answer",
-        "type": "short_answer",
-        "num_questions": 8,
-        "marks_per_question": 5,
-        "instructions": "Answer in 3-5 sentences."
-      }
-    ]
-  },
-  "syllabus_text": "Your syllabus content here...",
-  "source_type": "hardcoded"
-}
-```
-
-**Question types:** `mcq` · `short_answer` · `long_answer` · `case_study`
-**Difficulty levels:** `easy` · `medium` · `hard` · `extreme` (maps to Bloom's Taxonomy)
+| Role | Access URL | Description | Default Credentials |
+| :--- | :--- | :--- | :--- |
+| 👑 **Admin** | `/admin` | Institutional governance & class reports | `Admin_DSVV01` / `OmBhBS@123` |
+| 📜 **Teacher** | `/teacher` | Offline paper creator (open registration) | Sign up freely at `/register` |
+| 🎯 **Student** | `/student` | Quiz arena & attempt breakdown review | 7-digit Scholar ID / `student@dsvv123` |
 
 ---
 
-## Database Schema
+## 🗺️ Future Roadmap
 
-| Table | Purpose |
-|-------|---------|
-| `users` | Teacher accounts (auth in Phase 4) |
-| `documents` | Uploaded PDFs + web-fetched syllabi (Phase 3) |
-| `document_chunks` | Text chunks with 384-dim embeddings for RAG (Phase 3) |
-| `templates` | Saved exam templates (Phase 2) |
-| `generated_exams` | Validated LLM output + PDF paths (Phases 1–4) |
-
----
-
-## Free Tier Limits Summary
-
-| Provider | Free Limit | Key Required | Card Required |
-|----------|-----------|--------------|---------------|
-| **Groq** (Llama 3.3 70B) | 14,400 req/day · 6K tok/min | Yes | ❌ No |
-| **Gemini** (1.5 Flash) | 1,500 req/day | Yes | ❌ No |
-| **Ollama** (any model) | Unlimited (local) | ❌ No | ❌ No |
-
-The built-in rate limiter (`LLM_RATE_LIMIT_PER_MIN=10`) prevents accidental quota exhaustion during testing.
+- [x] Multi-role isolation (Admin / Teacher / Student)
+- [x] Multi-LLM provider switching (Gemini, Groq, Ollama)
+- [x] KaTeX mathematical formula rendering & Excel syntax safety
+- [x] AI Semantic answer grading for subjective and fill-in questions
+- [x] Question-by-question breakdown & attempt history viewer
+- [ ] **Class/Course Hierarchy (`ClassGroup`)**: Full batch management and class-targeted exam publishing
+- [ ] **7-Digit Scholar ID Governance**: Admin-provisioned roster with batch CSV import
+- [ ] **Class-Wise Analytics Dashboard**: Class average mastery % and printable student report cards
+- [ ] **Automated OMR Sheet Generation & Camera Scanner**: AI grading of physical paper answer sheets
+- [ ] **Multilingual Support**: Native generation in Sanskrit, Hindi, and regional languages
 
 ---
 
-## Build Phases
+## 📜 License & Acknowledgements
 
-| Phase | Status | Features |
-|-------|--------|---------|
-| **Phase 1** | ✅ Complete | Backend AI proof of concept — LLM pipeline, validation, retry, Docker stack |
-| **Phase 2** | 🔜 Next | Template Builder frontend (Next.js + TypeScript + Tailwind) |
-| **Phase 3** | ⏳ | PDF ingestion → chunking → embeddings → pgvector RAG + SearXNG web fetch |
-| **Phase 4** | ⏳ | PDF output generation, Library tab UI, JWT auth, multi-tenancy |
-
----
-
-## Troubleshooting
-
-**Backend fails to start:** Check `docker compose logs backend` — usually a missing `GROQ_API_KEY` or Postgres not ready yet.
-
-**`alembic upgrade head` fails:** Make sure Postgres is healthy: `docker compose ps postgres`
-
-**LLM returns invalid JSON:** This is expected occasionally — the retry logic handles it (up to 2 retries). Check logs: `docker compose logs backend -f`
-
-**SearXNG returns no results:** The first startup can take 30s. Visit http://localhost:8080 to verify it's running.
+Developed with reverence to traditional pedagogical values and modern AI engineering.  
+Open-source under the **MIT License**.
