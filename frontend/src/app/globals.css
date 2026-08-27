@@ -2776,3 +2776,35 @@ body {
     /* Force the template builder to stay desktop-width */
   }
 }
+
+/* ── Print Styling for Offline Exam Papers ────────────────────── */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .gurukul-sidebar,
+  .no-print,
+  button,
+  .page-header__breadcrumb,
+  .theme-toggle {
+    display: none !important;
+  }
+
+  .gurukul-content,
+  .gurukul-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+  }
+
+  .section-card,
+  .question-item,
+  .quiz-breakdown-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
