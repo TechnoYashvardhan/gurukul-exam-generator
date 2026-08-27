@@ -54,6 +54,8 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
   const [result, setResult] = useState<QuizResult | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
 
+  const autosaveKey = quizId ? `gurukul_quiz_progress_${quizId}` : null;
+
   // Load exam or past attempt review
   useEffect(() => {
     async function load() {
@@ -65,8 +67,37 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
         } else if (quizId) {
           const data = await studentApi.getQuiz(quizId);
           setExam(data);
-          const durationSec = (data.duration_minutes || 30) * 60;
-          setTimeRemaining(durationSec);
+          const defaultDuration = (data.duration_minutes || 30) * 60;
+
+          // Check for autosaved in-progress session
+          let restored = false;
+          if (typeof window !== "undefined" && autosaveKey) {
+            try {
+              const savedRaw = sessionStorage.getItem(autosaveKey);
+              if (savedRaw) {
+                const saved = JSON.parse(savedRaw);
+                if (saved.answers && typeof saved.answers === "object") {
+                  setAnswers(saved.answers);
+                  if (typeof saved.timeRemaining === "number" && saved.timeRemaining > 0) {
+                    setTimeRemaining(saved.timeRemaining);
+                  } else {
+                    setTimeRemaining(defaultDuration);
+                  }
+                  if (typeof saved.timeSpent === "number") setTimeSpent(saved.timeSpent);
+                  if (typeof saved.currentIndex === "number") setCurrentIndex(saved.currentIndex);
+                  restored = true;
+                }
+              }
+            } catch {
+              // ignore storage parse error
+            }
+          }
+
+          if (!restored) {
+            setTimeRemaining(defaultDuration);
+          } else {
+            setToast({ message: "Resumed in-progress quiz from autosave.", variant: "info" });
+          }
         }
       } catch (err: any) {
         setToast({ message: "Failed to load quiz data: " + err.message, variant: "error" });
@@ -75,7 +106,27 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
       }
     }
     load();
-  }, [quizId, attemptId]);
+  }, [quizId, attemptId, autosaveKey]);
+
+  // Autosave in-progress answers and timer
+  useEffect(() => {
+    if (!autosaveKey || !exam || result || submitting) return;
+    if (typeof window === "undefined") return;
+    try {
+      sessionStorage.setItem(
+        autosaveKey,
+        JSON.stringify({
+          answers,
+          timeRemaining,
+          timeSpent,
+          currentIndex,
+          updatedAt: Date.now(),
+        })
+      );
+    } catch {
+      // storage full or unavailable
+    }
+  }, [autosaveKey, exam, result, submitting, answers, timeRemaining, timeSpent, currentIndex]);
 
   // Timer tick
   useEffect(() => {
@@ -108,6 +159,9 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
   };
 
   const handleRetake = async (targetExamId: string) => {
+    if (autosaveKey && typeof window !== "undefined") {
+      sessionStorage.removeItem(autosaveKey);
+    }
     setResult(null);
     setAnswers({});
     setTimeSpent(0);
@@ -135,6 +189,9 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
         answers,
         time_spent_seconds: timeSpent,
       });
+      if (autosaveKey && typeof window !== "undefined") {
+        sessionStorage.removeItem(autosaveKey);
+      }
       setResult(res);
       setToast({ message: "Quiz submitted and evaluated successfully!", variant: "success" });
     } catch (err: any) {

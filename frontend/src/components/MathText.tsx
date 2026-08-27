@@ -33,8 +33,54 @@ function convertMatrixToLatex(text: string): string {
 }
 
 /**
+ * Converts chemistry \ce{...} notation and chemical formulas into standard KaTeX notation.
+ * e.g., \ce{2H2 + O2 -> 2H2O} -> $2\mathrm{H_2} + \mathrm{O_2} \rightarrow 2\mathrm{H_2O}$
+ * e.g., \ce{Fe^{2+} + e- -> Fe+} -> $\mathrm{Fe}^{2+} + \mathrm{e}^- \rightarrow \mathrm{Fe}^+$
+ */
+function convertChemicalFormulas(text: string): string {
+  // 1. Process \ce{...} tags
+  let out = text.replace(/\\ce\{([^}]+)\}/g, (_, inner) => {
+    let chem = inner.trim();
+    // Replace reaction arrows
+    chem = chem.replace(/->|\\to/g, " \\rightarrow ");
+    chem = chem.replace(/<->|<=>/g, " \\rightleftharpoons ");
+    
+    // Split on spaces and operators while preserving them
+    const parts = chem.split(/(\s+|\+|\-|\=|\b(?:\\rightarrow|\\rightleftharpoons)\b)/).filter(Boolean);
+    const converted = parts.map((tok: string) => {
+      const trimmed = tok.trim();
+      if (!trimmed) return " ";
+      if (["+", "-", "=", "\\rightarrow", "\\rightleftharpoons"].includes(trimmed)) {
+        return trimmed;
+      }
+      // If coefficient number like '2' before formula
+      const coefMatch = trimmed.match(/^(\d+)(.*)$/);
+      let coef = "";
+      let formula = trimmed;
+      if (coefMatch && coefMatch[2]) {
+        coef = coefMatch[1];
+        formula = coefMatch[2];
+      }
+      // Subscripts for numbers (e.g. H2 -> H_2)
+      let formatted = formula.replace(/([A-Za-z\)])(\d+)/g, "$1_{$2}");
+      // Charges (e.g. Fe^2+, SO4^2-)
+      formatted = formatted.replace(/\^\{?(\d*[\+\-])\}?/g, "^{$1}");
+      return `${coef}\\mathrm{${formatted}}`;
+    });
+    return `$${converted.join(" ")}$`;
+  });
+
+  // 2. Normalize standalone formulas like H_2O, CO_2, H_2SO_4 outside math mode
+  out = out.replace(/(?<!\$|\w)([A-Z][a-z]?)(_\{\d+\}|_\d+)([A-Z][a-z]?(?:_\{\d+\}|_\d+)?)*(?!\$|\w)/g, (match) => {
+    return `$\\mathrm{${match}}$`;
+  });
+
+  return out;
+}
+
+/**
  * Preprocesses raw text to ensure all math/LaTeX expressions, matrices,
- * fractions, roots, cases, and equations are properly formatted with KaTeX delimiters,
+ * fractions, roots, cases, chemistry formulas, and equations are properly formatted with KaTeX delimiters,
  * while protecting spreadsheet cell references ($A$1, $B$1, E10), currency, and plain text from accidental LaTeX corruption.
  */
 export function formatMathText(raw: string): string {
@@ -45,15 +91,18 @@ export function formatMathText(raw: string): string {
   // 1. Unescape literal \n into real newlines
   text = text.replace(/\\n/g, "\n");
 
-  // 2. Escape Currency like $50,000 or $100 or $250.00 so remarkMath doesn't treat them as math opening delimiters
+  // 2. Convert chemistry \ce{...} expressions and chemical formulas
+  text = convertChemicalFormulas(text);
+
+  // 3. Escape Currency like $50,000 or $100 or $250.00 so remarkMath doesn't treat them as math opening delimiters
   text = text.replace(/(?<!\\)\$([0-9][0-9,]*)(?:\b|(?=[^a-zA-Z0-9$]))/g, (_, g1) => "\\$" + g1);
 
-  // 3. Escape Excel / Spreadsheet cell references like $A$1, $B$1, $A1, $E$10 using safe callback replacers
+  // 4. Escape Excel / Spreadsheet cell references like $A$1, $B$1, $A1, $E$10 using safe callback replacers
   text = text.replace(/(?<!\\)\$([A-Z]+)\$([0-9]+)\b/g, (_, g1, g2) => "\\$" + g1 + "\\$" + g2);
   text = text.replace(/(?<!\\)\$([A-Z]+[0-9]+)\b/g, (_, g1) => "\\$" + g1);
   text = text.replace(/(?<!\\)\b([A-Z]+)\$([0-9]+)\b/g, (_, g1, g2) => g1 + "\\$" + g2);
 
-  // 4. Matrix conversion: [[1,2],[3,4]] -> \begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}
+  // 5. Matrix conversion: [[1,2],[3,4]] -> \begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}
   text = convertMatrixToLatex(text);
 
   // 5. Convert flat matrix tuple syntax: A = (1 -1 0 2 3 4 0 1 2) [9 numbers] -> 3x3 pmatrix
