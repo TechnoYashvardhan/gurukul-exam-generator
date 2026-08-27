@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: gurukul-exam-generator-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: false
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: models/gemini-1.5-flash
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./examgen.db
+      - key: SYNC_DATABASE_URL
+        value: sqlite:///./examgen.db
