@@ -80,7 +80,10 @@ def _strip_markdown_from_json(s: str) -> str:
     s = re.sub(r",\s*([\]}])", r"\1", s)
     return s.strip()
 
-import json_repair
+try:
+    import json_repair
+except ImportError:
+    json_repair = None
 
 def _escape_latex_in_json(s: str) -> str:
     """Escapes backslashes before LaTeX keywords in JSON strings to prevent json control character errors."""
