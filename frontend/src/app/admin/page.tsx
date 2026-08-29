@@ -18,6 +18,8 @@ import type { ExamTemplate } from "@/types/template";
 import type { DocumentSummary } from "@/types/document";
 import { FolderOpen, File, ShieldCheck, Sparkles, GraduationCap, Users } from "lucide-react";
 
+import ProtectedRoute from "@/components/ProtectedRoute";
+
 const ParticleBackground = dynamic(
   () => import("@/components/ParticleBackground"),
   { ssr: false }
@@ -75,7 +77,7 @@ export default function AdminPage() {
   }
 
   return (
-    <>
+    <ProtectedRoute allowedRoles={["admin"]}>
       <ParticleBackground />
       <div className="gurukul-app">
         {/* ── Persistent Sidebar ──────────────────────────────────── */}
@@ -259,6 +261,6 @@ export default function AdminPage() {
           )}
         </div>
       </div>
-    </>
+    </ProtectedRoute>
   );
 }

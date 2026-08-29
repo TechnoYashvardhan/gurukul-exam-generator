@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -19,8 +19,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
 
-  const { login } = useAuth();
+  const { user, isLoading, login } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      if (user.role === "admin") router.replace("/admin");
+      else if (user.role === "student") router.replace("/student");
+      else router.replace("/teacher");
+    }
+  }, [user, isLoading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

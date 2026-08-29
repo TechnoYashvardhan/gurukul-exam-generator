@@ -7,6 +7,8 @@ import StudentDashboard from "@/components/StudentDashboard";
 import StudentQuizArena from "@/components/StudentQuizArena";
 import QuizPlayer from "@/components/QuizPlayer";
 
+import ProtectedRoute from "@/components/ProtectedRoute";
+
 const ParticleBackground = dynamic(
   () => import("@/components/ParticleBackground"),
   { ssr: false }
@@ -32,7 +34,7 @@ export default function StudentPage() {
   };
 
   return (
-    <>
+    <ProtectedRoute allowedRoles={["student"]}>
       <ParticleBackground />
       <div className="gurukul-app">
         {/* Persistent Sidebar */}
@@ -86,6 +88,6 @@ export default function StudentPage() {
           )}
         </div>
       </div>
-    </>
+    </ProtectedRoute>
   );
 }

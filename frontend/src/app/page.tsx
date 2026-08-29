@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import AdminPage from "./admin/page";
 import TeacherPage from "./teacher/page";
@@ -7,46 +9,53 @@ import StudentPage from "./student/page";
 
 export default function HomePage() {
   const { user, isLoading } = useAuth();
+  const router = useRouter();
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login");
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading || !user) {
     return (
       <div
         style={{
           minHeight: "100vh",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           background: "var(--bg)",
           color: "var(--text-3)",
           fontFamily: "var(--font-serif)",
-          fontSize: 18,
+          gap: 14,
         }}
       >
         <span
           className="spin"
           style={{
             display: "inline-block",
-            width: 24,
-            height: 24,
+            width: 28,
+            height: 28,
             border: "2px solid var(--accent)",
             borderTopColor: "transparent",
             borderRadius: "50%",
-            marginRight: 12,
           }}
         />
-        Entering Gurukul Sanctuary...
+        <div style={{ fontSize: 16 }}>Entering Gurukul Sanctuary...</div>
       </div>
     );
   }
 
-  if (user?.role === "admin") {
+  if (user.role === "admin") {
     return <AdminPage />;
   }
 
-  if (user?.role === "student") {
+  if (user.role === "student") {
     return <StudentPage />;
   }
 
-  // Default to Teacher (Offline Paper Generator)
   return <TeacherPage />;
 }
+
