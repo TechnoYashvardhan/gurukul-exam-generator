@@ -136,14 +136,18 @@ async def lifespan(app: FastAPI):
 
             # Seed Teacher
             user = await session.get(User, _default_uid)
+            teacher_pw_hash = get_password_hash("teacher123")
             if not user:
                 session.add(User(
                     id=_default_uid,
                     email="teacher@gurukul.local",
-                    hashed_pw=get_password_hash("teacher123"),
+                    hashed_pw=teacher_pw_hash,
                     full_name="Acharya Vashishta",
                     role="teacher"
                 ))
+            else:
+                user.hashed_pw = teacher_pw_hash
+                user.email = "teacher@gurukul.local"
 
             # Seed Official Single Admin (Admin_DSVV01)
             admin = await session.get(User, _admin_uid)
