@@ -12,6 +12,7 @@ import GeneratePanel from "@/components/GeneratePanel";
 import ExamHistory from "@/components/ExamHistory";
 import AdminShishyaManager from "@/components/AdminShishyaManager";
 import AdminPublishedManager from "@/components/AdminPublishedManager";
+import JsonExamImporter from "@/components/JsonExamImporter";
 import { useExamHistory } from "@/hooks/useExamHistory";
 import { documentsApi } from "@/lib/api";
 import type { ExamTemplate } from "@/types/template";
@@ -247,6 +248,13 @@ export default function AdminPage() {
           {activeView === "publishes" && (
             <div className="gurukul-page" key="publishes">
               <AdminPublishedManager />
+            </div>
+          )}
+
+          {/* JSON Paper Importer & Generator View */}
+          {activeView === "import_json" && (
+            <div className="gurukul-page" key="import_json">
+              <JsonExamImporter onExamSaved={saveToHistory} role="admin" />
             </div>
           )}
 

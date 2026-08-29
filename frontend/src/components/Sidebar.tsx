@@ -18,11 +18,12 @@ import {
   CheckCircle,
   Send,
   KeyRound,
+  FileCode2,
 } from "lucide-react";
 import type { UserRole } from "@/types/auth";
 import ChangePasswordModal from "./ChangePasswordModal";
 
-export type View = "dashboard" | "builder" | "library" | "generate" | "history" | "quiz" | "shishyas" | "publishes";
+export type View = "dashboard" | "builder" | "library" | "generate" | "import_json" | "history" | "quiz" | "shishyas" | "publishes";
 
 interface SidebarProps {
   activeView: View;
@@ -73,6 +74,12 @@ const ADMIN_NAV_ITEMS: {
     icon: <Sparkles size={18} />,
   },
   {
+    id: "import_json",
+    sanskrit: "Aayat",
+    english: "JSON Import",
+    icon: <FileCode2 size={18} />,
+  },
+  {
     id: "history",
     sanskrit: "Itihas",
     english: "History",
@@ -109,6 +116,12 @@ const DEFAULT_NAV_ITEMS: {
     sanskrit: "Rachna",
     english: "Generate",
     icon: <Sparkles size={18} />,
+  },
+  {
+    id: "import_json",
+    sanskrit: "Aayat",
+    english: "JSON Import",
+    icon: <FileCode2 size={18} />,
   },
   {
     id: "history",

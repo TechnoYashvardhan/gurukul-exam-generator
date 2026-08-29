@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { History, Printer, X, Edit2, Check, Trash2, FileText, CheckCircle, CheckCircle2, Send } from "lucide-react";
+import { History, Printer, X, Edit2, Check, Trash2, FileText, CheckCircle, CheckCircle2, Send, Download } from "lucide-react";
 import { type ExamHistoryEntry } from "@/hooks/useExamHistory";
 import MathText from "./MathText";
 import { generationApi, adminApi } from "@/lib/api";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
 import { ClassSummary } from "@/types/auth";
+import { downloadExamAsJson } from "@/lib/exportUtils";
 
 interface ExamHistoryProps {
   entries: ExamHistoryEntry[];
@@ -314,6 +315,16 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                   )}
                   <button
                     type="button"
+                    className="gk-btn gk-btn--secondary"
+                    onClick={() => downloadExamAsJson(selectedEntry.exam)}
+                    style={{ gap: 5, color: "var(--accent)" }}
+                    title="Export complete exam in a .json file"
+                  >
+                    <Download size={14} />
+                    Export JSON (.json)
+                  </button>
+                  <button
+                    type="button"
                     className="gk-btn gk-btn--primary"
                     onClick={() => handlePrint("exam")}
                   >
@@ -327,17 +338,6 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                   >
                     <Printer size={14} />
                     Print Answer Key
-                  </button>
-                  <button
-                    type="button"
-                    className="gk-btn gk-btn--secondary"
-                    onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(selectedEntry.exam, null, 2));
-                      alert("Exam JSON copied to clipboard!");
-                    }}
-                  >
-                    <FileText size={14} />
-                    Export JSON
                   </button>
                 </div>
               </div>
@@ -418,13 +418,10 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                   </button>
                   <button
                     className="gk-btn gk-btn--secondary"
-                    onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(selectedEntry.exam, null, 2));
-                      alert("Exam JSON copied to clipboard!");
-                    }}
+                    onClick={() => downloadExamAsJson(selectedEntry.exam)}
                   >
-                    <FileText size={15} style={{ marginRight: "6px" }} />
-                    Export JSON
+                    <Download size={15} style={{ marginRight: "6px" }} />
+                    Export JSON (.json)
                   </button>
                 </div>
               </div>

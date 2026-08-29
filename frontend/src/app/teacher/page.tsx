@@ -10,6 +10,7 @@ import LibraryUpload from "@/components/LibraryUpload";
 import DocumentCard from "@/components/DocumentCard";
 import GeneratePanel from "@/components/GeneratePanel";
 import ExamHistory from "@/components/ExamHistory";
+import JsonExamImporter from "@/components/JsonExamImporter";
 import { useExamHistory } from "@/hooks/useExamHistory";
 import { documentsApi } from "@/lib/api";
 import type { ExamTemplate } from "@/types/template";
@@ -211,6 +212,13 @@ export default function TeacherPage() {
               )}
 
               <GeneratePanel selectedDoc={selectedDoc} onExamSaved={saveToHistory} role="teacher" />
+            </div>
+          )}
+
+          {/* JSON Paper Importer & Generator View */}
+          {activeView === "import_json" && (
+            <div className="gurukul-page" key="import_json">
+              <JsonExamImporter onExamSaved={saveToHistory} role="teacher" />
             </div>
           )}
 

@@ -16,12 +16,14 @@ import {
   Send,
   Share2,
   School,
+  Download,
 } from "lucide-react";
 import { LoadingMessages } from "./LoadingMessages";
 import MathText from "./MathText";
 import { useAuth } from "./AuthProvider";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
+import { downloadExamAsJson } from "@/lib/exportUtils";
 
 interface GeneratePanelProps {
   selectedDoc: DocumentSummary | null;
@@ -420,6 +422,16 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
               )}
               <button
                 type="button"
+                className="gk-btn gk-btn--secondary"
+                onClick={() => downloadExamAsJson(result)}
+                title="Export questions into a downloadable .json file"
+                style={{ gap: 5, color: "var(--accent)" }}
+              >
+                <Download size={14} />
+                Export JSON (.json)
+              </button>
+              <button
+                type="button"
                 className="gk-btn gk-btn--primary"
                 onClick={() => handlePrint("exam")}
               >
@@ -499,10 +511,19 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
             </div>
 
             {/* Print actions */}
-            <div className="exam-print-actions">
+            <div className="exam-print-actions no-print">
+              <button
+                className="gk-btn gk-btn--secondary"
+                onClick={() => downloadExamAsJson(result)}
+                style={{ marginRight: "10px" }}
+              >
+                <Download size={15} style={{ marginRight: "6px" }} />
+                Export JSON File (.json)
+              </button>
               <button
                 className="gk-btn gk-btn--primary"
                 onClick={() => handlePrint("exam")}
+                style={{ marginRight: "10px" }}
               >
                 <Printer size={15} style={{ marginRight: "6px" }} />
                 Print Exam Paper

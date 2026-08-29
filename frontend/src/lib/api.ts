@@ -247,6 +247,12 @@ export const generationApi = {
         schedule_end_at: options?.scheduleEndAt,
       }
     ),
+  importJson: (exam: GeneratedExam) =>
+    request<{
+      status: string;
+      exam: GeneratedExam;
+      exam_id: string;
+    }>("POST", "/generate/import-json", { exam }),
 };
 
 export const adminApi = {

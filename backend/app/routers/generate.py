@@ -185,3 +185,59 @@ async def publish_exam_endpoint(
         "schedule_end_at": record.schedule_end_at.isoformat() if record.schedule_end_at else None,
         "message": "Quiz published to Student Arena" if eff_publish else "Quiz unpublished",
     }
+
+
+class ImportExamPayload(BaseModel):
+    exam: dict
+
+
+@router.post("/import-json")
+async def import_exam_endpoint(
+    payload: ImportExamPayload,
+    current_user: User | None = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Import a custom question paper from JSON, validate its structure,
+    and persist it to the database for publishing or history tracking.
+    """
+    user_role = current_user.role if current_user else "teacher"
+    author_id = current_user.id if current_user else (_ADMIN_UID if user_role == "admin" else _TEACHER_UID)
+
+    exam_dict = payload.exam
+    raw_id = exam_dict.get("exam_id")
+    try:
+        exam_id = uuid.UUID(raw_id) if raw_id else uuid.uuid4()
+    except (ValueError, TypeError):
+        exam_id = uuid.uuid4()
+
+    exam_dict["exam_id"] = str(exam_id)
+
+    # Check if record already exists
+    existing = await db.get(GeneratedExamORM, exam_id)
+    if existing:
+        existing.exam_json = exam_dict
+        existing.created_by_role = user_role
+        await db.commit()
+        await db.refresh(existing)
+        return {"status": "ok", "exam": exam_dict, "exam_id": str(exam_id)}
+
+    db_record = GeneratedExamORM(
+        id=exam_id,
+        user_id=author_id,
+        template_id=None,
+        document_id=None,
+        source_type="imported_json",
+        exam_json=exam_dict,
+        llm_provider="imported_json",
+        llm_model="custom",
+        created_by_role=user_role,
+        is_published=bool(exam_dict.get("is_published", False)),
+        retries_used=0,
+    )
+    db.add(db_record)
+    await db.commit()
+    await db.refresh(db_record)
+
+    return {"status": "ok", "exam": exam_dict, "exam_id": str(exam_id)}
+
