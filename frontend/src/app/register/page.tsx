@@ -107,77 +107,59 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* Role Picker */}
-            <div className="gk-field">
-              <label className="gk-label">Select Registration Type</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => setRole("teacher")}
-                  style={{
-                    padding: "12px 10px",
-                    borderRadius: "var(--radius-md)",
-                    border: `2px solid ${role === "teacher" ? "var(--forest)" : "var(--border)"}`,
-                    background: role === "teacher" ? "var(--forest-light)" : "var(--surface)",
-                    color: role === "teacher" ? "var(--forest)" : "var(--text-2)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  <BookOpen size={20} />
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>Teacher (Global)</span>
-                  <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>Open Worldwide</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setRole("student")}
-                  style={{
-                    padding: "12px 10px",
-                    borderRadius: "var(--radius-md)",
-                    border: `2px solid ${role === "student" ? "var(--gold)" : "var(--border)"}`,
-                    background: role === "student" ? "var(--accent-light)" : "var(--surface)",
-                    color: role === "student" ? "var(--accent)" : "var(--text-2)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  <GraduationCap size={20} />
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>Student (Shishya)</span>
-                  <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>Requires 7-Digit ID</span>
-                </button>
+            {/* Student Info Notice */}
+            <div
+              style={{
+                padding: "14px 16px",
+                borderRadius: "var(--radius-lg)",
+                background: "var(--accent-light)",
+                border: "1px solid var(--accent-mid)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)", fontWeight: 700, fontSize: 13 }}>
+                <GraduationCap size={18} />
+                <span>Student (Shishya) Accounts</span>
               </div>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
+                Students cannot self-register. Your account has been provisioned by your institution admin with your <strong>7-Digit Scholar ID</strong> and default password (<code>student@dsvv123</code>).
+              </p>
+              <Link
+                href="/login"
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  color: "var(--accent)",
+                  marginTop: 4,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  textDecoration: "underline",
+                }}
+              >
+                Sign In With Scholar ID <ArrowRight size={13} />
+              </Link>
             </div>
 
-            {role === "student" && (
-              <div className="gk-field">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <label className="gk-label" htmlFor="scholarId">7-Digit Scholar ID *</label>
-                  <span style={{ fontSize: 11, color: scholarId.length === 7 ? "var(--gold)" : "var(--text-3)" }}>
-                    {scholarId.length}/7 digits
-                  </span>
-                </div>
-                <input
-                  id="scholarId"
-                  type="text"
-                  maxLength={7}
-                  className="gk-input"
-                  placeholder="e.g. 2410852"
-                  value={scholarId}
-                  onChange={(e) => setScholarId(e.target.value.replace(/\D/g, ""))}
-                  style={{ fontFamily: "monospace", fontWeight: 700 }}
-                  required
-                />
+            <div className="gk-field">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <label className="gk-label">Registration Role</label>
+                <span
+                  style={{
+                    fontSize: 11,
+                    padding: "2px 8px",
+                    borderRadius: 100,
+                    background: "var(--forest-light)",
+                    color: "var(--forest)",
+                    fontWeight: 700,
+                  }}
+                >
+                  Teacher (Guru)
+                </span>
               </div>
-            )}
+            </div>
 
             <div className="gk-field">
               <label className="gk-label" htmlFor="fullName">Full Name</label>

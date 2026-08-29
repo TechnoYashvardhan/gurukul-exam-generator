@@ -264,6 +264,8 @@ export const authApi = {
   login: (payload: { email: string; password: string }) =>
     request<AuthResponse>("POST", "/auth/login", payload),
   me: () => request<User>("GET", "/auth/me"),
+  changePassword: (payload: { current_password: string; new_password: string }) =>
+    request<{ status: string; message: string }>("POST", "/auth/change-password", payload),
 };
 
 export const studentApi = {

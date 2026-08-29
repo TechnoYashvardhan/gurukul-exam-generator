@@ -17,8 +17,10 @@ import {
   ShieldCheck,
   CheckCircle,
   Send,
+  KeyRound,
 } from "lucide-react";
 import type { UserRole } from "@/types/auth";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 export type View = "dashboard" | "builder" | "library" | "generate" | "history" | "quiz" | "shishyas" | "publishes";
 
@@ -145,6 +147,7 @@ const STUDENT_NAV_ITEMS: {
 export default function Sidebar({ activeView, onViewChange, role: propRole }: SidebarProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const { user, logout, setMockRole } = useAuth();
   const router = useRouter();
 
@@ -254,26 +257,48 @@ export default function Sidebar({ activeView, onViewChange, role: propRole }: Si
                 {user.full_name || "Scholar"}
               </div>
               <div style={{ fontSize: 10, color: "var(--text-3)" }}>
-                {user.email}
+                {user.scholar_id ? `ID: ${user.scholar_id}` : user.email}
               </div>
             </div>
-            <button
-              onClick={logout}
-              title="Sign Out"
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--terracotta)",
-                cursor: "pointer",
-                padding: 4,
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              <LogOut size={14} />
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <button
+                onClick={() => setShowPasswordModal(true)}
+                title="Change Password"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-2)",
+                  cursor: "pointer",
+                  padding: 4,
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <KeyRound size={14} />
+              </button>
+              <button
+                onClick={logout}
+                title="Sign Out"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--terracotta)",
+                  cursor: "pointer",
+                  padding: 4,
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
           </div>
         )}
+
+        <ChangePasswordModal
+          isOpen={showPasswordModal}
+          onClose={() => setShowPasswordModal(false)}
+        />
 
         {/* Theme toggle */}
         {mounted && (

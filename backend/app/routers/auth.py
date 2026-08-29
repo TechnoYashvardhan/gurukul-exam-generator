@@ -67,45 +67,10 @@ async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
     clean_email = body.email.lower().strip()
 
     if role == "student":
-        # Students require a 7-digit scholar ID
-        scholar_id = (body.scholar_id or "").strip()
-        if not (scholar_id.isdigit() and len(scholar_id) == 7):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Students must provide a valid 7-digit Scholar ID (e.g. 2410852).",
-            )
-        
-        # Check if pre-provisioned by Admin
-        existing_scholar = await db.execute(
-            select(User).where((User.scholar_id == scholar_id) | (User.email == clean_email))
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Student accounts cannot be created via public sign-up. Your institution Admin must provision your account. Please sign in using your 7-digit Scholar ID and default password (student@dsvv123).",
         )
-        user = existing_scholar.scalar_one_or_none()
-        if user:
-            # Activate and set password
-            user.hashed_pw = get_password_hash(body.password)
-            if body.full_name:
-                user.full_name = body.full_name
-            user.is_active = True
-            await db.commit()
-            await db.refresh(user)
-            token = create_access_token(data={"sub": str(user.id), "role": user.role})
-            return AuthResponse(
-                access_token=token,
-                user=UserResponse(
-                    id=str(user.id),
-                    email=user.email,
-                    scholar_id=user.scholar_id,
-                    full_name=user.full_name,
-                    role=user.role,
-                    is_active=user.is_active,
-                    class_id=str(user.class_id) if user.class_id else None,
-                ),
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Scholar ID is not found in the administrator's roster. Please contact your administrator to be added to a class.",
-            )
 
     # Teacher registration (open worldwide)
     existing = await db.execute(select(User).where(User.email == clean_email))
@@ -197,3 +162,37 @@ async def get_me(current_user: User = Depends(require_current_user)):
         is_active=current_user.is_active,
         class_id=str(current_user.class_id) if current_user.class_id else None,
     )
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(require_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Allow authenticated students, teachers, or admins to change their password.
+    """
+    if not verify_password(body.current_password, current_user.hashed_pw):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password entered is incorrect.",
+        )
+    if len(body.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 6 characters long.",
+        )
+
+    current_user.hashed_pw = get_password_hash(body.new_password)
+    await db.commit()
+    return {
+        "status": "success",
+        "message": "Password updated successfully. Please use your new password next time you sign in.",
+    }
+

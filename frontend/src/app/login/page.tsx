@@ -157,6 +157,21 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Student sign-in guide */}
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: "var(--radius-md)",
+                background: "var(--accent-light)",
+                border: "1px solid var(--accent-mid)",
+                fontSize: 12,
+                color: "var(--text-2)",
+                lineHeight: 1.4,
+              }}
+            >
+              🎓 <strong>Students (Shishyas):</strong> Sign in with your <strong>7-Digit Scholar ID</strong> (or email) and default password (<code>student@dsvv123</code>). You can change your password anytime from your dashboard.
+            </div>
+
             <button
               type="submit"
               className="gk-btn gk-btn--primary"

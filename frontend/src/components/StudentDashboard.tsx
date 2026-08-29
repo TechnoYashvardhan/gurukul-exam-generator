@@ -15,8 +15,10 @@ import {
   ArrowRight,
   RefreshCw,
   Flame,
+  KeyRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 interface StudentDashboardProps {
   onNavigateToQuiz: (quizId?: string) => void;
@@ -27,6 +29,7 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
   const [stats, setStats] = useState<StudentStats | null>(null);
   const [quizzes, setQuizzes] = useState<QuizListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -58,7 +61,17 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
   return (
     <div className="gurukul-page">
       {/* ── Page Header ──────────────────────────────────────── */}
-      <div className="page-header">
+      <div className="page-header" style={{ position: "relative" }}>
+        <div style={{ position: "absolute", right: 0, top: 0 }}>
+          <button
+            type="button"
+            onClick={() => setShowPasswordModal(true)}
+            className="gk-btn gk-btn--secondary"
+            style={{ fontSize: 12, height: 32, padding: "0 12px", gap: 6 }}
+          >
+            <KeyRound size={14} /> Change Password
+          </button>
+        </div>
         <div className="page-header__breadcrumb">Aashram / Student Sanctuary</div>
         <h1 className="page-header__title">Welcome, Young Shishya</h1>
         <div className="page-header__ornament">
@@ -421,6 +434,11 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
           Success is achieved through persistent effort and practice, not mere wishing.
         </p>
       </div>
+
+      <ChangePasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
     </div>
   );
 }
