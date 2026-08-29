@@ -323,6 +323,11 @@ async def _run_web_ingestion(
 # ── List endpoint ─────────────────────────────────────────────────────────────
 
 @router.get(
+    "",
+    response_model=list[DocumentSummary],
+    include_in_schema=False,
+)
+@router.get(
     "/",
     response_model=list[DocumentSummary],
     summary="List all documents in the library",

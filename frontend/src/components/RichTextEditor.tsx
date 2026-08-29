@@ -230,6 +230,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     extensions: [
       StarterKit.configure({
         heading: false,
+        underline: false as any,
       }),
       Underline,
       Superscript,

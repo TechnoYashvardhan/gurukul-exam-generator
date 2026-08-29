@@ -65,15 +65,15 @@ async function request<T>(
 
 export const templatesApi = {
   list: (role?: "admin" | "teacher" | string) =>
-    request<TemplateSummary[]>("GET", `/templates/${role ? `?role=${role}` : ""}`),
+    request<TemplateSummary[]>("GET", `/templates${role ? `?role=${role}` : ""}`),
   get: (id: string) => request<TemplateDetail>("GET", "/templates/" + id),
   create: (payload: SaveTemplateRequest, role?: "admin" | "teacher" | string) =>
-    request<{ id: string }>("POST", `/templates/${role ? `?role=${role}` : ""}`, payload),
+    request<{ id: string }>("POST", `/templates${role ? `?role=${role}` : ""}`, payload),
   delete: (id: string) => request<void>("DELETE", "/templates/" + id),
 };
 
 export const documentsApi = {
-  list: () => request<DocumentSummary[]>("GET", "/documents/"),
+  list: () => request<DocumentSummary[]>("GET", "/documents"),
   get: (id: string) => request<DocumentSummary>("GET", "/documents/" + id),
   upload: async (file: File, subject: string = "", grade: string = ""): Promise<DocumentSummary> => {
     const formData = new FormData();
