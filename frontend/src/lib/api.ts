@@ -18,8 +18,20 @@ import type {
   PublishedQuizDetailResponse,
 } from "@/types/auth";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const API = `${BASE}/api/v1`;
+export function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname || "localhost";
+    return `http://${host}:8000`;
+  }
+  return "http://localhost:8000";
+}
+
+export function getApiUrl(): string {
+  return `${getApiBaseUrl()}/api/v1`;
+}
 
 function getAuthHeader(): Record<string, string> {
   if (typeof window !== "undefined") {
@@ -47,7 +59,7 @@ async function request<T>(
     opts.body = JSON.stringify(body);
   }
 
-  const res = await fetch(`${API}${path}`, opts);
+  const res = await fetch(`${getApiUrl()}${path}`, opts);
   if (!res.ok) {
     let errText = await res.text();
     try {
@@ -86,7 +98,7 @@ export const documentsApi = {
     if (subject) formData.append("subject", subject);
     if (grade) formData.append("grade", grade);
 
-    const res = await fetch(`${API}/documents/upload`, {
+    const res = await fetch(`${getApiUrl()}/documents/upload`, {
       method: "POST",
       body: formData,
     });
@@ -110,7 +122,7 @@ export const documentsApi = {
   },
 
   delete: async (id: string): Promise<void> => {
-    const res = await fetch(`${API}/documents/${id}`, { method: "DELETE" });
+    const res = await fetch(`${getApiUrl()}/documents/${id}`, { method: "DELETE" });
     if (!res.ok) {
       let errText = await res.text();
       try {
@@ -122,7 +134,7 @@ export const documentsApi = {
   },
 
   webFetch: async (payload: { subject: string; grade: string; extra_keywords?: string; url?: string }): Promise<DocumentSummary> => {
-    const res = await fetch(`${API}/documents/web-fetch`, {
+    const res = await fetch(`${getApiUrl()}/documents/web-fetch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -144,7 +156,7 @@ export const documentsApi = {
     grade?: string;
     topics_text: string;
   }): Promise<DocumentSummary> => {
-    const res = await fetch(`${API}/documents/custom-topic`, {
+    const res = await fetch(`${getApiUrl()}/documents/custom-topic`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -163,7 +175,7 @@ export const documentsApi = {
 
 export const generationApi = {
   generate: async (payload: GenerateWithSourceRequest, onProgress?: (msg: string) => void): Promise<GeneratedExam> => {
-    const res = await fetch(`${API}/generate/exam`, {
+    const res = await fetch(`${getApiUrl()}/generate/exam`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
