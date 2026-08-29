@@ -23,8 +23,9 @@ export function getApiBaseUrl(): string {
     return process.env.NEXT_PUBLIC_API_URL;
   }
   if (typeof window !== "undefined") {
+    const protocol = window.location.protocol; // "http:" or "https:"
     const host = window.location.hostname || "localhost";
-    return `http://${host}:8000`;
+    return `${protocol}//${host}:8000`;
   }
   return "http://localhost:8000";
 }
