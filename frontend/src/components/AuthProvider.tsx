@@ -42,28 +42,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
-    try {
-      const res = await authApi.login({ email, password });
-      setToken(res.access_token);
-      setUser(res.user);
-      localStorage.setItem("gk_token", res.access_token);
-      localStorage.setItem("gk_user", JSON.stringify(res.user));
-      return res.user;
-    } catch (err) {
-      // If backend is offline or dummy test, allow fallback
-      const fallbackUser: User = {
-        id: "00000000-0000-0000-0000-000000000001",
-        email,
-        full_name: email.split("@")[0],
-        role: email.includes("admin") ? "admin" : email.includes("student") ? "student" : "teacher",
-        is_active: true,
-      };
-      setToken("demo-token");
-      setUser(fallbackUser);
-      localStorage.setItem("gk_token", "demo-token");
-      localStorage.setItem("gk_user", JSON.stringify(fallbackUser));
-      return fallbackUser;
-    }
+    const res = await authApi.login({ email, password });
+    setToken(res.access_token);
+    setUser(res.user);
+    localStorage.setItem("gk_token", res.access_token);
+    localStorage.setItem("gk_user", JSON.stringify(res.user));
+    return res.user;
   };
 
   const signup = async (
@@ -73,28 +57,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     role: UserRole,
     scholar_id?: string
   ): Promise<User> => {
-    try {
-      const res = await authApi.signup({ email, password, full_name, role, scholar_id });
-      setToken(res.access_token);
-      setUser(res.user);
-      localStorage.setItem("gk_token", res.access_token);
-      localStorage.setItem("gk_user", JSON.stringify(res.user));
-      return res.user;
-    } catch (err) {
-      const fallbackUser: User = {
-        id: "00000000-0000-0000-0000-000000000001",
-        email,
-        full_name,
-        role,
-        is_active: true,
-        scholar_id,
-      };
-      setToken("demo-token");
-      setUser(fallbackUser);
-      localStorage.setItem("gk_token", "demo-token");
-      localStorage.setItem("gk_user", JSON.stringify(fallbackUser));
-      return fallbackUser;
-    }
+    const res = await authApi.signup({ email, password, full_name, role, scholar_id });
+    setToken(res.access_token);
+    setUser(res.user);
+    localStorage.setItem("gk_token", res.access_token);
+    localStorage.setItem("gk_user", JSON.stringify(res.user));
+    return res.user;
   };
 
   const logout = () => {

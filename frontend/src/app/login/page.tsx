@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
 
-  const { login, setMockRole } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -43,16 +43,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickRole = (role: "admin" | "teacher" | "student") => {
-    setMockRole(role);
-    setToast({ message: `Logged in as demo ${role.toUpperCase()}`, variant: "info" });
-    setTimeout(() => {
-      if (role === "admin") router.push("/admin");
-      else if (role === "student") router.push("/student");
-      else router.push("/teacher");
-    }, 400);
   };
 
   return (
