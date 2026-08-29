@@ -85,13 +85,19 @@ async def list_available_quizzes(
     user: Optional[User] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all available quizzes for students — strictly published quizzes by Admin."""
+    """List all available quizzes for students — filtered by their enrolled class or global quizzes."""
+    conditions = [
+        GeneratedExam.created_by_role == "admin",
+        GeneratedExam.is_published == True,
+    ]
+    if user and user.class_id:
+        conditions.append(
+            (GeneratedExam.target_class_id == user.class_id) | (GeneratedExam.target_class_id == None)
+        )
+
     result = await db.execute(
         select(GeneratedExam)
-        .where(
-            GeneratedExam.created_by_role == "admin",
-            GeneratedExam.is_published == True,
-        )
+        .where(*conditions)
         .order_by(desc(GeneratedExam.created_at))
         .limit(50)
     )

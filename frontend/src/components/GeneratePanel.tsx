@@ -1,9 +1,8 @@
-"use client";
-
 import { useCallback, useEffect, useState } from "react";
-import { documentsApi, generationApi, templatesApi } from "@/lib/api";
+import { documentsApi, generationApi, templatesApi, adminApi } from "@/lib/api";
 import type { DocumentSummary } from "@/types/document";
 import type { TemplateSummary, GeneratedExam } from "@/types/template";
+import type { ClassSummary } from "@/types/auth";
 import {
   Bot,
   FileText,
@@ -16,6 +15,7 @@ import {
   Printer,
   Send,
   Share2,
+  School,
 } from "lucide-react";
 import { LoadingMessages } from "./LoadingMessages";
 import MathText from "./MathText";
@@ -32,6 +32,8 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
   const { user } = useAuth();
   const activeRole = propRole || user?.role || "teacher";
   const [templates, setTemplates] = useState<TemplateSummary[]>([]);
+  const [classes, setClasses] = useState<ClassSummary[]>([]);
+  const [targetClassId, setTargetClassId] = useState<string>("all");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [generating, setGenerating] = useState(false);
   const [progressMsg, setProgressMsg] = useState<string>("Initializing...");
@@ -45,6 +47,9 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
 
   useEffect(() => {
     templatesApi.list(activeRole).then(setTemplates).catch(() => { });
+    if (activeRole === "admin") {
+      adminApi.listClasses().then(setClasses).catch(() => { });
+    }
   }, [activeRole]);
 
   async function handleGenerate() {
@@ -85,10 +90,11 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
     }
     setPublishing(true);
     try {
-      await generationApi.publish(examId, true);
+      await generationApi.publish(examId, true, targetClassId === "all" ? undefined : targetClassId);
       setPublished(true);
+      const targetName = targetClassId === "all" ? "All Students" : classes.find(c => c.id === targetClassId)?.name || "Target Class";
       setToast({
-        message: "🎉 Quiz published to Student Arena! Students can now practice it online.",
+        message: `🎉 Quiz published to ${targetName}! Students can now practice it online.`,
         variant: "success",
       });
     } catch (err: any) {
@@ -376,33 +382,54 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
               </button>
             </div>
             
-            <div className="exam-toolbar__actions">
+            <div className="exam-toolbar__actions" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               {activeRole === "admin" && (
-                <button
-                  type="button"
-                  className="gk-btn"
-                  onClick={handlePublish}
-                  disabled={publishing || published}
-                  style={{
-                    background: published ? "#15803d" : "#ea580c",
-                    color: "#ffffff",
-                    borderColor: published ? "#166534" : "#c2410c",
-                    boxShadow: "0 2px 8px rgba(234, 88, 12, 0.25)",
-                    fontWeight: 600,
-                  }}
-                >
-                  {published ? (
-                    <>
-                      <CheckCircle size={14} />
-                      Published to Students
-                    </>
-                  ) : (
-                    <>
-                      <Send size={14} />
-                      {publishing ? "Publishing..." : "Publish to Students"}
-                    </>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  {classes.length > 0 && (
+                    <select
+                      value={targetClassId}
+                      onChange={(e) => setTargetClassId(e.target.value)}
+                      disabled={publishing || published}
+                      className="gk-input"
+                      style={{ fontSize: 12, height: 32, padding: "0 8px", width: "auto" }}
+                      title="Select Cohort / Class for this test"
+                    >
+                      <option value="all">🌍 All Classes (Global)</option>
+                      {classes.map((cls) => (
+                        <option key={cls.id} value={cls.id}>
+                          👥 {cls.name}
+                        </option>
+                      ))}
+                    </select>
                   )}
-                </button>
+                  <button
+                    type="button"
+                    className="gk-btn"
+                    onClick={handlePublish}
+                    disabled={publishing || published}
+                    style={{
+                      background: published ? "#15803d" : "#ea580c",
+                      color: "#ffffff",
+                      borderColor: published ? "#166534" : "#c2410c",
+                      boxShadow: "0 2px 8px rgba(234, 88, 12, 0.25)",
+                      fontWeight: 600,
+                      height: 32,
+                      fontSize: 12.5,
+                    }}
+                  >
+                    {published ? (
+                      <>
+                        <CheckCircle size={14} />
+                        Published
+                      </>
+                    ) : (
+                      <>
+                        <Send size={14} />
+                        {publishing ? "Publishing..." : "Publish Quiz"}
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
               <button
                 type="button"

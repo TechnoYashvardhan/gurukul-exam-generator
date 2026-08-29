@@ -18,7 +18,8 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("student");
+  const [scholarId, setScholarId] = useState("");
+  const [role, setRole] = useState<UserRole>("teacher");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
 
@@ -31,14 +32,17 @@ export default function RegisterPage() {
       setToast({ message: "Please fill out all fields.", variant: "error" });
       return;
     }
+    if (role === "student" && (!scholarId || !scholarId.match(/^\d{7}$/))) {
+      setToast({ message: "Students must enter a valid 7-digit Scholar ID.", variant: "error" });
+      return;
+    }
 
     setLoading(true);
     try {
-      const user = await signup(email, password, fullName, role);
-      setToast({ message: `Account created for ${user.full_name}!`, variant: "success" });
+      const user = await signup(email, password, fullName, role, role === "student" ? scholarId : undefined);
+      setToast({ message: `Account ready for ${user.full_name}!`, variant: "success" });
       setTimeout(() => {
-        if (user.role === "admin") router.push("/admin");
-        else if (user.role === "student") router.push("/student");
+        if (user.role === "student") router.push("/student");
         else router.push("/teacher");
       }, 500);
     } catch (err: any) {
@@ -95,45 +99,23 @@ export default function RegisterPage() {
               color: "var(--text-1)",
               marginBottom: 6,
             }}>
-              Join the Gurukul
+              Join Gurukul AI
             </h1>
             <p style={{ fontSize: 13, color: "var(--text-3)" }}>
-              Select your role and begin your educational journey
+              Select your portal role below
             </p>
           </div>
 
           <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {/* Role Picker */}
             <div className="gk-field">
-              <label className="gk-label">Select Your Role</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setRole("admin")}
-                  style={{
-                    padding: "10px 8px",
-                    borderRadius: "var(--radius-md)",
-                    border: `2px solid ${role === "admin" ? "var(--terracotta)" : "var(--border)"}`,
-                    background: role === "admin" ? "var(--terracotta-light)" : "var(--surface)",
-                    color: role === "admin" ? "var(--terracotta)" : "var(--text-2)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  <ShieldCheck size={18} />
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>Admin</span>
-                  <span style={{ fontSize: 10, color: "var(--text-3)" }}>Online Quiz</span>
-                </button>
-
+              <label className="gk-label">Select Registration Type</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <button
                   type="button"
                   onClick={() => setRole("teacher")}
                   style={{
-                    padding: "10px 8px",
+                    padding: "12px 10px",
                     borderRadius: "var(--radius-md)",
                     border: `2px solid ${role === "teacher" ? "var(--forest)" : "var(--border)"}`,
                     background: role === "teacher" ? "var(--forest-light)" : "var(--surface)",
@@ -146,16 +128,16 @@ export default function RegisterPage() {
                     transition: "all 0.2s ease",
                   }}
                 >
-                  <BookOpen size={18} />
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>Teacher</span>
-                  <span style={{ fontSize: 10, color: "var(--text-3)" }}>Offline Paper</span>
+                  <BookOpen size={20} />
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>Teacher (Global)</span>
+                  <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>Open Worldwide</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setRole("student")}
                   style={{
-                    padding: "10px 8px",
+                    padding: "12px 10px",
                     borderRadius: "var(--radius-md)",
                     border: `2px solid ${role === "student" ? "var(--gold)" : "var(--border)"}`,
                     background: role === "student" ? "var(--accent-light)" : "var(--surface)",
@@ -168,12 +150,34 @@ export default function RegisterPage() {
                     transition: "all 0.2s ease",
                   }}
                 >
-                  <GraduationCap size={18} />
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>Student</span>
-                  <span style={{ fontSize: 10, color: "var(--text-3)" }}>Take Quizzes</span>
+                  <GraduationCap size={20} />
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>Student (Shishya)</span>
+                  <span style={{ fontSize: 10.5, color: "var(--text-3)" }}>Requires 7-Digit ID</span>
                 </button>
               </div>
             </div>
+
+            {role === "student" && (
+              <div className="gk-field">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label className="gk-label" htmlFor="scholarId">7-Digit Scholar ID *</label>
+                  <span style={{ fontSize: 11, color: scholarId.length === 7 ? "var(--gold)" : "var(--text-3)" }}>
+                    {scholarId.length}/7 digits
+                  </span>
+                </div>
+                <input
+                  id="scholarId"
+                  type="text"
+                  maxLength={7}
+                  className="gk-input"
+                  placeholder="e.g. 2410852"
+                  value={scholarId}
+                  onChange={(e) => setScholarId(e.target.value.replace(/\D/g, ""))}
+                  style={{ fontFamily: "monospace", fontWeight: 700 }}
+                  required
+                />
+              </div>
+            )}
 
             <div className="gk-field">
               <label className="gk-label" htmlFor="fullName">Full Name</label>

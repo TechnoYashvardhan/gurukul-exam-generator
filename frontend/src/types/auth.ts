@@ -3,9 +3,75 @@ export type UserRole = "admin" | "teacher" | "student";
 export interface User {
   id: string;
   email: string;
+  scholar_id?: string | null;
   full_name: string | null;
   role: UserRole;
   is_active: boolean;
+  class_id?: string | null;
+  class_name?: string | null;
+}
+
+export interface ClassSummary {
+  id: string;
+  name: string;
+  course: string;
+  section?: string | null;
+  created_at: string;
+  student_count: number;
+  assigned_quizzes_count: number;
+}
+
+export interface StudentRosterItem {
+  id: string;
+  scholar_id: string;
+  full_name: string;
+  email: string;
+  class_id?: string | null;
+  class_name?: string | null;
+  created_at: string;
+  attempts_count: number;
+  avg_percentage: number;
+  highest_percentage: number;
+  last_attempt_at?: string | null;
+}
+
+export interface StudentReportAttempt {
+  attempt_id: string;
+  exam_id: string;
+  exam_title: string;
+  subject: string;
+  grade: string;
+  score: number;
+  total_marks: number;
+  percentage: number;
+  time_spent_seconds: number;
+  created_at: string;
+  breakdown: {
+    question_no: number;
+    text: string;
+    type: string;
+    marks: number;
+    options?: { key: string; text: string }[] | null;
+    correct_answer?: string;
+    user_answer?: string | null;
+    is_correct: boolean;
+    score_awarded: number;
+    evaluation_reason?: string | null;
+  }[];
+}
+
+export interface StudentFullReport {
+  student_id: string;
+  scholar_id: string;
+  full_name: string;
+  email: string;
+  class_name?: string | null;
+  course?: string | null;
+  total_quizzes_taken: number;
+  overall_avg_percentage: number;
+  overall_highest_percentage: number;
+  total_time_spent_seconds: number;
+  attempts: StudentReportAttempt[];
 }
 
 export interface AuthResponse {

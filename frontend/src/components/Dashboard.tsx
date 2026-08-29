@@ -22,7 +22,7 @@ import type { ExamHistoryEntry } from "@/hooks/useExamHistory";
 import { useEffect, useState } from "react";
 
 interface DashboardProps {
-  onNavigate: (view: "dashboard" | "builder" | "library" | "generate" | "history") => void;
+  onNavigate: (view: "dashboard" | "builder" | "library" | "generate" | "history" | "shishyas") => void;
   historyEntries?: ExamHistoryEntry[];
 }
 

@@ -10,11 +10,12 @@ import LibraryUpload from "@/components/LibraryUpload";
 import DocumentCard from "@/components/DocumentCard";
 import GeneratePanel from "@/components/GeneratePanel";
 import ExamHistory from "@/components/ExamHistory";
+import AdminShishyaManager from "@/components/AdminShishyaManager";
 import { useExamHistory } from "@/hooks/useExamHistory";
 import { documentsApi } from "@/lib/api";
 import type { ExamTemplate } from "@/types/template";
 import type { DocumentSummary } from "@/types/document";
-import { FolderOpen, File, ShieldCheck, Sparkles } from "lucide-react";
+import { FolderOpen, File, ShieldCheck, Sparkles, GraduationCap, Users } from "lucide-react";
 
 const ParticleBackground = dynamic(
   () => import("@/components/ParticleBackground"),
@@ -229,6 +230,13 @@ export default function AdminPage() {
               )}
 
               <GeneratePanel selectedDoc={selectedDoc} onExamSaved={saveToHistory} role="admin" />
+            </div>
+          )}
+
+          {/* Shishya Roster & Class Management View */}
+          {activeView === "shishyas" && (
+            <div className="gurukul-page" key="shishyas">
+              <AdminShishyaManager />
             </div>
           )}
 

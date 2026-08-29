@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/components/AuthProvider";
-import { BookOpen, ShieldCheck, GraduationCap, ArrowRight, Lock, Mail, Sparkles } from "lucide-react";
+import { BookOpen, ShieldCheck, GraduationCap, ArrowRight, Lock, Mail, Sparkles, User as UserIcon } from "lucide-react";
 import Toast, { ToastVariant } from "@/components/Toast";
 
 const ParticleBackground = dynamic(
@@ -112,19 +112,19 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <div className="gk-field">
-              <label className="gk-label" htmlFor="email">Email Address</label>
+              <label className="gk-label" htmlFor="email">Email / 7-Digit Scholar ID / Admin Username</label>
               <div style={{ position: "relative" }}>
                 <input
                   id="email"
-                  type="email"
+                  type="text"
                   className="gk-input"
-                  placeholder="e.g. guru@gurukul.local"
+                  placeholder="e.g. 2410852, Admin_DSVV01, or email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={{ paddingLeft: 38 }}
                   required
                 />
-                <Mail size={16} style={{
+                <UserIcon size={16} style={{
                   position: "absolute",
                   left: 12,
                   top: "50%",
@@ -179,7 +179,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Logins */}
+          {/* Quick Demo Credentials */}
           <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
             <div style={{
               fontSize: 11,
@@ -195,38 +195,53 @@ export default function LoginPage() {
               gap: 6,
             }}>
               <Sparkles size={13} color="var(--gold)" />
-              Quick One-Click Demo Access
+              Quick Fill Credentials
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
               <button
                 type="button"
                 className="gk-btn gk-btn--secondary gk-btn--sm"
-                onClick={() => handleQuickRole("admin")}
+                onClick={() => {
+                  setEmail("Admin_DSVV01");
+                  setPassword("OmBhBS@123");
+                }}
                 style={{ flexDirection: "column", padding: "10px 4px", height: "auto", fontSize: 11 }}
+                title="Fill Admin credentials"
               >
                 <ShieldCheck size={16} color="var(--terracotta)" />
-                <span>Admin</span>
+                <span style={{ fontWeight: 700 }}>Admin DSVV</span>
+                <span style={{ fontSize: 9.5, opacity: 0.7 }}>Admin_DSVV01</span>
               </button>
 
               <button
                 type="button"
                 className="gk-btn gk-btn--secondary gk-btn--sm"
-                onClick={() => handleQuickRole("teacher")}
+                onClick={() => {
+                  setEmail("teacher@gurukul.local");
+                  setPassword("teacher123");
+                }}
                 style={{ flexDirection: "column", padding: "10px 4px", height: "auto", fontSize: 11 }}
+                title="Fill Teacher credentials"
               >
                 <BookOpen size={16} color="var(--forest)" />
-                <span>Teacher</span>
+                <span style={{ fontWeight: 700 }}>Teacher</span>
+                <span style={{ fontSize: 9.5, opacity: 0.7 }}>Worldwide</span>
               </button>
 
               <button
                 type="button"
                 className="gk-btn gk-btn--secondary gk-btn--sm"
-                onClick={() => handleQuickRole("student")}
+                onClick={() => {
+                  setEmail("2410852");
+                  setPassword("student@dsvv123");
+                }}
                 style={{ flexDirection: "column", padding: "10px 4px", height: "auto", fontSize: 11 }}
+                title="Fill Sample Student credentials"
               >
                 <GraduationCap size={16} color="var(--gold)" />
-                <span>Student</span>
+                <span style={{ fontWeight: 700 }}>Student</span>
+                <span style={{ fontSize: 9.5, opacity: 0.7 }}>ID: 2410852</span>
               </button>
             </div>
           </div>

@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import generate, templates, documents, auth, student
+from app.routers import generate, templates, documents, auth, student, admin
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 class SafeStreamHandler(logging.StreamHandler):
@@ -69,39 +69,100 @@ async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            from sqlalchemy import text
+            for migration_sql in [
+                "ALTER TABLE users ADD COLUMN scholar_id TEXT",
+                "ALTER TABLE users ADD COLUMN class_id TEXT",
+                "ALTER TABLE generated_exams ADD COLUMN target_class_id TEXT",
+            ]:
+                try:
+                    await conn.execute(text(migration_sql))
+                except Exception:
+                    pass
             
-        # Seed default users
+        # Seed default users & classes
         _default_uid = uuid.UUID("00000000-0000-0000-0000-000000000001")
         _admin_uid = uuid.UUID("00000000-0000-0000-0000-000000000002")
         _student_uid = uuid.UUID("00000000-0000-0000-0000-000000000003")
+        _class_1_id = uuid.UUID("10000000-0000-0000-0000-000000000001")
+        _class_2_id = uuid.UUID("10000000-0000-0000-0000-000000000002")
+        _class_3_id = uuid.UUID("10000000-0000-0000-0000-000000000003")
+
+        from app.services.auth import get_password_hash
+        from app.models.db import ClassGroup
+
         async with AsyncSessionLocal() as session:
+            # Seed classes
+            c1 = await session.get(ClassGroup, _class_1_id)
+            if not c1:
+                session.add(ClassGroup(
+                    id=_class_1_id,
+                    name="BCA - 1st Year",
+                    course="BCA",
+                    section="Batch 2026-27",
+                ))
+            c2 = await session.get(ClassGroup, _class_2_id)
+            if not c2:
+                session.add(ClassGroup(
+                    id=_class_2_id,
+                    name="BCA - 2nd Year",
+                    course="BCA",
+                    section="Batch 2025-26",
+                ))
+            c3 = await session.get(ClassGroup, _class_3_id)
+            if not c3:
+                session.add(ClassGroup(
+                    id=_class_3_id,
+                    name="MSc Computer Science",
+                    course="MSc CS",
+                    section="Semester 1",
+                ))
+
+            # Seed Teacher
             user = await session.get(User, _default_uid)
             if not user:
                 session.add(User(
                     id=_default_uid,
                     email="teacher@gurukul.local",
-                    hashed_pw="placeholder",
-                    full_name="Gurukul Teacher",
+                    hashed_pw=get_password_hash("teacher123"),
+                    full_name="Acharya Vashishta",
                     role="teacher"
                 ))
+
+            # Seed Official Single Admin (Admin_DSVV01)
             admin = await session.get(User, _admin_uid)
+            admin_pw_hash = get_password_hash("OmBhBS@123")
             if not admin:
                 session.add(User(
                     id=_admin_uid,
-                    email="admin@gurukul.local",
-                    hashed_pw="placeholder",
-                    full_name="Gurukul Admin",
+                    email="Admin_DSVV01@dsvv.ac.in",
+                    hashed_pw=admin_pw_hash,
+                    full_name="Chief Admin DSVV",
                     role="admin"
                 ))
+            else:
+                admin.hashed_pw = admin_pw_hash
+                admin.email = "Admin_DSVV01@dsvv.ac.in"
+                admin.full_name = "Chief Admin DSVV"
+
+            # Seed Sample Student (Scholar ID: 2410852, default pw: student@dsvv123)
             student_user = await session.get(User, _student_uid)
+            student_pw_hash = get_password_hash("student@dsvv123")
             if not student_user:
                 session.add(User(
                     id=_student_uid,
-                    email="student@gurukul.local",
-                    hashed_pw="placeholder",
-                    full_name="Arjuna Student",
-                    role="student"
+                    scholar_id="2410852",
+                    email="student@campus.dsvv.in",
+                    hashed_pw=student_pw_hash,
+                    full_name="Arjuna Shishya",
+                    role="student",
+                    class_id=_class_1_id,
                 ))
+            else:
+                student_user.scholar_id = "2410852"
+                student_user.hashed_pw = student_pw_hash
+                student_user.class_id = _class_1_id
+
             await session.commit()
     except Exception as e:
         logger.warning("Database startup init warning: %s", e)
@@ -171,6 +232,7 @@ async def universal_cors_middleware(request, call_next):
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(admin.router, prefix="/api/v1")
 app.include_router(student.router, prefix="/api/v1")
 app.include_router(generate.router, prefix="/api/v1")
 app.include_router(templates.router, prefix="/api/v1")

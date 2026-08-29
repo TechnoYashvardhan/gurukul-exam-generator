@@ -28,6 +28,37 @@ from app.services.exam_generator import generate_exam
 # Fixtures
 # ═══════════════════════════════════════════════════════════════════════════════
 
+@pytest_asyncio.fixture(autouse=True)
+async def setup_test_db():
+    from app.database import engine, Base, AsyncSessionLocal
+    from app.models.db import User
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        from sqlalchemy import text
+        for sql in [
+            "ALTER TABLE users ADD COLUMN scholar_id TEXT",
+            "ALTER TABLE users ADD COLUMN class_id TEXT",
+            "ALTER TABLE generated_exams ADD COLUMN target_class_id TEXT",
+        ]:
+            try:
+                await conn.execute(text(sql))
+            except Exception:
+                pass
+    async with AsyncSessionLocal() as session:
+        student_uid = uuid.UUID("00000000-0000-0000-0000-000000000003")
+        student = await session.get(User, student_uid)
+        if not student:
+            session.add(User(
+                id=student_uid,
+                email="student@test.local",
+                scholar_id="2410852",
+                hashed_pw="placeholder",
+                full_name="Test Student",
+                role="student"
+            ))
+            await session.commit()
+
+
 SAMPLE_SYLLABUS = """
 Newton's Laws of Motion:
 1. First Law: An object at rest stays at rest, an object in motion stays in motion

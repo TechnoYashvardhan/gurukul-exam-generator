@@ -11,6 +11,9 @@ import type {
   QuizResult,
   StudentStats,
   User,
+  ClassSummary,
+  StudentRosterItem,
+  StudentFullReport,
 } from "@/types/auth";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -181,11 +184,23 @@ export const generationApi = {
     if (!finalExam) throw new Error("Generation finished but no exam was returned.");
     return finalExam;
   },
-  publish: (id: string, publish: boolean = true) =>
-    request<{ status: string; exam_id: string; is_published: boolean; message: string }>(
+  publish: (id: string, publish: boolean = true, targetClassId?: string) =>
+    request<{ status: string; exam_id: string; is_published: boolean; target_class_id?: string; message: string }>(
       "POST",
-      `/generate/exam/${id}/publish?publish=${publish}`
+      `/generate/exam/${id}/publish?publish=${publish}${targetClassId ? `&target_class_id=${targetClassId}` : ""}`
     ),
+};
+
+export const adminApi = {
+  listClasses: () => request<ClassSummary[]>("GET", "/admin/classes"),
+  createClass: (payload: { name: string; course: string; section?: string }) =>
+    request<ClassSummary>("POST", "/admin/classes", payload),
+  deleteClass: (id: string) => request<void>("DELETE", `/admin/classes/${id}`),
+  listClassStudents: (classId: string) => request<StudentRosterItem[]>("GET", `/admin/classes/${classId}/students`),
+  addStudent: (classId: string, payload: { scholar_id: string; full_name: string; email: string }) =>
+    request<StudentRosterItem>("POST", `/admin/classes/${classId}/students`, payload),
+  deleteStudent: (studentId: string) => request<void>("DELETE", `/admin/students/${studentId}`),
+  getStudentReport: (studentId: string) => request<StudentFullReport>("GET", `/admin/students/${studentId}/report`),
 };
 
 export const healthApi = {
@@ -194,7 +209,7 @@ export const healthApi = {
 };
 
 export const authApi = {
-  signup: (payload: { email: string; password: string; full_name?: string; role: string }) =>
+  signup: (payload: { email: string; password: string; full_name?: string; role: string; scholar_id?: string }) =>
     request<AuthResponse>("POST", "/auth/signup", payload),
   login: (payload: { email: string; password: string }) =>
     request<AuthResponse>("POST", "/auth/login", payload),

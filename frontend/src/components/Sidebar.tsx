@@ -19,13 +19,57 @@ import {
 } from "lucide-react";
 import type { UserRole } from "@/types/auth";
 
-export type View = "dashboard" | "builder" | "library" | "generate" | "history" | "quiz";
+export type View = "dashboard" | "builder" | "library" | "generate" | "history" | "quiz" | "shishyas";
 
 interface SidebarProps {
   activeView: View;
   onViewChange: (view: View) => void;
   role?: UserRole;
 }
+
+const ADMIN_NAV_ITEMS: {
+  id: View;
+  sanskrit: string;
+  english: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    id: "dashboard",
+    sanskrit: "Aashram",
+    english: "Home",
+    icon: <Home size={18} />,
+  },
+  {
+    id: "shishyas",
+    sanskrit: "Shishya",
+    english: "Students & Cohorts",
+    icon: <GraduationCap size={18} />,
+  },
+  {
+    id: "builder",
+    sanskrit: "Vidya",
+    english: "Templates",
+    icon: <BookOpen size={18} />,
+  },
+  {
+    id: "library",
+    sanskrit: "Granth",
+    english: "Library",
+    icon: <Library size={18} />,
+  },
+  {
+    id: "generate",
+    sanskrit: "Rachna",
+    english: "Generate",
+    icon: <Sparkles size={18} />,
+  },
+  {
+    id: "history",
+    sanskrit: "Itihas",
+    english: "History",
+    icon: <History size={18} />,
+  },
+];
 
 const DEFAULT_NAV_ITEMS: {
   id: View;
@@ -103,7 +147,7 @@ export default function Sidebar({ activeView, onViewChange, role: propRole }: Si
 
   const isDark = theme === "dark";
   const activeRole = propRole || user?.role || "teacher";
-  const navItems = activeRole === "student" ? STUDENT_NAV_ITEMS : DEFAULT_NAV_ITEMS;
+  const navItems = activeRole === "student" ? STUDENT_NAV_ITEMS : activeRole === "admin" ? ADMIN_NAV_ITEMS : DEFAULT_NAV_ITEMS;
 
   const roleLabels = {
     admin: { name: "Admin Sanctuary", color: "var(--terracotta)", icon: <ShieldCheck size={14} /> },

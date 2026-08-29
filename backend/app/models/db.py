@@ -24,6 +24,30 @@ from app.database import Base
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Class Groups (Admin managed classrooms / cohorts)
+# ─────────────────────────────────────────────────────────────────────────────
+class ClassGroup(Base):
+    __tablename__ = "classes"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    course: Mapped[str] = mapped_column(Text, nullable=False)
+    section: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    students: Mapped[list["User"]] = relationship(
+        back_populates="enrolled_class", foreign_keys="User.class_id"
+    )
+    exams: Mapped[list["GeneratedExam"]] = relationship(
+        back_populates="target_class", foreign_keys="GeneratedExam.target_class_id"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Users
 # ─────────────────────────────────────────────────────────────────────────────
 class User(Base):
@@ -33,6 +57,10 @@ class User(Base):
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     email: Mapped[str] = mapped_column(Text, unique=True, nullable=False, index=True)
+    scholar_id: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True, index=True)
+    class_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("classes.id", ondelete="SET NULL"), nullable=True
+    )
     hashed_pw: Mapped[str] = mapped_column(Text, nullable=False)
     full_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     role: Mapped[str] = mapped_column(Text, default="teacher", nullable=False) # admin | teacher | student
@@ -42,6 +70,9 @@ class User(Base):
     )
 
     # Relationships
+    enrolled_class: Mapped["ClassGroup | None"] = relationship(
+        back_populates="students", foreign_keys=[class_id]
+    )
     documents: Mapped[list["Document"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -49,7 +80,7 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     generated_exams: Mapped[list["GeneratedExam"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan", foreign_keys="GeneratedExam.user_id"
     )
     quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
@@ -168,6 +199,12 @@ class GeneratedExam(Base):
         ForeignKey("documents.id", ondelete="SET NULL"),
         nullable=True,
     )
+    target_class_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("classes.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     # document | web_fetch | hardcoded
     source_type: Mapped[str] = mapped_column(Text, nullable=False)
     # Full validated exam JSON
@@ -184,7 +221,8 @@ class GeneratedExam(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    user: Mapped["User"] = relationship(back_populates="generated_exams")
+    user: Mapped["User"] = relationship(back_populates="generated_exams", foreign_keys=[user_id])
+    target_class: Mapped["ClassGroup | None"] = relationship(back_populates="exams", foreign_keys=[target_class_id])
     template: Mapped["Template | None"] = relationship(back_populates="generated_exams")
     document: Mapped["Document | None"] = relationship()
     quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(

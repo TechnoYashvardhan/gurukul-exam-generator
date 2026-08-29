@@ -2,6 +2,7 @@ import logging
 import uuid
 import json
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -117,10 +118,11 @@ async def generate_exam_endpoint(
 async def publish_exam_endpoint(
     exam_id: str,
     publish: bool = True,
+    target_class_id: Optional[str] = None,
     current_user: User | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Publish an exam / quiz to make it live for students in the Student Arena."""
+    """Publish an exam / quiz to make it live for students in the Student Arena or targeted class."""
     try:
         e_uuid = uuid.UUID(exam_id)
     except ValueError:
@@ -133,11 +135,20 @@ async def publish_exam_endpoint(
 
     record.is_published = publish
     record.created_by_role = "admin"
+    if target_class_id and target_class_id != "all":
+        try:
+            record.target_class_id = uuid.UUID(target_class_id)
+        except ValueError:
+            pass
+    elif target_class_id == "all":
+        record.target_class_id = None
+
     await db.commit()
 
     return {
         "status": "ok",
         "exam_id": str(record.id),
         "is_published": record.is_published,
+        "target_class_id": str(record.target_class_id) if record.target_class_id else None,
         "message": "Quiz published to Student Arena" if publish else "Quiz unpublished",
     }

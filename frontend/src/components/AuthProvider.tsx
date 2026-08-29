@@ -10,7 +10,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  signup: (email: string, password: string, full_name: string, role: UserRole) => Promise<User>;
+  signup: (email: string, password: string, full_name: string, role: UserRole, scholar_id?: string) => Promise<User>;
   logout: () => void;
   setMockRole: (role: UserRole) => void;
 }
@@ -70,10 +70,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     full_name: string,
-    role: UserRole
+    role: UserRole,
+    scholar_id?: string
   ): Promise<User> => {
     try {
-      const res = await authApi.signup({ email, password, full_name, role });
+      const res = await authApi.signup({ email, password, full_name, role, scholar_id });
       setToken(res.access_token);
       setUser(res.user);
       localStorage.setItem("gk_token", res.access_token);
@@ -86,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         full_name,
         role,
         is_active: true,
+        scholar_id,
       };
       setToken("demo-token");
       setUser(fallbackUser);
