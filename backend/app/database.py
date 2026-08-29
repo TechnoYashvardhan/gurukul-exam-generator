@@ -20,6 +20,7 @@ if not settings.database_url.startswith("sqlite"):
     engine_kwargs.update({
         "pool_pre_ping": True,
         "pool_recycle": 300,
+        "connect_args": {"timeout": 4, "command_timeout": 8},
     })
 
 engine = create_async_engine(
@@ -35,6 +36,19 @@ AsyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
+def fallback_to_local_sqlite():
+    """Fallback to local SQLite if remote PostgreSQL is unreachable."""
+    global engine, AsyncSessionLocal
+    local_url = "sqlite+aiosqlite:///./examgen.db"
+    engine = create_async_engine(local_url, echo=settings.debug)
+    AsyncSessionLocal = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
 
 
 # ── Declarative base (shared by all ORM models) ───────────────────────────────

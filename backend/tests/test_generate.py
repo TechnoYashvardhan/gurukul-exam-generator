@@ -30,7 +30,9 @@ from app.services.exam_generator import generate_exam
 
 @pytest_asyncio.fixture(autouse=True)
 async def setup_test_db():
-    from app.database import engine, Base, AsyncSessionLocal
+    from app.database import fallback_to_local_sqlite, Base
+    fallback_to_local_sqlite()
+    from app.database import engine, AsyncSessionLocal
     from app.models.db import User
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

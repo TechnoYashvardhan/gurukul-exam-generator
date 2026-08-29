@@ -67,9 +67,18 @@ async def lifespan(app: FastAPI):
     
     # Auto-create all tables if they do not exist
     try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+        from app.database import fallback_to_local_sqlite
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        except Exception as e:
+            logger.warning(f"Database startup init warning: {e}. Falling back to local SQLite.")
+            fallback_to_local_sqlite()
+            from app.database import engine as fb_engine
+            async with fb_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
 
+        from app.database import engine as cur_engine
         is_postgres = not settings.database_url.startswith("sqlite")
         from sqlalchemy import text
         migrations = [
@@ -81,7 +90,7 @@ async def lifespan(app: FastAPI):
         ]
         for sql in migrations:
             try:
-                async with engine.begin() as conn:
+                async with cur_engine.begin() as conn:
                     await conn.execute(text(sql))
             except Exception:
                 pass
@@ -96,8 +105,9 @@ async def lifespan(app: FastAPI):
 
         from app.services.auth import get_password_hash
         from app.models.db import ClassGroup
+        from app.database import AsyncSessionLocal as cur_session_maker
 
-        async with AsyncSessionLocal() as session:
+        async with cur_session_maker() as session:
             # Seed classes
             c1 = await session.get(ClassGroup, _class_1_id)
             if not c1:
