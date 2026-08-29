@@ -11,6 +11,7 @@ import DocumentCard from "@/components/DocumentCard";
 import GeneratePanel from "@/components/GeneratePanel";
 import ExamHistory from "@/components/ExamHistory";
 import AdminShishyaManager from "@/components/AdminShishyaManager";
+import AdminPublishedManager from "@/components/AdminPublishedManager";
 import { useExamHistory } from "@/hooks/useExamHistory";
 import { documentsApi } from "@/lib/api";
 import type { ExamTemplate } from "@/types/template";
@@ -237,6 +238,13 @@ export default function AdminPage() {
           {activeView === "shishyas" && (
             <div className="gurukul-page" key="shishyas">
               <AdminShishyaManager />
+            </div>
+          )}
+
+          {/* Published Quizzes Hub & Performance Analytics View */}
+          {activeView === "publishes" && (
+            <div className="gurukul-page" key="publishes">
+              <AdminPublishedManager />
             </div>
           )}
 

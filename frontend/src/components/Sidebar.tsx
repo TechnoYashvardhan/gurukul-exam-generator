@@ -16,10 +16,11 @@ import {
   GraduationCap,
   ShieldCheck,
   CheckCircle,
+  Send,
 } from "lucide-react";
 import type { UserRole } from "@/types/auth";
 
-export type View = "dashboard" | "builder" | "library" | "generate" | "history" | "quiz" | "shishyas";
+export type View = "dashboard" | "builder" | "library" | "generate" | "history" | "quiz" | "shishyas" | "publishes";
 
 interface SidebarProps {
   activeView: View;
@@ -44,6 +45,12 @@ const ADMIN_NAV_ITEMS: {
     sanskrit: "Shishya",
     english: "Students & Cohorts",
     icon: <GraduationCap size={18} />,
+  },
+  {
+    id: "publishes",
+    sanskrit: "Prakashan",
+    english: "Publishes",
+    icon: <Send size={18} />,
   },
   {
     id: "builder",

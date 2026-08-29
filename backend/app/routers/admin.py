@@ -87,6 +87,52 @@ class StudentFullReportResponse(BaseModel):
     attempts: list[StudentReportAttempt]
 
 
+class PublishedQuizSummary(BaseModel):
+    id: str
+    subject: str
+    grade: str
+    title: str
+    target_class_id: Optional[str] = None
+    target_class_name: str
+    target_course: Optional[str] = None
+    schedule_start_at: Optional[str] = None
+    schedule_end_at: Optional[str] = None
+    is_active_window: bool
+    status_label: str
+    total_marks: int
+    duration_minutes: int
+    num_questions: int
+    created_at: str
+    total_attempts: int = 0
+    unique_students_count: int = 0
+    avg_score_percentage: float = 0.0
+    highest_percentage: float = 0.0
+    lowest_percentage: float = 0.0
+    pass_rate_percentage: float = 0.0
+    avg_time_spent_seconds: int = 0
+
+
+class PublishedQuizStudentAttempt(BaseModel):
+    attempt_id: str
+    student_id: str
+    scholar_id: str
+    student_name: str
+    student_email: str
+    class_name: Optional[str] = None
+    score: float
+    total_marks: int
+    percentage: float
+    time_spent_seconds: int
+    submitted_at: str
+    questions_feedback: list[dict]
+
+
+class PublishedQuizDetailResponse(BaseModel):
+    quiz: PublishedQuizSummary
+    exam_json: dict
+    attempts: list[PublishedQuizStudentAttempt]
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/classes", response_model=list[ClassSummaryResponse])
@@ -396,3 +442,322 @@ async def get_student_deep_dive_report(
         total_time_spent_seconds=total_time,
         attempts=report_attempts,
     )
+
+
+# ── Published Quizzes Management & Performance Analytics ──────────────────────
+
+@router.get("/published-quizzes", response_model=list[PublishedQuizSummary])
+async def list_published_quizzes(
+    current_user: User = Depends(require_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List all published quizzes with live delivery status and student performance analytics.
+    """
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+
+    # Fetch all published exams
+    result = await db.execute(
+        select(GeneratedExam)
+        .where(GeneratedExam.is_published == True)
+        .order_by(GeneratedExam.created_at.desc())
+    )
+    exams = result.scalars().all()
+
+    # Pre-fetch classes for quick name lookup
+    classes_res = await db.execute(select(ClassGroup))
+    class_map = {cg.id: cg for cg in classes_res.scalars().all()}
+
+    summaries: list[PublishedQuizSummary] = []
+
+    for exam in exams:
+        exam_json = dict(exam.exam_json) if exam.exam_json else {}
+        subject = exam_json.get("subject", "General Subject")
+        grade = exam_json.get("grade", "All Grades")
+        title = exam_json.get("heading_details") or f"{subject} Pariksha ({grade})"
+        total_marks = int(exam_json.get("total_marks", 100))
+        duration_minutes = int(exam_json.get("duration_minutes", 60))
+        questions = exam_json.get("questions", [])
+        num_questions = len(questions)
+
+        # Target class info
+        target_class = class_map.get(exam.target_class_id) if exam.target_class_id else None
+        target_class_name = target_class.name if target_class else "All Students (Global)"
+        target_course = target_class.course if target_class else "Global"
+
+        # Schedule status calculation
+        is_active_window = True
+        status_label = "Live Now"
+
+        if exam.schedule_start_at:
+            start_tz = exam.schedule_start_at if exam.schedule_start_at.tzinfo else exam.schedule_start_at.replace(tzinfo=timezone.utc)
+            if now < start_tz:
+                is_active_window = False
+                status_label = f"Scheduled: Starts {start_tz.strftime('%b %d, %I:%M %p')}"
+
+        if exam.schedule_end_at:
+            end_tz = exam.schedule_end_at if exam.schedule_end_at.tzinfo else exam.schedule_end_at.replace(tzinfo=timezone.utc)
+            if now > end_tz:
+                is_active_window = False
+                status_label = "Closed / Expired"
+            elif is_active_window:
+                status_label = f"Live (Ends {end_tz.strftime('%b %d, %I:%M %p')})"
+
+        # Query all attempts for this exam
+        att_res = await db.execute(
+            select(QuizAttempt)
+            .where(QuizAttempt.exam_id == exam.id)
+            .order_by(QuizAttempt.created_at.desc())
+        )
+        attempts = att_res.scalars().all()
+        total_attempts = len(attempts)
+
+        unique_students = len(set(a.user_id for a in attempts))
+        percentages = [float(a.percentage) for a in attempts]
+        times = [a.time_spent_seconds for a in attempts]
+
+        avg_score_pct = round(sum(percentages) / total_attempts, 1) if total_attempts > 0 else 0.0
+        high_pct = round(max(percentages, default=0.0), 1)
+        low_pct = round(min(percentages, default=0.0), 1)
+        passed_count = sum(1 for p in percentages if p >= 40.0)
+        pass_rate = round((passed_count / total_attempts) * 100, 1) if total_attempts > 0 else 0.0
+        avg_time = int(sum(times) / total_attempts) if total_attempts > 0 else 0
+
+        summaries.append(
+            PublishedQuizSummary(
+                id=str(exam.id),
+                subject=subject,
+                grade=grade,
+                title=title,
+                target_class_id=str(exam.target_class_id) if exam.target_class_id else None,
+                target_class_name=target_class_name,
+                target_course=target_course,
+                schedule_start_at=exam.schedule_start_at.isoformat() if exam.schedule_start_at else None,
+                schedule_end_at=exam.schedule_end_at.isoformat() if exam.schedule_end_at else None,
+                is_active_window=is_active_window,
+                status_label=status_label,
+                total_marks=total_marks,
+                duration_minutes=duration_minutes,
+                num_questions=num_questions,
+                created_at=exam.created_at.isoformat() if exam.created_at else "",
+                total_attempts=total_attempts,
+                unique_students_count=unique_students,
+                avg_score_percentage=avg_score_pct,
+                highest_percentage=high_pct,
+                lowest_percentage=low_pct,
+                pass_rate_percentage=pass_rate,
+                avg_time_spent_seconds=avg_time,
+            )
+        )
+
+    return summaries
+
+
+@router.get("/published-quizzes/{exam_id}/details", response_model=PublishedQuizDetailResponse)
+async def get_published_quiz_detail(
+    exam_id: uuid.UUID,
+    current_user: User = Depends(require_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get detailed student submissions and question performance for a specific published quiz.
+    """
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+
+    result = await db.execute(select(GeneratedExam).where(GeneratedExam.id == exam_id))
+    exam = result.scalar_one_or_none()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    exam_json = dict(exam.exam_json) if exam.exam_json else {}
+    subject = exam_json.get("subject", "General Subject")
+    grade = exam_json.get("grade", "All Grades")
+    title = exam_json.get("heading_details") or f"{subject} Pariksha ({grade})"
+    total_marks = int(exam_json.get("total_marks", 100))
+    duration_minutes = int(exam_json.get("duration_minutes", 60))
+    questions = exam_json.get("questions", [])
+    num_questions = len(questions)
+
+    # Class info
+    target_class_name = "All Students (Global)"
+    target_course = "Global"
+    if exam.target_class_id:
+        cg = await db.get(ClassGroup, exam.target_class_id)
+        if cg:
+            target_class_name = cg.name
+            target_course = cg.course
+
+    # Schedule status
+    is_active_window = True
+    status_label = "Live Now"
+
+    if exam.schedule_start_at:
+        start_tz = exam.schedule_start_at if exam.schedule_start_at.tzinfo else exam.schedule_start_at.replace(tzinfo=timezone.utc)
+        if now < start_tz:
+            is_active_window = False
+            status_label = f"Scheduled: Starts {start_tz.strftime('%b %d, %I:%M %p')}"
+
+    if exam.schedule_end_at:
+        end_tz = exam.schedule_end_at if exam.schedule_end_at.tzinfo else exam.schedule_end_at.replace(tzinfo=timezone.utc)
+        if now > end_tz:
+            is_active_window = False
+            status_label = "Closed / Expired"
+        elif is_active_window:
+            status_label = f"Live (Ends {end_tz.strftime('%b %d, %I:%M %p')})"
+
+    # Fetch attempts with student users eager loaded
+    att_res = await db.execute(
+        select(QuizAttempt)
+        .where(QuizAttempt.exam_id == exam.id)
+        .options(selectinload(QuizAttempt.user))
+        .order_by(QuizAttempt.score.desc(), QuizAttempt.created_at.desc())
+    )
+    attempts = att_res.scalars().all()
+    total_attempts = len(attempts)
+
+    unique_students = len(set(a.user_id for a in attempts))
+    percentages = [float(a.percentage) for a in attempts]
+    times = [a.time_spent_seconds for a in attempts]
+
+    avg_score_pct = round(sum(percentages) / total_attempts, 1) if total_attempts > 0 else 0.0
+    high_pct = round(max(percentages, default=0.0), 1)
+    low_pct = round(min(percentages, default=0.0), 1)
+    passed_count = sum(1 for p in percentages if p >= 40.0)
+    pass_rate = round((passed_count / total_attempts) * 100, 1) if total_attempts > 0 else 0.0
+    avg_time = int(sum(times) / total_attempts) if total_attempts > 0 else 0
+
+    quiz_summary = PublishedQuizSummary(
+        id=str(exam.id),
+        subject=subject,
+        grade=grade,
+        title=title,
+        target_class_id=str(exam.target_class_id) if exam.target_class_id else None,
+        target_class_name=target_class_name,
+        target_course=target_course,
+        schedule_start_at=exam.schedule_start_at.isoformat() if exam.schedule_start_at else None,
+        schedule_end_at=exam.schedule_end_at.isoformat() if exam.schedule_end_at else None,
+        is_active_window=is_active_window,
+        status_label=status_label,
+        total_marks=total_marks,
+        duration_minutes=duration_minutes,
+        num_questions=num_questions,
+        created_at=exam.created_at.isoformat() if exam.created_at else "",
+        total_attempts=total_attempts,
+        unique_students_count=unique_students,
+        avg_score_percentage=avg_score_pct,
+        highest_percentage=high_pct,
+        lowest_percentage=low_pct,
+        pass_rate_percentage=pass_rate,
+        avg_time_spent_seconds=avg_time,
+    )
+
+    student_attempts: list[PublishedQuizStudentAttempt] = []
+    classes_cache = {}
+
+    for att in attempts:
+        student = att.user
+        cls_name = "Independent"
+        if student and student.class_id:
+            if student.class_id not in classes_cache:
+                c_obj = await db.get(ClassGroup, student.class_id)
+                classes_cache[student.class_id] = c_obj.name if c_obj else "Unknown Class"
+            cls_name = classes_cache[student.class_id]
+
+        answers_map = dict(att.answers) if att.answers else {}
+        questions_feedback = []
+
+        for q in questions:
+            q_no = str(q.get("question_no"))
+            q_id = str(q.get("id", ""))
+            response_data = answers_map.get(q_no) or answers_map.get(q_id) or {}
+            if not isinstance(response_data, dict):
+                response_data = {"user_answer": response_data, "is_correct": False, "score": 0}
+
+            questions_feedback.append({
+                "question_no": q.get("question_no"),
+                "text": q.get("text"),
+                "type": q.get("type"),
+                "marks": q.get("marks", 1),
+                "options": q.get("options", []),
+                "correct_answer": q.get("answer"),
+                "user_answer": response_data.get("user_answer"),
+                "is_correct": response_data.get("is_correct", False),
+                "score_awarded": response_data.get("score", 0),
+                "evaluation_reason": response_data.get("evaluation") or response_data.get("reason"),
+            })
+
+        student_attempts.append(
+            PublishedQuizStudentAttempt(
+                attempt_id=str(att.id),
+                student_id=str(student.id) if student else "",
+                scholar_id=student.scholar_id or "—" if student else "—",
+                student_name=student.full_name or student.email if student else "Anonymous Shishya",
+                student_email=student.email if student else "",
+                class_name=cls_name,
+                score=att.score,
+                total_marks=att.total_marks,
+                percentage=att.percentage,
+                time_spent_seconds=att.time_spent_seconds,
+                submitted_at=att.created_at.isoformat() if att.created_at else "",
+                questions_feedback=questions_feedback,
+            )
+        )
+
+    return PublishedQuizDetailResponse(
+        quiz=quiz_summary,
+        exam_json=exam_json,
+        attempts=student_attempts,
+    )
+
+
+@router.post("/published-quizzes/{exam_id}/unpublish")
+async def unpublish_quiz_endpoint(
+    exam_id: uuid.UUID,
+    current_user: User = Depends(require_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Unpublish a quiz (takes it down from the student arena without deleting history).
+    """
+    result = await db.execute(select(GeneratedExam).where(GeneratedExam.id == exam_id))
+    exam = result.scalar_one_or_none()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    exam.is_published = False
+    await db.commit()
+    logger.info("Exam unpublished | id=%s", exam_id)
+    return {
+        "status": "success",
+        "exam_id": str(exam_id),
+        "is_published": False,
+        "message": "Quiz unpublished successfully from Student Arena.",
+    }
+
+
+@router.delete("/published-quizzes/{exam_id}", status_code=status.HTTP_200_OK)
+async def delete_published_quiz_endpoint(
+    exam_id: uuid.UUID,
+    current_user: User = Depends(require_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Permanently delete a published quiz and all its student attempts.
+    """
+    result = await db.execute(select(GeneratedExam).where(GeneratedExam.id == exam_id))
+    exam = result.scalar_one_or_none()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    await db.execute(delete(QuizAttempt).where(QuizAttempt.exam_id == exam_id))
+    await db.delete(exam)
+    await db.commit()
+    logger.info("Published Exam deleted permanently | id=%s", exam_id)
+    return {
+        "status": "success",
+        "exam_id": str(exam_id),
+        "message": "Published quiz and all associated attempts deleted.",
+    }
+

@@ -143,3 +143,49 @@ export interface StudentStats {
     created_at: string;
   }[];
 }
+
+export interface PublishedQuizSummary {
+  id: string;
+  subject: string;
+  grade: string;
+  title: string;
+  target_class_id?: string | null;
+  target_class_name: string;
+  target_course?: string | null;
+  schedule_start_at?: string | null;
+  schedule_end_at?: string | null;
+  is_active_window: boolean;
+  status_label: string;
+  total_marks: number;
+  duration_minutes: number;
+  num_questions: number;
+  created_at: string;
+  total_attempts: number;
+  unique_students_count: number;
+  avg_score_percentage: number;
+  highest_percentage: number;
+  lowest_percentage: number;
+  pass_rate_percentage: number;
+  avg_time_spent_seconds: number;
+}
+
+export interface PublishedQuizStudentAttempt {
+  attempt_id: string;
+  student_id: string;
+  scholar_id: string;
+  student_name: string;
+  student_email: string;
+  class_name?: string | null;
+  score: number;
+  total_marks: number;
+  percentage: number;
+  time_spent_seconds: number;
+  submitted_at: string;
+  questions_feedback: QuestionFeedback[];
+}
+
+export interface PublishedQuizDetailResponse {
+  quiz: PublishedQuizSummary;
+  exam_json: any;
+  attempts: PublishedQuizStudentAttempt[];
+}

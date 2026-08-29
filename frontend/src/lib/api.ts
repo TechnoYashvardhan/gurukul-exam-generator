@@ -14,6 +14,8 @@ import type {
   ClassSummary,
   StudentRosterItem,
   StudentFullReport,
+  PublishedQuizSummary,
+  PublishedQuizDetailResponse,
 } from "@/types/auth";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -245,6 +247,10 @@ export const adminApi = {
     request<StudentRosterItem>("POST", `/admin/classes/${classId}/students`, payload),
   deleteStudent: (studentId: string) => request<void>("DELETE", `/admin/students/${studentId}`),
   getStudentReport: (studentId: string) => request<StudentFullReport>("GET", `/admin/students/${studentId}/report`),
+  listPublishedQuizzes: () => request<PublishedQuizSummary[]>("GET", "/admin/published-quizzes"),
+  getPublishedQuizDetail: (examId: string) => request<PublishedQuizDetailResponse>("GET", `/admin/published-quizzes/${examId}/details`),
+  unpublishQuiz: (examId: string) => request<{ status: string; message: string }>("POST", `/admin/published-quizzes/${examId}/unpublish`),
+  deletePublishedQuiz: (examId: string) => request<{ status: string; message: string }>("DELETE", `/admin/published-quizzes/${examId}`),
 };
 
 export const healthApi = {
