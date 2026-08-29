@@ -21,6 +21,7 @@ import { LoadingMessages } from "./LoadingMessages";
 import MathText from "./MathText";
 import { useAuth } from "./AuthProvider";
 import Toast, { ToastVariant } from "./Toast";
+import PublishQuizModal from "./PublishQuizModal";
 
 interface GeneratePanelProps {
   selectedDoc: DocumentSummary | null;
@@ -33,7 +34,7 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
   const activeRole = propRole || user?.role || "teacher";
   const [templates, setTemplates] = useState<TemplateSummary[]>([]);
   const [classes, setClasses] = useState<ClassSummary[]>([]);
-  const [targetClassId, setTargetClassId] = useState<string>("all");
+  const [showPublishModal, setShowPublishModal] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [generating, setGenerating] = useState(false);
   const [progressMsg, setProgressMsg] = useState<string>("Initializing...");
@@ -42,7 +43,7 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
   const [customTopic, setCustomTopic] = useState<string>("");
   const [activeViewMode, setActiveViewMode] = useState<"exam" | "key">("exam");
   const [published, setPublished] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  const [publishedInfo, setPublishedInfo] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
 
   useEffect(() => {
@@ -81,27 +82,33 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
     }
   }
 
-  async function handlePublish() {
+  async function handleConfirmPublish(options: {
+    targetClassId?: string;
+    scheduleStartAt?: string;
+    scheduleEndAt?: string;
+  }) {
     if (!result) return;
     const examId = result.exam_id;
     if (!examId) {
       setToast({ message: "Exam ID missing. Please regenerate or save.", variant: "error" });
       return;
     }
-    setPublishing(true);
-    try {
-      await generationApi.publish(examId, true, targetClassId === "all" ? undefined : targetClassId);
-      setPublished(true);
-      const targetName = targetClassId === "all" ? "All Students" : classes.find(c => c.id === targetClassId)?.name || "Target Class";
-      setToast({
-        message: `🎉 Quiz published to ${targetName}! Students can now practice it online.`,
-        variant: "success",
-      });
-    } catch (err: any) {
-      setToast({ message: err.message || "Failed to publish quiz.", variant: "error" });
-    } finally {
-      setPublishing(false);
+    await generationApi.publish(examId, true, options);
+    setPublished(true);
+    const targetName = options.targetClassId
+      ? classes.find((c) => c.id === options.targetClassId)?.name || "Selected Cohort"
+      : "All Cohorts (Global)";
+    
+    let msg = `🎉 Quiz published to ${targetName}!`;
+    if (options.scheduleStartAt) {
+      const dt = new Date(options.scheduleStartAt);
+      msg = `🗓️ Quiz scheduled for ${targetName} (Starts: ${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
     }
+    setPublishedInfo(targetName);
+    setToast({
+      message: msg,
+      variant: "success",
+    });
   }
 
   const handlePrint = (mode: "exam" | "key") => {
@@ -384,52 +391,32 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
             
             <div className="exam-toolbar__actions" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               {activeRole === "admin" && (
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  {classes.length > 0 && (
-                    <select
-                      value={targetClassId}
-                      onChange={(e) => setTargetClassId(e.target.value)}
-                      disabled={publishing || published}
-                      className="gk-input"
-                      style={{ fontSize: 12, height: 32, padding: "0 8px", width: "auto" }}
-                      title="Select Cohort / Class for this test"
-                    >
-                      <option value="all">🌍 All Classes (Global)</option>
-                      {classes.map((cls) => (
-                        <option key={cls.id} value={cls.id}>
-                          👥 {cls.name}
-                        </option>
-                      ))}
-                    </select>
+                <button
+                  type="button"
+                  className="gk-btn"
+                  onClick={() => setShowPublishModal(true)}
+                  style={{
+                    background: published ? "#15803d" : "#ea580c",
+                    color: "#ffffff",
+                    borderColor: published ? "#166534" : "#c2410c",
+                    boxShadow: "0 2px 8px rgba(234, 88, 12, 0.25)",
+                    fontWeight: 600,
+                    height: 32,
+                    fontSize: 12.5,
+                  }}
+                >
+                  {published ? (
+                    <>
+                      <CheckCircle size={14} />
+                      Published {publishedInfo ? `(${publishedInfo})` : ""}
+                    </>
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      Publish to Students...
+                    </>
                   )}
-                  <button
-                    type="button"
-                    className="gk-btn"
-                    onClick={handlePublish}
-                    disabled={publishing || published}
-                    style={{
-                      background: published ? "#15803d" : "#ea580c",
-                      color: "#ffffff",
-                      borderColor: published ? "#166534" : "#c2410c",
-                      boxShadow: "0 2px 8px rgba(234, 88, 12, 0.25)",
-                      fontWeight: 600,
-                      height: 32,
-                      fontSize: 12.5,
-                    }}
-                  >
-                    {published ? (
-                      <>
-                        <CheckCircle size={14} />
-                        Published
-                      </>
-                    ) : (
-                      <>
-                        <Send size={14} />
-                        {publishing ? "Publishing..." : "Publish Quiz"}
-                      </>
-                    )}
-                  </button>
-                </div>
+                </button>
               )}
               <button
                 type="button"
@@ -449,6 +436,15 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
               </button>
             </div>
           </div>
+
+          <PublishQuizModal
+            isOpen={showPublishModal}
+            onClose={() => setShowPublishModal(false)}
+            onConfirm={handleConfirmPublish}
+            classes={classes}
+            examTitle={result.heading_details || "Generated Quiz"}
+            subject={result.subject}
+          />
 
           {toast && (
             <div className="no-print" style={{ maxWidth: "800px", margin: "0 auto 1rem" }}>

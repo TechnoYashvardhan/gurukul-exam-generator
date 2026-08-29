@@ -184,10 +184,32 @@ export const generationApi = {
     if (!finalExam) throw new Error("Generation finished but no exam was returned.");
     return finalExam;
   },
-  publish: (id: string, publish: boolean = true, targetClassId?: string) =>
-    request<{ status: string; exam_id: string; is_published: boolean; target_class_id?: string; message: string }>(
+  publish: (
+    id: string,
+    publish: boolean = true,
+    options?: {
+      targetClassId?: string;
+      scheduleStartAt?: string;
+      scheduleEndAt?: string;
+    }
+  ) =>
+    request<{
+      status: string;
+      exam_id: string;
+      is_published: boolean;
+      target_class_id?: string;
+      schedule_start_at?: string;
+      schedule_end_at?: string;
+      message: string;
+    }>(
       "POST",
-      `/generate/exam/${id}/publish?publish=${publish}${targetClassId ? `&target_class_id=${targetClassId}` : ""}`
+      `/generate/exam/${id}/publish`,
+      {
+        publish,
+        target_class_id: options?.targetClassId,
+        schedule_start_at: options?.scheduleStartAt,
+        schedule_end_at: options?.scheduleEndAt,
+      }
     ),
 };
 

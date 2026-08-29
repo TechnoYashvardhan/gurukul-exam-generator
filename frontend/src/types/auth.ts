@@ -119,6 +119,10 @@ export interface QuizListItem {
   instructions?: string | null;
   attempted: boolean;
   best_score?: number | null;
+  schedule_start_at?: string | null;
+  schedule_end_at?: string | null;
+  is_active_window?: boolean;
+  status_label?: string | null;
 }
 
 export interface StudentStats {

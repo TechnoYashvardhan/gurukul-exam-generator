@@ -39,6 +39,8 @@ async def setup_test_db():
             "ALTER TABLE users ADD COLUMN scholar_id TEXT",
             "ALTER TABLE users ADD COLUMN class_id TEXT",
             "ALTER TABLE generated_exams ADD COLUMN target_class_id TEXT",
+            "ALTER TABLE generated_exams ADD COLUMN schedule_start_at DATETIME",
+            "ALTER TABLE generated_exams ADD COLUMN schedule_end_at DATETIME",
         ]:
             try:
                 await conn.execute(text(sql))

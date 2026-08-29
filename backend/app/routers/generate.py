@@ -114,15 +114,25 @@ async def generate_exam_endpoint(
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
 
+class PublishExamPayload(BaseModel):
+    publish: bool = True
+    target_class_id: Optional[str] = None
+    schedule_start_at: Optional[str] = None
+    schedule_end_at: Optional[str] = None
+
+
 @router.post("/exam/{exam_id}/publish")
 async def publish_exam_endpoint(
     exam_id: str,
     publish: bool = True,
     target_class_id: Optional[str] = None,
+    schedule_start_at: Optional[str] = None,
+    schedule_end_at: Optional[str] = None,
+    payload: Optional[PublishExamPayload] = None,
     current_user: User | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Publish an exam / quiz to make it live for students in the Student Arena or targeted class."""
+    """Publish an exam / quiz to make it live for students in the Student Arena with cohort targeting and scheduling."""
     try:
         e_uuid = uuid.UUID(exam_id)
     except ValueError:
@@ -133,15 +143,36 @@ async def publish_exam_endpoint(
     if not record:
         raise HTTPException(status_code=404, detail="Exam not found")
 
-    record.is_published = publish
+    eff_publish = payload.publish if payload is not None else publish
+    eff_target_class = payload.target_class_id if payload is not None else target_class_id
+    eff_start = payload.schedule_start_at if payload is not None else schedule_start_at
+    eff_end = payload.schedule_end_at if payload is not None else schedule_end_at
+
+    record.is_published = eff_publish
     record.created_by_role = "admin"
-    if target_class_id and target_class_id != "all":
+    if eff_target_class and eff_target_class != "all":
         try:
-            record.target_class_id = uuid.UUID(target_class_id)
+            record.target_class_id = uuid.UUID(eff_target_class)
         except ValueError:
             pass
-    elif target_class_id == "all":
+    elif eff_target_class == "all":
         record.target_class_id = None
+
+    if eff_start:
+        try:
+            record.schedule_start_at = datetime.fromisoformat(eff_start.replace("Z", "+00:00"))
+        except Exception:
+            pass
+    else:
+        record.schedule_start_at = None
+
+    if eff_end:
+        try:
+            record.schedule_end_at = datetime.fromisoformat(eff_end.replace("Z", "+00:00"))
+        except Exception:
+            pass
+    else:
+        record.schedule_end_at = None
 
     await db.commit()
 
@@ -150,5 +181,7 @@ async def publish_exam_endpoint(
         "exam_id": str(record.id),
         "is_published": record.is_published,
         "target_class_id": str(record.target_class_id) if record.target_class_id else None,
-        "message": "Quiz published to Student Arena" if publish else "Quiz unpublished",
+        "schedule_start_at": record.schedule_start_at.isoformat() if record.schedule_start_at else None,
+        "schedule_end_at": record.schedule_end_at.isoformat() if record.schedule_end_at else None,
+        "message": "Quiz published to Student Arena" if eff_publish else "Quiz unpublished",
     }

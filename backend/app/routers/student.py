@@ -33,6 +33,10 @@ class QuizListItem(BaseModel):
     instructions: Optional[str] = None
     attempted: bool = False
     best_score: Optional[float] = None
+    schedule_start_at: Optional[str] = None
+    schedule_end_at: Optional[str] = None
+    is_active_window: bool = True
+    status_label: Optional[str] = None
 
 
 class QuizSubmitRequest(BaseModel):
@@ -114,6 +118,7 @@ async def list_available_quizzes(
             user_attempts_map[att.exam_id] = max(current_best, att.percentage)
 
     items = []
+    now = datetime.now(timezone.utc)
     for ex in exams:
         exam_json = ex.exam_json or {}
         questions = exam_json.get("questions", [])
@@ -121,6 +126,20 @@ async def list_available_quizzes(
         grade = exam_json.get("grade") or "All Grades"
         total_marks = exam_json.get("total_marks") or sum(q.get("marks", 1) for q in questions) or 100
         duration_minutes = exam_json.get("duration_minutes") or 30
+
+        is_active_window = True
+        status_label = None
+
+        if ex.schedule_start_at:
+            start_tz = ex.schedule_start_at if ex.schedule_start_at.tzinfo else ex.schedule_start_at.replace(tzinfo=timezone.utc)
+            if now < start_tz:
+                is_active_window = False
+                status_label = f"Scheduled: Starts {start_tz.strftime('%b %d, %I:%M %p')}"
+        if ex.schedule_end_at:
+            end_tz = ex.schedule_end_at if ex.schedule_end_at.tzinfo else ex.schedule_end_at.replace(tzinfo=timezone.utc)
+            if now > end_tz:
+                is_active_window = False
+                status_label = "Closed / Expired"
 
         items.append(
             QuizListItem(
@@ -135,6 +154,10 @@ async def list_available_quizzes(
                 instructions=exam_json.get("instructions"),
                 attempted=ex.id in user_attempts_map,
                 best_score=user_attempts_map.get(ex.id),
+                schedule_start_at=ex.schedule_start_at.isoformat() if ex.schedule_start_at else None,
+                schedule_end_at=ex.schedule_end_at.isoformat() if ex.schedule_end_at else None,
+                is_active_window=is_active_window,
+                status_label=status_label,
             )
         )
     return items
@@ -156,6 +179,22 @@ async def get_quiz_for_taking(
     exam = result.scalar_one_or_none()
     if not exam:
         raise HTTPException(status_code=404, detail="Quiz not found")
+
+    now = datetime.now(timezone.utc)
+    if exam.schedule_start_at:
+        start_tz = exam.schedule_start_at if exam.schedule_start_at.tzinfo else exam.schedule_start_at.replace(tzinfo=timezone.utc)
+        if now < start_tz:
+            raise HTTPException(
+                status_code=403,
+                detail=f"This quiz is scheduled to open on {start_tz.strftime('%b %d, %Y at %I:%M %p')}."
+            )
+    if exam.schedule_end_at:
+        end_tz = exam.schedule_end_at if exam.schedule_end_at.tzinfo else exam.schedule_end_at.replace(tzinfo=timezone.utc)
+        if now > end_tz:
+            raise HTTPException(
+                status_code=403,
+                detail="This quiz submission window has closed."
+            )
 
     exam_json = dict(exam.exam_json)
     questions = []

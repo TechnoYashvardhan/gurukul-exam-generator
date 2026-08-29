@@ -182,37 +182,19 @@ export default function Sidebar({ activeView, onViewChange, role: propRole }: Si
       {/* Role Pill */}
       <div style={{
         margin: "0 12px 14px",
-        padding: "6px 10px",
+        padding: "7px 12px",
         borderRadius: "var(--radius-md)",
         background: "var(--surface)",
         border: "1px solid var(--border)",
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
-        fontSize: 11,
+        gap: 8,
+        fontSize: 12,
+        color: currentRoleMeta.color,
+        fontWeight: 600,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: currentRoleMeta.color, fontWeight: 600 }}>
-          {currentRoleMeta.icon}
-          <span style={{ textTransform: "capitalize" }}>{activeRole}</span>
-        </div>
-        <button
-          onClick={() => {
-            const nextRole: UserRole = activeRole === "admin" ? "teacher" : activeRole === "teacher" ? "student" : "admin";
-            setMockRole(nextRole);
-            router.push(`/${nextRole}`);
-          }}
-          style={{
-            background: "none",
-            border: "none",
-            color: "var(--text-3)",
-            fontSize: 10,
-            cursor: "pointer",
-            textDecoration: "underline",
-          }}
-          title="Switch role"
-        >
-          Switch
-        </button>
+        {currentRoleMeta.icon}
+        <span style={{ textTransform: "capitalize" }}>{activeRole} Portal</span>
       </div>
 
       {/* Lotus divider */}

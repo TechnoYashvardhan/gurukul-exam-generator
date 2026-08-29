@@ -220,6 +220,31 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
                   </p>
                 )}
 
+                {quiz.status_label && (
+                  <div
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      marginBottom: 14,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: quiz.is_active_window === false && quiz.status_label.includes("Scheduled")
+                        ? "rgba(59, 130, 246, 0.1)"
+                        : "rgba(239, 68, 68, 0.1)",
+                      color: quiz.is_active_window === false && quiz.status_label.includes("Scheduled")
+                        ? "#2563eb"
+                        : "#dc2626",
+                      border: `1px solid ${quiz.is_active_window === false && quiz.status_label.includes("Scheduled") ? "rgba(59, 130, 246, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
+                    }}
+                  >
+                    <Clock size={13} />
+                    <span>{quiz.status_label}</span>
+                  </div>
+                )}
+
                 <div
                   style={{
                     display: "grid",
@@ -245,10 +270,18 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
 
               <button
                 onClick={() => onSelectQuiz(quiz.id)}
+                disabled={quiz.is_active_window === false}
                 className={`gk-btn ${quiz.attempted ? "gk-btn--secondary" : "gk-btn--primary"}`}
-                style={{ width: "100%", justifyContent: "center" }}
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  opacity: quiz.is_active_window === false ? 0.6 : 1,
+                  cursor: quiz.is_active_window === false ? "not-allowed" : "pointer",
+                }}
               >
-                {quiz.attempted ? (
+                {quiz.is_active_window === false ? (
+                  quiz.status_label?.includes("Closed") ? "Quiz Closed" : "Scheduled Quiz"
+                ) : quiz.attempted ? (
                   <>
                     <RefreshCw size={14} /> Retake Quiz
                   </>

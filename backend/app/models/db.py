@@ -216,6 +216,8 @@ class GeneratedExam(Base):
     llm_model: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by_role: Mapped[str] = mapped_column(Text, default="teacher", nullable=False) # admin | teacher
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    schedule_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    schedule_end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     retries_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
