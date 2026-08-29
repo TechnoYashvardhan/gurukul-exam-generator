@@ -39,12 +39,27 @@ class Settings(BaseSettings):
     def assemble_database_url(cls, v: str) -> str:
         if not v or not isinstance(v, str):
             return v
-        # Normalize Supabase / Postgres URI for SQLAlchemy asyncpg
-        if v.startswith("postgres://"):
-            return v.replace("postgres://", "postgresql+asyncpg://", 1)
-        if v.startswith("postgresql://") and not v.startswith("postgresql+"):
-            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return v
+        url = v.strip()
+        # 1. Remove accidental placeholder brackets around password e.g. :[password]@ -> :password@
+        import re, urllib.parse
+        url = re.sub(r':\[(.*?)\]@', r':\1@', url)
+
+        # 2. Fix unencoded '@' or special characters inside password
+        # Pattern: scheme://user:password@host_and_port/db
+        m = re.match(r'^(https?|postgres(?:ql)?(?:\+[a-z0-9]+)?):\/\/([^:]+):(.+)@([^@]+)$', url)
+        if m:
+            scheme, user, raw_pw, host_part = m.groups()
+            # If already percent-encoded, do not double-encode
+            if "%" not in raw_pw:
+                encoded_pw = urllib.parse.quote_plus(raw_pw)
+                url = f"{scheme}://{user}:{encoded_pw}@{host_part}"
+
+        # 3. Normalize Supabase / Postgres URI for SQLAlchemy asyncpg
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        if url.startswith("postgresql://") and not url.startswith("postgresql+"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
 
     # ── Redis ────────────────────────────────────────
     redis_url: str = "redis://:redis_secret@localhost:6379/0"
