@@ -80,6 +80,58 @@ def _strip_markdown_from_json(s: str) -> str:
     s = re.sub(r",\s*([\]}])", r"\1", s)
     return s.strip()
 
+def _sanitize_exam_text(text: str) -> str:
+    """
+    Cleans up hallucinated LaTeX artifacts, pseudo-LaTeX unit representations,
+    unclosed delimiters, and missing spaces from LLM generated exam text.
+    """
+    if not text or not isinstance(text, str):
+        return text or ""
+
+    s = text
+
+    # 1. Strip hallucinated backslashes before plain digits / numbers: \90% -> 90%, \5 -> 5, \50 -> 50, \4.184 -> 4.184
+    s = re.sub(r'\\(?=\d)', '', s)
+
+    # 2. Fix pseudo-LaTeX unit representations like $1\text{ ns}$ or \text{ GB/s} or 2\text{ GT/s}
+    s = re.sub(r'\\text\{\s*([^{}]+)\s*\}', r' \1 ', s)
+
+    # 3. Clean degree Celsius notation: $1.79^\circ\text{C}$ -> 1.79 °C
+    s = re.sub(r'\$([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C|\s*)\$', r'\1 °C', s)
+    s = re.sub(r'([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C|\s*)', r'\1 °C', s)
+    s = re.sub(r'\\cdot\^\\circ\s*(?:\\text\{C\}|C|\s*)', '·°C', s)
+
+    # 4. Clean up common engineering and physical units inside stray math delimiters:
+    # e.g. $8.33 ms$, $7200 RPM$, $2 GT/s$, $100 W$, $250 W$, $32 bits$, $8 GB/s$, $16 GB/s$
+    units_pattern = r'\$([0-9.,]+)\s*([a-zA-Z/°%^]+(?:\s*[a-zA-Z/°%^]+)*)\$'
+    s = re.sub(units_pattern, r'\1 \2', s)
+
+    # 5. Fix spaces between common squished words inside broken math mode
+    s = re.sub(r'perdirectionwith', ' per direction with ', s)
+    s = re.sub(r'whatisthesteady\s*-\s*statetemperaturerise', ' what is the steady-state temperature rise ', s)
+    s = re.sub(r'whatisthesteady', ' what is the steady ', s)
+    s = re.sub(r'statetemperaturerise', ' state temperature rise ', s)
+
+    # 6. Clean up single unbalanced dollar signs that span across sentence endings (. / ? / !)
+    def clean_multisentence_math(match):
+        content = match.group(1)
+        words = re.findall(r"[a-zA-Z]{3,}", content)
+        puncts = [". ", "? ", "! ", ", "]
+        if len(words) > 2 or any(p in content for p in puncts):
+            content_fixed = re.sub(r"(\\[a-zA-Z]+(?:\s+[a-zA-Z0-9])?)", r"$\1$", content)
+            return content_fixed
+        return f"${content}$"
+
+    s = re.sub(r'\$([^$]+)\$', clean_multisentence_math, s)
+
+    # 7. Remove any remaining stray single dollars around plain numbers or simple unit phrases
+    s = re.sub(r'\$([0-9.,]+)\$', r'\1', s)
+    s = re.sub(r'\$([0-9]+\s+[a-zA-Z]+)\$', r'\1', s)
+
+    # 8. Clean up multiple spaces
+    s = re.sub(r'[ \t]+', ' ', s)
+    return s.strip()
+
 try:
     import json_repair
 except ImportError:
@@ -378,16 +430,22 @@ SECTION RULES:
 11. Keep question text concise and clear.
 
 MATHEMATICAL & SCIENTIFIC NOTATION RULES:
-- Format ALL genuine formulas, equations, fractions, square roots, powers, calculus symbols, and variables using standard LaTeX math delimiters ($...$ for inline expressions, $$...$$ for display equations).
-- VARIABLES & SYMBOLS: Wrap mathematical variables and constants in inline math: "$m_1$", "$m_2$", "$v_0$", "$a(t) = \\alpha t - \\beta t^2$", "$t=0$", "$x=x_0$", "$A$", "$\\det(A)$", "$A^{-1}$", "$0^\\circ\\text{{C}}$".
-- SPREADSHEET, COMPUTER SCIENCE & GENERAL SUBJECTS: Write cell coordinates (e.g. A1, B5, D10, E10), Excel functions (e.g. SUM(A1:A10), VLOOKUP, HLOOKUP, SUMIFS), absolute references ($A$1, $B$1), field names (e.g. «First_Name»), and plain numbered lists (e.g. 1., 2., 3.) as PLAIN TEXT without math delimiters. NEVER wrap English words, sentences, or numbered list steps in math mode ($...$).
-- MATRICES & DETERMINANTS: Never write nested lists like "[[1,2],[3,4]]" or flat tuples like "(1 2 3 4 5 6 7 8 9)". ALWAYS write standard LaTeX matrix: "$\\begin{{pmatrix}} 1 & 2 \\\\ 3 & 4 \\end{{pmatrix}}$" or determinant "$\\begin{{vmatrix}} 1 & 2 \\\\ 3 & 4 \\end{{vmatrix}}$".
+- PLAIN NUMBERS, UNITS & HARDWARE / SYSTEM SPECS (CRITICAL):
+  Write ALL units, clock speeds, data rates, memory sizes, voltage rails, and percentages as CLEAN PLAIN TEXT:
+  e.g. "1 ns", "5 ns", "50 ns", "90%", "7200 RPM", "2 GT/s", "1.969 GB/s", "1.5 GHz", "256 bits", "14 Gbps", "100 W", "250 W", "4.184 J/(g·°C)", "2.0 L/min", "2000 g/min", "32 bits", "4 GB", "64 GB", "1.79 °C", "+12V", "+5V", "+3.3V", "DDR4", "DDR5", "PCIe 4.0 x16".
+  NEVER place a backslash before numbers (e.g. NEVER write "\\\\90%", "\\\\5 ns", "\\\\50", "\\\\4", "\\\\64").
+  NEVER wrap units or plain numbers inside math mode ($100W$, $8 GB/s$, $1\\text{{ ns}}$). Write them as plain English words.
+- REAL MATHEMATICAL FORMULAS ONLY:
+  ONLY use $...$ for genuine algebraic expressions, equations, fractions (\\frac{{a}}{{b}}), square roots (\\sqrt{{x}}), exponents (x^2), summations (\\sum), integrals (\\int), matrices, and Greek math variables (\\Delta T, \\theta, \\lambda, \\alpha).
+- VARIABLES & SYMBOLS: Wrap mathematical variables and constants in inline math: "$m_1$", "$m_2$", "$v_0$", "$a(t) = \\alpha t - \\beta t^2$", "$t=0$", "$x=x_0$", "$A$", "$\\det(A)$", "$A^{-1}$", "$\\Delta T$".
+- SPREADSHEET & COMPUTER SCIENCE: Write cell coordinates (e.g. A1, B5, D10, E10), Excel functions (e.g. SUM(A1:A10), VLOOKUP), absolute references ($A$1, $B$1), field names (e.g. «First_Name»), and numbered lists as PLAIN TEXT without math delimiters. NEVER wrap English words, sentences, or numbered list steps in math mode ($...$).
+- MATRICES & DETERMINANTS: Always write standard LaTeX matrix: "$\\begin{{pmatrix}} 1 & 2 \\\\ 3 & 4 \\end{{pmatrix}}$" or determinant "$\\begin{{vmatrix}} 1 & 2 \\\\ 3 & 4 \\end{{vmatrix}}$".
 - SYSTEMS OF EQUATIONS: Write "$\\begin{{cases}} x + y + z = 1 \\\\ x + 2y + 3z = k \\\\ x + 2y + (k^2-5)z = k \\end{{cases}}$" with double backslash "\\\\" between rows.
 - FRACTIONS & POWERS: Always write "$\\frac{{x+2}}{{x^2+1}}$", "$x^2 - 4x + 13 = 0$", "$e^{{2x}}$", "$\\sqrt{{14}}$". Never write raw ASCII like "(x+2)/(x^2+1)" or "x^2".
 - SUMMATIONS, INTEGRALS & LIMITS: Write "$\\sum_{{n=1}}^{{\\infty}} \\frac{{(-1)^{{n+1}} r^n}}{{n}}$", "$\\int_{{0}}^{{\\pi/2}} x \\sin x \\cos x \\, dx$", "$\\lim_{{x \\to 0}} \\frac{{x \\cos x - \\sin x}}{{x^3}}$".
 - VECTORS & TRIGONOMETRY: Write "$\\vec{{a}} \\times \\vec{{b}} = (-10, 4, 8)$", "$2\\operatorname{{cis}}(30^\\circ)$", "$\\sin 75^\\circ + \\sin 15^\\circ$", "$y \\ge 2x+1$".
 - Example MCQ Options: A: "$\\frac{{x+2}}{{x^2+1}} + \\frac{{2(x+1)}}{{(x^2+1)^2}}$", B: "$-\\frac{{1}}{{6}}$", C: "$\\begin{{pmatrix}} 1 & 0 \\\\ 0 & 1 \\end{{pmatrix}}$", D: "$\\frac{{\\sqrt{{6}}}}{{2}}$"
-- CURRENCY & WORD PROBLEMS: Write currency as plain text (e.g. "Rs. 200", "Rs. 15", or "$200"). NEVER place full English sentences or phrases inside math mode ($...$). E.g. write "An item is marked at Rs. 200 with a discount of 15%."
+- CURRENCY & WORD PROBLEMS: Write currency as plain text (e.g. "Rs. 200", "Rs. 15", or "$200"). NEVER place full English sentences or phrases inside math mode ($...$).
 - TALLY MARKS & STATISTICS: When writing tally marks, write clear descriptive notation like "卌 卌 || (two bundles of 5 and 2 single marks = 12)". Never output ambiguous pseudo-letters like "HH".
 - NEVER output placeholder phrases like "Option for..." or "Alternative concept" or "None of the above". Every single MCQ option MUST contain a real, distinct, complete mathematical or scientific value/concept.
 
@@ -403,7 +461,7 @@ REQUIRED JSON FORMAT
       "section_id": "{sec.section_id}",
       "question_no": 1,
       "type": "{sec.type}",
-      "text": "<full question text with $math$>",
+      "text": "<full question text with clean formatting>",
       "options": [{{"key": "A", "text": "..."}}, {{"key": "B", "text": "..."}}, {{"key": "C", "text": "..."}}, {{"key": "D", "text": "..."}}],
       "answer": "A",
       "marks": {marks_per_q},
@@ -436,8 +494,17 @@ REQUIRED JSON FORMAT
                         if "marks" not in item: item["marks"] = marks_per_q
                         if "bloom_level" not in item: item["bloom_level"] = "apply"
                         if "difficulty" not in item: item["difficulty"] = "medium"
-                        if "text" not in item: item["text"] = item.get("question", item.get("topic", "Question text"))
-                        if "answer" not in item: item["answer"] = "A" if sec.type == "mcq" else "Model answer"
+                        
+                        raw_text = item.get("text") or item.get("question") or item.get("topic") or "Question text"
+                        item["text"] = _sanitize_exam_text(str(raw_text))
+                        
+                        raw_ans = item.get("answer") or ("A" if sec.type == "mcq" else "Model answer")
+                        item["answer"] = _sanitize_exam_text(str(raw_ans))
+                        
+                        if "options" in item and isinstance(item["options"], list):
+                            for opt in item["options"]:
+                                if isinstance(opt, dict) and "text" in opt:
+                                    opt["text"] = _sanitize_exam_text(str(opt["text"]))
                         
                         q = Question.model_validate(item)
                         validated_questions.append(q)

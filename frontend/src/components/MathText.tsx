@@ -91,13 +91,43 @@ export function formatMathText(raw: string): string {
   // 1. Unescape literal \n into real newlines
   text = text.replace(/\\n/g, "\n");
 
-  // 2. Convert chemistry \ce{...} expressions and chemical formulas
+  // 2. Strip hallucinated backslashes before plain numbers: \90% -> 90%, \5 -> 5, \50 -> 50, \4.184 -> 4.184
+  text = text.replace(/\\(?=\d)/g, "");
+
+  // 3. Fix pseudo-LaTeX unit representations like $1\text{ ns}$ or \text{ GB/s} or 2\text{ GT/s}
+  text = text.replace(/\\text\{\s*([^{}]+)\s*\}/g, " $1 ");
+
+  // 4. Clean degree Celsius notation: $1.79^\circ\text{C}$ -> 1.79 °C or $1.79^\circ C$ -> 1.79 °C
+  text = text.replace(/\$([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C|\s*)\$/g, "$1 °C");
+  text = text.replace(/([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C|\s*)/g, "$1 °C");
+  text = text.replace(/\\cdot\^\\circ\s*(?:\\text\{C\}|C|\s*)/g, "·°C");
+
+  // 5. Clean up common engineering and physical units inside stray math delimiters:
+  // e.g. $8.33 ms$, $7200 RPM$, $2 GT/s$, $100 W$, $250 W$, $32 bits$, $8 GB/s$, $16 GB/s$
+  text = text.replace(/\$([0-9.,]+)\s*([a-zA-Z/°%^]+(?:\s*[a-zA-Z/°%^]+)*)\$/g, "$1 $2");
+
+  // 6. Fix spaces between common squished words inside broken math mode
+  text = text.replace(/perdirectionwith/g, " per direction with ");
+  text = text.replace(/whatisthesteady\s*-\s*statetemperaturerise/g, " what is the steady-state temperature rise ");
+  text = text.replace(/whatisthesteady/g, " what is the steady ");
+  text = text.replace(/statetemperaturerise/g, " state temperature rise ");
+
+  // 7. Convert chemistry \ce{...} expressions and chemical formulas
   text = convertChemicalFormulas(text);
 
-  // 3. Escape Currency like $50,000 or $100 or $250.00 so remarkMath doesn't treat them as math opening delimiters
-  text = text.replace(/(?<!\\)\$([0-9][0-9,]*)(?:\b|(?=[^a-zA-Z0-9$]))/g, (_, g1) => "\\$" + g1);
+  // 8. Clean up single unbalanced dollar signs that span across sentence endings (. / ? / !)
+  text = text.replace(/\$([^$]+)\$/g, (_, content) => {
+    const words = content.match(/[a-zA-Z]{3,}/g) || [];
+    if (words.length > 2 || /[.?!,]\s/.test(content)) {
+      return content.replace(/(\\[a-zA-Z]+(?:\s+[a-zA-Z0-9])?)/g, "$$1$");
+    }
+    return `$${content}$`;
+  });
 
-  // 4. Escape Excel / Spreadsheet cell references like $A$1, $B$1, $A1, $E$10 using safe callback replacers
+  // 9. Escape Currency like $50,000 USD (only when followed purely by digits and not a math expression)
+  text = text.replace(/(?<!\\)\$([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{2})?)(?=\s+(?:USD|dollars?|rupees?|cents?|\.|\,|$))/gi, "\\$$1");
+
+  // 10. Escape Excel / Spreadsheet cell references like $A$1, $B$1, $A1, $E$10 using safe callback replacers
   text = text.replace(/(?<!\\)\$([A-Z]+)\$([0-9]+)\b/g, (_, g1, g2) => "\\$" + g1 + "\\$" + g2);
   text = text.replace(/(?<!\\)\$([A-Z]+[0-9]+)\b/g, (_, g1) => "\\$" + g1);
   text = text.replace(/(?<!\\)\b([A-Z]+)\$([0-9]+)\b/g, (_, g1, g2) => g1 + "\\$" + g2);
@@ -213,7 +243,7 @@ export default function MathText({ content, className = "" }: MathTextProps) {
     <div className={`math-content prose-sm inline-block ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
-        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false, errorColor: "inherit" }]]}
       >
         {formatted}
       </ReactMarkdown>
