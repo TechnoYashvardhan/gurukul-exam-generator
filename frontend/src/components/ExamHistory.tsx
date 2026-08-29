@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { History, Printer, X, Edit2, Check, Trash2, FileText, CheckCircle, CheckCircle2, Send } from "lucide-react";
 import { type ExamHistoryEntry } from "@/hooks/useExamHistory";
 import MathText from "./MathText";
-import { generationApi } from "@/lib/api";
+import { generationApi, adminApi } from "@/lib/api";
 import Toast, { ToastVariant } from "./Toast";
+import PublishQuizModal from "./PublishQuizModal";
+import { ClassSummary } from "@/types/auth";
 
 interface ExamHistoryProps {
   entries: ExamHistoryEntry[];
@@ -20,6 +22,14 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
   const [publishedMap, setPublishedMap] = useState<Record<string, boolean>>({});
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
+  const [classes, setClasses] = useState<ClassSummary[]>([]);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+
+  useEffect(() => {
+    if (role === "admin") {
+      adminApi.listClasses().then(setClasses).catch(() => {});
+    }
+  }, [role]);
 
   // Rename state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -60,18 +70,33 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
     }
   };
 
-  const handlePublish = async (entry: ExamHistoryEntry) => {
-    const examId = entry.exam.exam_id || entry.id;
-    setPublishingId(entry.id);
+  const handleConfirmPublish = async (options: {
+    targetClassId?: string;
+    scheduleStartAt?: string;
+    scheduleEndAt?: string;
+  }) => {
+    if (!selectedEntry) return;
+    const examId = selectedEntry.exam.exam_id || selectedEntry.id;
+    setPublishingId(selectedEntry.id);
     try {
-      await generationApi.publish(examId, true);
-      setPublishedMap(prev => ({ ...prev, [entry.id]: true }));
+      await generationApi.publish(examId, true, options);
+      setPublishedMap(prev => ({ ...prev, [selectedEntry.id]: true }));
+      const targetName = options.targetClassId
+        ? classes.find((c) => c.id === options.targetClassId)?.name || "Selected Cohort"
+        : "All Cohorts (Global)";
+      
+      let msg = `🎉 Quiz published to ${targetName}!`;
+      if (options.scheduleStartAt) {
+        const dt = new Date(options.scheduleStartAt);
+        msg = `🗓️ Quiz scheduled for ${targetName} (Starts: ${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
+      }
       setToast({
-        message: "🎉 Quiz published to Student Arena! Students can now practice it.",
-        variant: "success"
+        message: msg,
+        variant: "success",
       });
     } catch (err: any) {
       setToast({ message: err.message || "Failed to publish quiz.", variant: "error" });
+      throw err;
     } finally {
       setPublishingId(null);
     }
@@ -264,7 +289,7 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                     <button
                       type="button"
                       className="gk-btn"
-                      onClick={() => handlePublish(selectedEntry)}
+                      onClick={() => setShowPublishModal(true)}
                       disabled={publishingId === selectedEntry.id || publishedMap[selectedEntry.id]}
                       style={{
                         background: publishedMap[selectedEntry.id] ? "#15803d" : "#ea580c",
@@ -282,7 +307,7 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                       ) : (
                         <>
                           <Send size={14} />
-                          {publishingId === selectedEntry.id ? "Publishing..." : "Publish to Students"}
+                          {publishingId === selectedEntry.id ? "Publishing..." : "Publish to Students..."}
                         </>
                       )}
                     </button>
@@ -316,6 +341,15 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                   </button>
                 </div>
               </div>
+
+              <PublishQuizModal
+                isOpen={showPublishModal}
+                onClose={() => setShowPublishModal(false)}
+                onConfirm={handleConfirmPublish}
+                classes={classes}
+                examTitle={selectedEntry.exam.heading_details || selectedEntry.title}
+                subject={selectedEntry.exam.subject}
+              />
 
               {toast && (
                 <div style={{ margin: "0.5rem 0 1rem 0" }}>
