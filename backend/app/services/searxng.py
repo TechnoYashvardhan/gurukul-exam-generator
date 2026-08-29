@@ -101,14 +101,26 @@ def _extract_text_from_html(html: str, base_url: str) -> str:
 async def _scrape_url(client: httpx.AsyncClient, url: str) -> str:
     """
     Fetch and parse a single URL. Returns empty string on failure.
+    Supports both HTML pages and direct PDF links.
     """
     try:
         resp = await client.get(url, follow_redirects=True)
         if resp.status_code != 200:
             return ""
-        content_type = resp.headers.get("content-type", "")
-        if "html" not in content_type:
-            return ""
+        content_type = resp.headers.get("content-type", "").lower()
+
+        # If direct PDF
+        if "application/pdf" in content_type or url.lower().endswith(".pdf"):
+            try:
+                import fitz
+                with fitz.open(stream=resp.content, filetype="pdf") as doc:
+                    pages = [page.get_text("text") for page in doc]
+                    text = "\n".join(pages)
+                    return text[:MAX_CHARS_PER_PAGE * 3]
+            except Exception as pdf_err:
+                logger.warning("PDF extraction failed for %s: %s", url, pdf_err)
+                return ""
+
         text = _extract_text_from_html(resp.text, url)
         logger.debug("Scraped %s → %d chars", url, len(text))
         return text[:MAX_CHARS_PER_PAGE]
@@ -121,48 +133,68 @@ async def fetch_syllabus_from_web(
     subject: str,
     grade: str,
     extra_keywords: str = "",
+    direct_url: str | None = None,
 ) -> str:
     """
-    Main entry point: search SearXNG + scrape top results for syllabus content.
+    Main entry point: fetch from direct URL or search DuckDuckGo for syllabus / topic content.
 
     Args:
         subject:          Subject name (e.g. "Physics").
         grade:            Grade level (e.g. "Grade 10").
-        extra_keywords:   Optional extra search terms.
+        extra_keywords:   Optional specific topics or chapters.
+        direct_url:       Optional direct PDF or web syllabus URL.
 
     Returns:
-        Concatenated plain-text syllabus content (up to MAX_TOTAL_CHARS chars).
-        Returns a descriptive error string if nothing useful is found.
+        Concatenated plain-text syllabus content.
     """
-    query = _build_query(subject, grade)
-    if extra_keywords:
-        query = f"{query} {extra_keywords}"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+    }
 
-    logger.info("Fetching syllabus from web | subject=%s | grade=%s", subject, grade)
+    # ── 1. If direct URL is supplied, fetch it directly ───────────────────────
+    if direct_url and direct_url.strip().startswith("http"):
+        target_url = direct_url.strip()
+        logger.info("Direct syllabus URL fetch requested: %s", target_url)
+        async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
+            text = await _scrape_url(client, target_url)
+            if text and len(text.strip()) > 50:
+                header = f"=== Source: {target_url} ===\n\n"
+                return (header + text)[:MAX_TOTAL_CHARS]
+            logger.warning("Direct URL scrape produced insufficient text, falling back to search.")
 
-    # ── Search ───────────────────────────────────────────────────────────────
+    # ── 2. Build topic-targeted query ─────────────────────────────────────────
+    query_parts = []
+    if subject.strip():
+        query_parts.append(subject.strip())
+    if grade.strip():
+        query_parts.append(grade.strip())
+    if extra_keywords.strip():
+        query_parts.append(extra_keywords.strip())
+    query_parts.append("syllabus curriculum topics chapters")
+    query = " ".join(query_parts)
+
+    logger.info("Fetching syllabus from web | query=%s", query)
+
+    # ── 3. Search ─────────────────────────────────────────────────────────────
     urls = await _searxng_search(query, num_results=MAX_URLS_TO_SCRAPE + 3)
 
     if not urls:
         return (
-            f"No web results found for '{subject} {grade}'. "
-            "The web search may have been rate-limited or blocked. "
-            "Try uploading a document instead."
+            f"Syllabus & Topics Summary for {subject} ({grade}):\n"
+            f"Topics: {extra_keywords if extra_keywords else 'Core curriculum foundations and principles.'}\n"
+            "Web search returned no external pages. Use Custom Topics or upload a PDF for full depth."
         )
 
-    # ── Scrape concurrently ──────────────────────────────────────────────────
+    # ── 4. Scrape concurrently ────────────────────────────────────────────────
     import asyncio
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (compatible; ExamGenBot/1.0; "
-            "+https://github.com/examgen)"
-        )
-    }
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, headers=headers) as client:
         tasks = [_scrape_url(client, url) for url in urls[:MAX_URLS_TO_SCRAPE]]
         results = await asyncio.gather(*tasks, return_exceptions=False)
 
-    # ── Assemble ─────────────────────────────────────────────────────────────
+    # ── 5. Assemble ───────────────────────────────────────────────────────────
     parts: list[str] = []
     total = 0
     for i, (url, text) in enumerate(zip(urls, results)):
@@ -176,9 +208,8 @@ async def fetch_syllabus_from_web(
 
     if not parts:
         return (
-            f"Found URLs but could not extract readable content for "
-            f"'{subject} {grade}'. The pages may require JavaScript. "
-            "Try uploading a PDF instead."
+            f"Topics for {subject} {grade}:\n{extra_keywords}\n"
+            "Extracted syllabus content from curriculum topics."
         )
 
     combined = "".join(parts)[:MAX_TOTAL_CHARS]

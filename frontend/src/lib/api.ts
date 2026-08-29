@@ -119,8 +119,30 @@ export const documentsApi = {
     }
   },
 
-  webFetch: async (payload: { subject: string; grade: string; extra_keywords?: string }): Promise<DocumentSummary> => {
+  webFetch: async (payload: { subject: string; grade: string; extra_keywords?: string; url?: string }): Promise<DocumentSummary> => {
     const res = await fetch(`${API}/documents/web-fetch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      let errText = await res.text();
+      try {
+        const parsed = JSON.parse(errText);
+        errText = parsed.detail ?? errText;
+      } catch {}
+      throw new Error(errText);
+    }
+    return res.json();
+  },
+
+  createCustomTopic: async (payload: {
+    title: string;
+    subject: string;
+    grade?: string;
+    topics_text: string;
+  }): Promise<DocumentSummary> => {
+    const res = await fetch(`${API}/documents/custom-topic`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

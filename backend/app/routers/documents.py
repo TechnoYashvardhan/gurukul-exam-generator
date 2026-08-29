@@ -73,7 +73,15 @@ class DocumentSummary(BaseModel):
 class WebFetchRequest(BaseModel):
     subject: str = Field(..., min_length=1, max_length=200)
     grade: str = Field(..., min_length=1, max_length=100)
-    extra_keywords: str = Field("", max_length=200)
+    extra_keywords: str = Field("", max_length=500)
+    url: str | None = Field(None, max_length=1000)
+
+
+class CustomTopicRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    subject: str = Field(..., min_length=1, max_length=200)
+    grade: str = Field("", max_length=100)
+    topics_text: str = Field(..., min_length=5)
 
 
 # ── Upload endpoint ───────────────────────────────────────────────────────────
@@ -211,10 +219,76 @@ async def _run_ingestion(
 # ── Web fetch endpoint ────────────────────────────────────────────────────────
 
 @router.post(
+    "/custom-topic",
+    response_model=DocumentSummary,
+    status_code=status.HTTP_201_CREATED,
+    summary="Directly ingest custom syllabus topics, unit test chapters, or curriculum text",
+)
+async def create_custom_topic_document(
+    body: CustomTopicRequest,
+    db: AsyncSession = Depends(get_db),
+) -> DocumentSummary:
+    """
+    Directly ingest custom syllabus topics, unit test chapters, or curriculum text.
+    Immediately chunks, embeds, and indexes for instant quiz generation.
+    """
+    import hashlib
+    from app.services.document_processor import chunk_text
+    from app.services.embedding import embed_texts
+
+    text_content = body.topics_text.strip()
+    grade_label = body.grade.strip() if body.grade.strip() else "All Levels"
+    formatted_content = f"Title / Scope: {body.title}\nSubject: {body.subject}\nGrade: {grade_label}\n\nTopics & Subtopics:\n{text_content}"
+    
+    sha256 = hashlib.sha256(formatted_content.encode()).hexdigest()
+
+    existing = await db.execute(
+        select(DocumentORM).where(DocumentORM.sha256_hash == sha256)
+    )
+    existing_doc = existing.scalar_one_or_none()
+    if existing_doc:
+        chunk_count = await _count_chunks(db, existing_doc.id)
+        return _to_summary(existing_doc, chunk_count)
+
+    doc_id = uuid.uuid4()
+    doc = DocumentORM(
+        id=doc_id,
+        user_id=_PLACEHOLDER_USER,
+        filename=f"{body.title} ({body.subject})",
+        subject=body.subject,
+        grade=grade_label,
+        sha256_hash=sha256,
+        status="ready",
+        source="custom_topic",
+    )
+    db.add(doc)
+    await db.flush()
+
+    chunks = chunk_text(formatted_content)
+    embeddings = embed_texts(chunks)
+
+    chunk_rows = [
+        DocumentChunk(
+            id=uuid.uuid4(),
+            document_id=doc_id,
+            chunk_index=i,
+            content=chunk,
+            embedding=emb,
+            token_count=len(chunk.split()),
+        )
+        for i, (chunk, emb) in enumerate(zip(chunks, embeddings))
+    ]
+    db.add_all(chunk_rows)
+    await db.commit()
+
+    return _to_summary(doc, len(chunk_rows))
+
+
+@router.post(
     "/web-fetch",
     response_model=DocumentSummary,
     status_code=status.HTTP_202_ACCEPTED,
-    summary="Fetch syllabus from web via SearXNG",
+    summary="Fetch syllabus from web or online PDF URL",
 )
 async def web_fetch_document(
     body: WebFetchRequest,
@@ -222,16 +296,14 @@ async def web_fetch_document(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentSummary:
     """
-    Trigger a SearXNG search + scrape for syllabus content.
+    Trigger search + scrape or direct online URL fetch for syllabus content.
     Stores result as a Document with source=web_fetch.
     """
     import hashlib
 
-    # Create a pseudo-sha for this web fetch to use as dedup key
-    fetch_key = f"web:{body.subject}:{body.grade}:{body.extra_keywords}"
+    fetch_key = f"web:{body.subject}:{body.grade}:{body.extra_keywords}:{body.url or ''}"
     pseudo_sha = hashlib.sha256(fetch_key.encode()).hexdigest()
 
-    # Dedup: if same subject+grade was already fetched, return existing
     existing = await db.execute(
         select(DocumentORM).where(DocumentORM.sha256_hash == pseudo_sha)
     )
@@ -240,11 +312,17 @@ async def web_fetch_document(
         chunk_count = await _count_chunks(db, existing_doc.id)
         return _to_summary(existing_doc, chunk_count)
 
+    title_tag = f"{body.subject} {body.grade}"
+    if body.url:
+        title_tag = f"{body.subject} ({body.url.split('/')[-1][:20]})"
+    elif body.extra_keywords:
+        title_tag = f"{body.subject} - {body.extra_keywords[:25]}"
+
     doc_id = uuid.uuid4()
     doc = DocumentORM(
         id=doc_id,
         user_id=_PLACEHOLDER_USER,
-        filename=f"{body.subject} {body.grade} (web)",
+        filename=f"{title_tag} (web)",
         subject=body.subject,
         grade=body.grade,
         sha256_hash=pseudo_sha,
@@ -255,7 +333,7 @@ async def web_fetch_document(
     await db.flush()
 
     background_tasks.add_task(
-        _run_web_ingestion, str(doc_id), body.subject, body.grade, body.extra_keywords
+        _run_web_ingestion, str(doc_id), body.subject, body.grade, body.extra_keywords, body.url
     )
 
     return _to_summary(doc, 0)
@@ -266,12 +344,13 @@ async def _run_web_ingestion(
     subject: str,
     grade: str,
     extra_keywords: str,
+    direct_url: str | None = None,
 ) -> None:
     from app.database import AsyncSessionLocal
 
     async with AsyncSessionLocal() as db:
         try:
-            text = await fetch_syllabus_from_web(subject, grade, extra_keywords)
+            text = await fetch_syllabus_from_web(subject, grade, extra_keywords, direct_url=direct_url)
 
             from app.services.document_processor import chunk_text
             from app.services.embedding import embed_texts
