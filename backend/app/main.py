@@ -69,18 +69,22 @@ async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            from sqlalchemy import text
-            for migration_sql in [
-                "ALTER TABLE users ADD COLUMN scholar_id TEXT",
-                "ALTER TABLE users ADD COLUMN class_id TEXT",
-                "ALTER TABLE generated_exams ADD COLUMN target_class_id TEXT",
-                "ALTER TABLE generated_exams ADD COLUMN schedule_start_at DATETIME",
-                "ALTER TABLE generated_exams ADD COLUMN schedule_end_at DATETIME",
-            ]:
-                try:
-                    await conn.execute(text(migration_sql))
-                except Exception:
-                    pass
+
+        is_postgres = not settings.database_url.startswith("sqlite")
+        from sqlalchemy import text
+        migrations = [
+            ("ALTER TABLE users ADD COLUMN IF NOT EXISTS scholar_id TEXT" if is_postgres else "ALTER TABLE users ADD COLUMN scholar_id TEXT"),
+            ("ALTER TABLE users ADD COLUMN IF NOT EXISTS class_id TEXT" if is_postgres else "ALTER TABLE users ADD COLUMN class_id TEXT"),
+            ("ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS target_class_id TEXT" if is_postgres else "ALTER TABLE generated_exams ADD COLUMN target_class_id TEXT"),
+            ("ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS schedule_start_at TIMESTAMP WITH TIME ZONE" if is_postgres else "ALTER TABLE generated_exams ADD COLUMN schedule_start_at DATETIME"),
+            ("ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS schedule_end_at TIMESTAMP WITH TIME ZONE" if is_postgres else "ALTER TABLE generated_exams ADD COLUMN schedule_end_at DATETIME"),
+        ]
+        for sql in migrations:
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(text(sql))
+            except Exception:
+                pass
             
         # Seed default users & classes
         _default_uid = uuid.UUID("00000000-0000-0000-0000-000000000001")

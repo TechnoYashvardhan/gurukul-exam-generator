@@ -4,6 +4,7 @@ All settings are typed; wrong .env values raise at startup, not at runtime.
 """
 
 from functools import lru_cache
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,13 +21,30 @@ class Settings(BaseSettings):
     debug: bool = True
     secret_key: str = "change_me_in_production"
 
-    # ── Database ─────────────────────────────────────
+    # ── Database (Supports SQLite & Supabase PostgreSQL) ──
     database_url: str = (
         "postgresql+asyncpg://examgen:examgen_secret@localhost:5432/examgen"
     )
     sync_database_url: str = (
         "postgresql+psycopg2://examgen:examgen_secret@localhost:5432/examgen"
     )
+
+    # Supabase specific credentials (Optional)
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def assemble_database_url(cls, v: str) -> str:
+        if not v or not isinstance(v, str):
+            return v
+        # Normalize Supabase / Postgres URI for SQLAlchemy asyncpg
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+asyncpg://", 1)
+        if v.startswith("postgresql://") and not v.startswith("postgresql+"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
 
     # ── Redis ────────────────────────────────────────
     redis_url: str = "redis://:redis_secret@localhost:6379/0"
