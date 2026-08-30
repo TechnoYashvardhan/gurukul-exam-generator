@@ -887,29 +887,56 @@ export default function GeneratePanel({
           </div>
 
           {/* ── Printable Academic Exam Paper Sheet ── */}
-          <div className="exam-paper" style={{ background: "var(--surface)", padding: "36px 44px", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
-            {/* School Header */}
-            <div className="exam-header" style={{ textAlign: "center", borderBottom: "2px solid var(--border)", paddingBottom: "18px", marginBottom: "24px" }}>
-              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "24px", fontWeight: 800, color: "var(--text)", margin: 0, textTransform: "uppercase", letterSpacing: "0.02em" }}>
-                {result.heading_details || `${result.subject} EXAMINATION`}
-              </h1>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", fontSize: "14px", fontWeight: 600, color: "var(--text-2)" }}>
-                <span>Subject: {result.subject}</span>
-                <span>Class: {result.grade}</span>
-                <span>Time: {result.duration_minutes} Minutes</span>
-                <span>Max Marks: {result.total_marks}</span>
-              </div>
-              {result.instructions && (
-                <div style={{ textAlign: "left", marginTop: "14px", fontSize: "12px", color: "var(--text-3)", borderTop: "1px dashed var(--border)", paddingTop: "10px" }}>
-                  <div style={{ fontWeight: 700, color: "var(--text-2)", marginBottom: 4 }}>General Instructions:</div>
-                  <div style={{ whiteSpace: "pre-line" }}>{result.instructions}</div>
+          <div
+            className={`exam-result ${activeViewMode === "key" ? "print-key-only exam-result--key" : "print-exam-only exam-result--exam"}`}
+            id="exam-result"
+          >
+            {/* School / Institution Header */}
+            <div className="exam-result__header">
+              {result.heading_details ? (
+                <div
+                  className="exam-result__institution"
+                  dangerouslySetInnerHTML={{ __html: result.heading_details }}
+                />
+              ) : (
+                <div className="exam-result__institution" style={{ fontSize: "16pt", fontWeight: 800 }}>
+                  {result.subject} EXAMINATION
                 </div>
               )}
+              {activeViewMode === "key" && (
+                <div style={{ textAlign: "center", fontWeight: 700, fontSize: "13pt", margin: "6px 0", color: "var(--accent, #b45309)" }}>
+                  ANSWER KEY & MARKING SCHEME
+                </div>
+              )}
+              <div className="exam-result__meta">
+                <span>Time: {result.duration_minutes || 60} Minutes</span>
+                <span>Maximum Marks: {result.total_marks || 50}</span>
+              </div>
             </div>
 
-            {/* Questions Container */}
-            <div className="exam-questions">
-              {renderQuestions(result.questions || [], result.sections)}
+            <hr className="exam-result__divider" />
+
+            <div className="exam-result__body">
+              {/* Instructions */}
+              {result.instructions && (
+                <div className="exam-result__instructions-box">
+                  <div className="exam-result__instructions-title">General Instructions</div>
+                  <div
+                    className="exam-result__instructions-content"
+                    style={{ fontFamily: "inherit", margin: 0 }}
+                    dangerouslySetInnerHTML={{
+                      __html: result.instructions.startsWith("<")
+                        ? result.instructions
+                        : `<p>${result.instructions}</p>`,
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Questions Container */}
+              <div className="exam-questions">
+                {renderQuestions(result.questions || [], result.sections)}
+              </div>
             </div>
           </div>
 

@@ -2374,63 +2374,77 @@ body {
 
   .exam-result__header {
     text-align: center !important;
-    margin-bottom: 15px !important;
+    margin-bottom: 12px !important;
   }
 
   .exam-result__institution {
     font-weight: bold !important;
-    font-size: 14pt !important;
-    margin-bottom: 5px !important;
+    font-size: 13pt !important;
+    line-height: 1.3 !important;
+    text-align: center !important;
+    margin-bottom: 6px !important;
   }
 
-  .exam-result__meta {
-    display: flex !important;
-    justify-content: space-between !important;
-    font-size: 11pt !important;
-    font-weight: bold !important;
-    border-bottom: 1px solid black !important;
-    padding-bottom: 4px !important;
-    margin-top: 8px !important;
-  }
-
-  .exam-result__divider {
-    display: none !important;
-    /* Replaced by meta border */
-  }
-
-  .exam-result__instructions-box {
-    margin-bottom: 15px !important;
-    padding: 0 !important;
-    border: none !important;
-    background: transparent !important;
+  .exam-result__institution p {
+    margin: 2px 0 !important;
+    line-height: 1.3 !important;
+    text-align: center !important;
   }
 
   .exam-result__meta {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    font-size: 11pt !important;
+    font-size: 10.5pt !important;
     font-weight: bold !important;
     color: black !important;
-    margin-top: 10px !important;
-    padding-top: 6px !important;
+    margin-top: 8px !important;
+    padding: 4px 0 !important;
     border-top: 1.5px solid black !important;
+    border-bottom: 1.5px solid black !important;
+  }
+
+  .exam-result__divider {
+    display: none !important;
+  }
+
+  .exam-result__instructions-box {
+    margin: 10px 0 14px !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
   }
 
   .exam-result__instructions-title {
     font-weight: bold !important;
-    margin-bottom: 4px !important;
-    font-size: 11pt !important;
+    margin-bottom: 3px !important;
+    font-size: 10.5pt !important;
+    text-decoration: underline !important;
   }
 
   .exam-result__instructions-content {
-    font-size: 11pt !important;
-    line-height: 1.4 !important;
+    font-size: 10pt !important;
+    line-height: 1.35 !important;
+  }
+
+  .exam-result__instructions-content ol,
+  .exam-result__instructions-content ul {
+    margin: 3px 0 4px 18px !important;
+    padding: 0 !important;
+  }
+
+  .exam-result__instructions-content li {
+    margin-bottom: 2px !important;
+  }
+
+  .exam-result__instructions-content p {
+    margin: 0 !important;
+    display: inline !important;
   }
 
   .exam-section-header {
-    margin: 18px 0 10px !important;
-    padding: 6px 0 !important;
+    margin: 16px 0 8px !important;
+    padding: 4px 0 !important;
     background: transparent !important;
     border: none !important;
     border-bottom: 1.5px solid black !important;
@@ -2441,17 +2455,17 @@ body {
   }
 
   .exam-section-header__title {
-    font-size: 12pt !important;
+    font-size: 11.5pt !important;
     font-weight: bold !important;
     text-transform: uppercase !important;
     color: black !important;
     display: block !important;
     text-align: center !important;
-    letter-spacing: 0.05em !important;
+    letter-spacing: 0.04em !important;
   }
 
   .exam-section-header__instructions {
-    font-size: 10pt !important;
+    font-size: 9.5pt !important;
     color: black !important;
     font-style: italic !important;
     margin-top: 2px !important;
@@ -2461,7 +2475,7 @@ body {
     page-break-inside: avoid;
     break-inside: avoid;
     padding: 0 !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 10px !important;
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
@@ -2470,12 +2484,12 @@ body {
   .question-card__header {
     display: flex !important;
     align-items: flex-start !important;
-    gap: 10px !important;
+    gap: 8px !important;
     margin-bottom: 0 !important;
   }
 
   .question-card__text {
-    font-size: 11pt !important;
+    font-size: 10.5pt !important;
     line-height: 1.4 !important;
     color: black !important;
     flex: 1 !important;
@@ -2483,53 +2497,56 @@ body {
   }
 
   .question-card__num {
-    font-size: 11pt !important;
+    font-size: 10.5pt !important;
+    font-weight: bold !important;
     background: transparent !important;
     border: none !important;
     color: black !important;
     padding: 0 !important;
     margin: 0 !important;
-    min-width: 25px !important;
+    min-width: 32px !important;
   }
 
   .question-card__marks {
-    font-size: 11pt !important;
+    font-size: 10pt !important;
+    font-weight: bold !important;
     background: transparent !important;
     border: none !important;
     color: black !important;
     padding: 0 !important;
     margin: 0 0 0 auto !important;
-    /* Push to right margin */
+    white-space: nowrap !important;
   }
 
   .question-card__marks::before {
-    content: "[";
+    content: "[ ";
   }
 
   .question-card__marks::after {
-    content: "]";
+    content: " ]";
   }
 
   .question-card__type {
     display: none !important;
-    /* Hide type badge in real paper */
   }
 
   .mcq-options {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    /* Two columns */
-    gap: 4px 20px !important;
-    margin: 4px 0 4px 35px !important;
-    /* Indent options to align with text */
+    column-gap: 20px !important;
+    row-gap: 3px !important;
+    margin: 4px 0 6px 32px !important;
   }
 
   .mcq-option {
     padding: 0 !important;
-    font-size: 11pt !important;
+    font-size: 10.5pt !important;
     background: transparent !important;
     border: none !important;
     color: black !important;
+    display: flex !important;
+    align-items: baseline !important;
+    gap: 6px !important;
   }
 
   /* Hide answers by default and in exam paper mode */
