@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   title: "Gurukul AI — Curriculum-Aligned Assessment Synthesis",
   description:
     "AI-powered exam paper generator inspired by the Gurukul tradition. Build blueprints, upload syllabi, and synthesize professional examination papers in seconds.",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

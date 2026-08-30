@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { UserRole } from "@/types/auth";
 import ChangePasswordModal from "./ChangePasswordModal";
+import GurukulLogo from "./GurukulLogo";
 
 export type View = "dashboard" | "builder" | "library" | "generate" | "import_json" | "history" | "quiz" | "shishyas" | "publishes";
 
@@ -208,46 +209,7 @@ export default function Sidebar({ activeView, onViewChange, role: propRole }: Si
           textDecoration: "none",
         }}
       >
-        <div
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: "10px",
-            background: "linear-gradient(135deg, var(--accent) 0%, var(--gold) 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#ffffff",
-            boxShadow: "0 4px 14px rgba(234, 88, 12, 0.3)",
-            flexShrink: 0,
-          }}
-        >
-          <Sparkles size={20} />
-        </div>
-        <div>
-          <div
-            style={{
-              fontFamily: "var(--font-heading)",
-              fontSize: "17px",
-              fontWeight: 800,
-              color: "var(--text)",
-              letterSpacing: "-0.02em",
-              lineHeight: 1.2,
-            }}
-          >
-            Gurukul AI
-          </div>
-          <div
-            style={{
-              fontSize: "11px",
-              fontFamily: "var(--font-mono)",
-              color: "var(--text-3)",
-              letterSpacing: "0.03em",
-            }}
-          >
-            Exam Generator
-          </div>
-        </div>
+        <GurukulLogo size={38} showText={true} subtitle="Exam Generator" />
       </a>
 
       {/* Role Pill */}

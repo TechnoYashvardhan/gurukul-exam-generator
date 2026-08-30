@@ -8,6 +8,7 @@ import { useAuth } from "@/components/AuthProvider";
 import type { UserRole } from "@/types/auth";
 import { BookOpen, ShieldCheck, GraduationCap, ArrowRight, Lock, Mail, User as UserIcon } from "lucide-react";
 import Toast, { ToastVariant } from "@/components/Toast";
+import GurukulLogo from "@/components/GurukulLogo";
 
 const ParticleBackground = dynamic(
   () => import("@/components/ParticleBackground"),
@@ -85,19 +86,8 @@ export default function RegisterPage() {
         >
           {/* Header */}
           <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <div style={{
-              width: 52,
-              height: 52,
-              borderRadius: "12px",
-              background: "var(--accent-light)",
-              border: "1px solid var(--accent-mid)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 14px",
-              color: "var(--accent)",
-            }}>
-              <GraduationCap size={24} />
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+              <GurukulLogo size={54} />
             </div>
             <h1 style={{
               fontFamily: "var(--font-heading)",

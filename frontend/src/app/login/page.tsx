@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { useAuth } from "@/components/AuthProvider";
 import { BookOpen, ShieldCheck, GraduationCap, ArrowRight, Lock, Mail, Sparkles, User as UserIcon } from "lucide-react";
 import Toast, { ToastVariant } from "@/components/Toast";
+import GurukulLogo from "@/components/GurukulLogo";
 
 const ParticleBackground = dynamic(
   () => import("@/components/ParticleBackground"),
@@ -78,19 +79,8 @@ export default function LoginPage() {
         >
           {/* Logo & Header */}
           <div style={{ textAlign: "center", marginBottom: 28 }}>
-            <div style={{
-              width: 52,
-              height: 52,
-              borderRadius: "12px",
-              background: "var(--accent-light)",
-              border: "1px solid var(--accent-mid)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 14px",
-              color: "var(--accent)",
-            }}>
-              <BookOpen size={24} />
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+              <GurukulLogo size={54} />
             </div>
             <h1 style={{
               fontFamily: "var(--font-heading)",
