@@ -260,6 +260,16 @@ app.include_router(documents.router, prefix="/api/v1")
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
+@app.get("/", tags=["system"], summary="Root status check")
+async def root() -> dict:
+    return {
+        "status": "ok",
+        "app": "Gurukul AI Exam Generator API",
+        "version": "0.1.0",
+        "docs": "/docs",
+    }
+
+
 @app.get("/api/v1/health", tags=["system"], summary="Health check")
 async def health() -> dict:
     return {

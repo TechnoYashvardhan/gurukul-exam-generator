@@ -27,6 +27,5 @@ COPY . .
 
 EXPOSE 8000
 
-# Default: run migrations then start server
-# docker-compose.yml overrides this with --reload for dev
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Default: start server on dynamic $PORT (default 8000)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
