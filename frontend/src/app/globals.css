@@ -4,7 +4,7 @@
 
 @import "tailwindcss";
 
-/* ✨ CSS Custom Properties - Modern Clean Light ✨ */
+/* ✨ CSS Custom Properties - Modern Gurukul Vedic Light ✨ */
 :root {
   --font-display: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
   --font-heading: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
@@ -15,47 +15,47 @@
   --font-shloka: 'Noto Serif Devanagari', 'Noto Sans Devanagari', Georgia, serif;
   --font-serif: 'Noto Serif Devanagari', Georgia, serif;
 
-  /* Backgrounds */
-  --bg: #F8F9FA;
-  --bg-2: #F1F3F5;
+  /* Backgrounds — Warm Vedic Parchment & Ivory Linen */
+  --bg: #FAF6EE;
+  --bg-2: #F4EFE6;
   --surface: #FFFFFF;
-  --surface-2: #F8F9FA;
-  --surface-sunken: #EDF0F3;
+  --surface-2: #FAF5EB;
+  --surface-sunken: #F0E6D6;
 
   /* Sidebar */
   --sidebar-bg: #FFFFFF;
-  --sidebar-border: #E2E8F0;
+  --sidebar-border: #E8DCCB;
 
-  /* Text (Crisp slate) */
-  --text: #0F172A;
-  --text-1: #0F172A;
-  --text-2: #475569;
-  --text-3: #94A3B8;
+  /* Text (Warm charcoal & deep sandalwood) */
+  --text: #1C1917;
+  --text-1: #1C1917;
+  --text-2: #44403C;
+  --text-3: #78716C;
 
-  /* Accent (Vibrant Saffron Terracotta) */
+  /* Accent (Vibrant Saffron Ember) */
   --accent: #EA580C;
-  --accent-light: #FFEDD5;
+  --accent-light: #FFF3E0;
   --accent-mid: #F97316;
   --accent-hover: #C2410C;
   --accent-text: #FFFFFF;
 
-  /* Gold (Radiant Amber) */
+  /* Gold (Sacred Amber) */
   --gold: #D97706;
   --gold-light: #FEF3C7;
   --gold-border: #B45309;
   --gold-dim: #F59E0B;
 
   /* Semantic */
-  --forest: #059669;
+  --forest: #15803D;
   --forest-light: #ECFDF5;
-  --terracotta: #E11D48;
+  --terracotta: #BE123C;
   --terracotta-light: #FFF1F2;
   --amber-hot: #D97706;
   --amber-light: #FFFBEB;
 
-  /* Borders */
-  --border: #E2E8F0;
-  --border-light: #EDF2F7;
+  /* Borders — Warm Parchment & Subtle Gold */
+  --border: #E8DCCB;
+  --border-light: #F4ECE1;
   --border-focus: #EA580C;
 
   /* Difficulty */
@@ -73,9 +73,9 @@
   --extreme-glow: 0 0 12px rgba(124, 58, 237, 0.15);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
-  --shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
-  --shadow-lg: 0 16px 32px -6px rgba(15, 23, 42, 0.08), 0 6px 12px -3px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(120, 53, 15, 0.05);
+  --shadow: 0 4px 14px -2px rgba(120, 53, 15, 0.07), 0 2px 4px -1px rgba(120, 53, 15, 0.03);
+  --shadow-lg: 0 16px 32px -6px rgba(120, 53, 15, 0.1), 0 6px 12px -3px rgba(120, 53, 15, 0.05);
   --shadow-gold: 0 4px 18px rgba(217, 119, 6, 0.2);
   --shadow-accent: 0 4px 18px rgba(234, 88, 12, 0.2);
 
@@ -95,18 +95,18 @@
   --sidebar-w: 240px;
 }
 
-/* ✨ CSS Custom Properties - Modern Gurukul Dark ✨ */
+/* ✨ CSS Custom Properties - Modern Gurukul Vedic Dark ✨ */
 .dark {
-  /* Backgrounds */
-  --bg: #090A0F;
-  --bg-2: #12131A;
-  --surface: #12131A;
-  --surface-2: #1A1B24;
-  --surface-sunken: #0B0C11;
+  /* Backgrounds — Vedic Night & Midnight Indigo */
+  --bg: #0C0D14;
+  --bg-2: #141522;
+  --surface: #141522;
+  --surface-2: #1C1E2E;
+  --surface-sunken: #090A0F;
 
   /* Sidebar */
-  --sidebar-bg: #101117;
-  --sidebar-border: #1E202C;
+  --sidebar-bg: #10111B;
+  --sidebar-border: #23263B;
 
   /* Text */
   --text: #F8FAFC;
@@ -121,20 +121,10 @@
   --accent-hover: #FB923C;
   --accent-text: #FFFFFF;
 
-  /* Gold (Radiant Gold) */
-  --gold: #FBBF24;
-  --gold-light: rgba(251, 191, 36, 0.15);
+  /* Gold (Radiant Gold Leaf) */
+  --gold: #F59E0B;
+  --gold-light: rgba(245, 158, 11, 0.15);
   --gold-border: #D97706;
-  --gold-dim: #F59E0B;
-
-  /* Semantic */
-  --forest: #34D399;
-  --forest-light: rgba(52, 211, 153, 0.15);
-  --terracotta: #FB7185;
-  --terracotta-light: rgba(251, 113, 133, 0.15);
-  --amber-hot: #FBBF24;
-  --amber-light: rgba(251, 191, 36, 0.15);
-
   /* Borders */
   --border: #1E202C;
   --border-light: #181922;
