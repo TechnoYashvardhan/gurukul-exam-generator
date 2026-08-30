@@ -171,6 +171,31 @@ export const documentsApi = {
     }
     return res.json();
   },
+
+  extractTopicsPdf: async (file: File): Promise<{
+    filename: string;
+    extracted_text: string;
+    word_count: number;
+    char_count: number;
+    suggested_subject?: string;
+    suggested_title?: string;
+  }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${getApiUrl()}/documents/extract-topics-pdf`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      let errText = await res.text();
+      try {
+        const parsed = JSON.parse(errText);
+        errText = parsed.detail ?? errText;
+      } catch {}
+      throw new Error(errText);
+    }
+    return res.json();
+  },
 };
 
 export const generationApi = {

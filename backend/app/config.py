@@ -65,13 +65,16 @@ class Settings(BaseSettings):
     redis_url: str = "redis://:redis_secret@localhost:6379/0"
 
     # ── LLM ──────────────────────────────────────────
-    llm_provider: str = "groq"          # groq | gemini | ollama
+    llm_provider: str = "gemini"          # groq | gemini | ollama | openrouter
 
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-20b"
 
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "models/gemini-3.5-flash-lite"
+
+    openrouter_api_key: str = ""
+    openrouter_model: str = "meta-llama/llama-3.3-70b-instruct:free"
 
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"

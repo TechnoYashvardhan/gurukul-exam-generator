@@ -754,8 +754,8 @@ export default function AdminPublishedManager() {
                                         </div>
 
                                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12, marginTop: 6 }}>
-                                          <div style={{ color: qf.is_correct ? "var(--forest)" : "#dc2626" }}>
-                                            <strong>Shishya Answer:</strong> {qf.user_answer || "—"}
+                                          <div style={{ color: qf.is_correct ? "var(--forest)" : "var(--terracotta)" }}>
+                                            <strong>Student Answer <span className="shloka" style={{ fontWeight: 600, fontSize: 11 }}>(शिष्य)</span>:</strong> {qf.user_answer || "—"}
                                           </div>
                                           <div style={{ color: "var(--forest)" }}>
                                             <strong>Correct Answer:</strong> {qf.correct_answer || "—"}
@@ -763,7 +763,7 @@ export default function AdminPublishedManager() {
                                         </div>
 
                                         {(qf.explanation || (qf as any).evaluation_reason) && (
-                                          <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 6, fontStyle: "italic" }}>
+                                          <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 6, fontStyle: "normal" }}>
                                             💡 {qf.explanation || (qf as any).evaluation_reason}
                                           </div>
                                         )}

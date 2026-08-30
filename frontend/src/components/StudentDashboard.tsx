@@ -72,15 +72,10 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
             <KeyRound size={14} /> Change Password
           </button>
         </div>
-        <div className="page-header__breadcrumb">Aashram / Student Sanctuary</div>
-        <h1 className="page-header__title">Welcome, Young Shishya</h1>
-        <div className="page-header__ornament">
-          <div className="page-header__ornament-line" />
-          <div className="page-header__ornament-diamond" />
-          <div className="page-header__ornament-line--right" />
-        </div>
+        <div className="page-header__breadcrumb">Student Portal / Dashboard</div>
+        <h1 className="page-header__title">Welcome back!</h1>
         <p className="page-header__subtitle">
-          "Vidya Dadati Vinayam" — Knowledge bestows humility, humility brings worthiness.
+          Track your practice quizzes, scores, and study progress.
         </p>
       </div>
 
@@ -94,12 +89,9 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
         }}
       >
         <div
+          className="lens-card"
           style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-lg)",
             padding: "20px 18px",
-            boxShadow: "var(--shadow-sm)",
             display: "flex",
             alignItems: "center",
             gap: 16,
@@ -109,9 +101,10 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
             style={{
               width: 44,
               height: 44,
-              borderRadius: "50%",
+              borderRadius: "10px",
               background: "var(--accent-light)",
               color: "var(--accent)",
+              border: "1px solid var(--accent-mid)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -121,21 +114,18 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>
-              Quizzes Attempted
+              Quizzes Taken
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-mono)" }}>
               {stats?.total_quizzes_attempted ?? 0}
             </div>
           </div>
         </div>
 
         <div
+          className="lens-card"
           style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-lg)",
             padding: "20px 18px",
-            boxShadow: "var(--shadow-sm)",
             display: "flex",
             alignItems: "center",
             gap: 16,
@@ -145,9 +135,10 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
             style={{
               width: 44,
               height: 44,
-              borderRadius: "50%",
+              borderRadius: "10px",
               background: "var(--forest-light)",
               color: "var(--forest)",
+              border: "1px solid var(--forest)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -157,21 +148,18 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>
-              Average Mastery
+              Average Score
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-mono)" }}>
               {stats?.average_percentage ?? 0}%
             </div>
           </div>
         </div>
 
         <div
+          className="lens-card"
           style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-lg)",
             padding: "20px 18px",
-            boxShadow: "var(--shadow-sm)",
             display: "flex",
             alignItems: "center",
             gap: 16,
@@ -181,9 +169,10 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
             style={{
               width: 44,
               height: 44,
-              borderRadius: "50%",
+              borderRadius: "10px",
               background: "var(--gold-light)",
-              color: "var(--gold)",
+              color: "var(--gold-border)",
+              border: "1px solid var(--gold)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -193,21 +182,18 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>
-              Best Performance
+              Top Score
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-mono)" }}>
               {stats?.highest_percentage ?? 0}%
             </div>
           </div>
         </div>
 
         <div
+          className="lens-card"
           style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-lg)",
             padding: "20px 18px",
-            boxShadow: "var(--shadow-sm)",
             display: "flex",
             alignItems: "center",
             gap: 16,
@@ -217,9 +203,10 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
             style={{
               width: 44,
               height: 44,
-              borderRadius: "50%",
+              borderRadius: "10px",
               background: "var(--terracotta-light)",
               color: "var(--terracotta)",
+              border: "1px solid var(--terracotta)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -229,9 +216,9 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>
-              Time Invested
+              Practice Time
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-mono)" }}>
               {stats?.total_time_spent_minutes ?? 0}m
             </div>
           </div>
@@ -241,8 +228,8 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
       {/* ── Recommended Quizzes ──────────────────────────────── */}
       <div style={{ marginBottom: 36 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <div className="ornament-heading" style={{ marginBottom: 0 }}>
-            <Sparkles size={16} /> Recommended Quizzes
+          <div className="flex items-center gap-2" style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "16px" }}>
+            <Sparkles size={16} color="var(--accent)" /> Recommended Quizzes
           </div>
           <button
             onClick={() => onNavigateToQuiz()}
@@ -253,7 +240,7 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
         </div>
 
         {unattemptedQuizzes.length === 0 ? (
-          <div className="empty-state" style={{ padding: "28px 20px" }}>
+          <div className="lens-card empty-state" style={{ padding: "28px 20px" }}>
             <span className="empty-state__icon"><CheckCircle2 size={36} color="var(--forest)" /></span>
             <p className="empty-state__title">You're All Caught Up!</p>
             <p className="empty-state__sub">
@@ -271,41 +258,27 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
             {unattemptedQuizzes.slice(0, 3).map((quiz) => (
               <div
                 key={quiz.id}
+                className="lens-card"
                 style={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius-lg)",
                   padding: 20,
-                  boxShadow: "var(--shadow-sm)",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
-                  transition: "transform 0.2s, box-shadow 0.2s",
                 }}
               >
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontFamily: "var(--font-mono)",
-                        padding: "2px 8px",
-                        borderRadius: 100,
-                        background: "var(--accent-light)",
-                        color: "var(--accent)",
-                        border: "1px solid var(--accent-mid)",
-                      }}
-                    >
+                    <span className="chip-badge chip-badge--accent">
                       {quiz.grade}
                     </span>
-                    <span style={{ fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-mono)" }}>
                       <Clock size={12} /> {quiz.duration_minutes}m
                     </span>
                   </div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
                     {quiz.subject}
                   </h3>
-                  <p style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>
+                  <p style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 16 }}>
                     {quiz.num_questions} Questions · {quiz.total_marks} Marks
                   </p>
                 </div>
@@ -427,11 +400,11 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
         }}
       >
         <Flame size={20} color="var(--terracotta)" style={{ margin: "0 auto 8px" }} />
-        <p style={{ fontFamily: "var(--font-serif)", fontSize: 15, fontStyle: "italic", color: "var(--text-1)", marginBottom: 4 }}>
-          "उद्यमेन हि सिध्यन्ति कार्याणि न मनोरथैः । न हि सुप्तस्य सिंहस्य प्रविशन्ति मुखे मृगाः ॥"
+        <p className="shloka" style={{ fontSize: "16px", color: "var(--text)", marginBottom: 6, fontStyle: "normal" }}>
+          उद्यमेन हि सिध्यन्ति कार्याणि न मनोरथैः । न हि सुप्तस्य सिंहस्य प्रविशन्ति मुखे मृगाः ॥
         </p>
-        <p style={{ fontSize: 12, color: "var(--text-3)" }}>
-          Success is achieved through persistent effort and practice, not mere wishing.
+        <p style={{ fontSize: 13, color: "var(--text-3)", fontStyle: "normal" }}>
+          Success comes from hard work and practice, not just wishing.
         </p>
       </div>
 

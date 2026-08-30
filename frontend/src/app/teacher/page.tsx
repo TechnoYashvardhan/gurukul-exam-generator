@@ -121,15 +121,17 @@ export default function TeacherPage() {
             <div className="gurukul-page" key="library">
               {/* Page header */}
               <div className="page-header">
-                <div className="page-header__breadcrumb">Granth / Document Library</div>
-                <h1 className="page-header__title">Document Library</h1>
-                <div className="page-header__ornament">
-                  <div className="page-header__ornament-line" />
-                  <div className="page-header__ornament-diamond" />
-                  <div className="page-header__ornament-line--right" />
+                <div className="page-header__breadcrumb">
+                  Granth <span className="shloka">(ग्रन्थ)</span> / Syllabus Library
                 </div>
+                <h1 className="page-header__title" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span>Granth — Document Library</span>
+                  <span className="shloka" style={{ fontSize: "20px", color: "var(--forest)", fontWeight: 600 }}>
+                    (ग्रन्थ)
+                  </span>
+                </h1>
                 <p className="page-header__subtitle">
-                  Upload a PDF syllabus or fetch one from the web — Gurukul will read and remember it
+                  Upload textbooks, syllabus chapters, or study guides for examination question synthesis.
                 </p>
               </div>
 
@@ -142,9 +144,9 @@ export default function TeacherPage() {
                   <span className="empty-state__icon">
                     <FolderOpen size={48} />
                   </span>
-                  <p className="empty-state__title">No scrolls in the Granth yet</p>
+                  <p className="empty-state__title">No documents in your library yet</p>
                   <p className="empty-state__sub">
-                    Upload a PDF or fetch a syllabus from the web to begin your study.
+                    Upload a textbook PDF or paste web notes to start creating questions.
                   </p>
                 </div>
               ) : (
@@ -185,34 +187,15 @@ export default function TeacherPage() {
 
           {/* ── Generate View ─────────────────────────────────────── */}
           {activeView === "generate" && (
-            <div className="gurukul-page" key="generate">
-              {/* Document selector */}
-              {docs.length > 0 && (
-                <div className="no-print" style={{ marginBottom: 28 }}>
-                  <div className="ornament-heading" style={{ marginBottom: 14 }}>
-                    <File size={14} /> Select Source Document
-                  </div>
-                  <div className="library-grid">
-                    {docs.map((doc) => (
-                      <DocumentCard
-                        key={doc.id}
-                        doc={doc}
-                        selected={doc.id === selectedDocId}
-                        onSelect={() =>
-                          setSelectedDocId((prev) =>
-                            prev === doc.id ? null : doc.id
-                          )
-                        }
-                        onDelete={() => handleDocDeleted(doc.id)}
-                        onReady={handleDocReady}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <GeneratePanel selectedDoc={selectedDoc} onExamSaved={saveToHistory} role="teacher" />
-            </div>
+            <GeneratePanel
+              docs={docs}
+              selectedDocId={selectedDocId}
+              onSelectDoc={setSelectedDocId}
+              selectedDoc={selectedDoc}
+              onExamSaved={saveToHistory}
+              role="teacher"
+              onNavigate={handleViewChange}
+            />
           )}
 
           {/* JSON Paper Importer & Generator View */}

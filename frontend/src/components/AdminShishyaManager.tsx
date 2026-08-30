@@ -227,11 +227,14 @@ export default function AdminShishyaManager() {
       {/* Header with Title and Action */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 700, margin: 0 }}>
-            Shishya & Class Roster (शिष्य प्रबन्धन)
+          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: 24, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            <span>Students & Class Roster</span>
+            <span className="shloka" style={{ fontSize: 16, color: "var(--accent)", fontWeight: 600 }}>
+              (शिष्य प्रबन्धन)
+            </span>
           </h2>
-          <p style={{ fontSize: 13.5, color: "var(--text-muted)", marginTop: 4 }}>
-            Organize student cohorts, enforce 7-digit Scholar ID provisioning, and inspect per-student deep-dive academic report cards.
+          <p style={{ fontSize: 13.5, color: "var(--text-3)", marginTop: 4 }}>
+            Manage student rosters, 7-digit scholar IDs, and view individual student quiz records.
           </p>
         </div>
         <button

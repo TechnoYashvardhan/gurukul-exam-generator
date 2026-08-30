@@ -74,24 +74,23 @@ export default function RegisterPage() {
         position: "relative",
         zIndex: 1,
       }}>
-        <div style={{
-          width: "100%",
-          maxWidth: 480,
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-xl)",
-          boxShadow: "var(--shadow-xl)",
-          padding: "36px 32px",
-          backdropFilter: "blur(12px)",
-        }}>
+        <div
+          className="lens-card"
+          style={{
+            width: "100%",
+            maxWidth: 480,
+            padding: "36px 32px",
+            backdropFilter: "blur(12px)",
+          }}
+        >
           {/* Header */}
           <div style={{ textAlign: "center", marginBottom: 24 }}>
             <div style={{
-              width: 50,
-              height: 50,
-              borderRadius: "50%",
+              width: 52,
+              height: 52,
+              borderRadius: "12px",
               background: "var(--accent-light)",
-              border: "2px solid var(--accent-mid)",
+              border: "1px solid var(--accent-mid)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -101,16 +100,17 @@ export default function RegisterPage() {
               <GraduationCap size={24} />
             </div>
             <h1 style={{
-              fontFamily: "var(--font-serif)",
+              fontFamily: "var(--font-heading)",
               fontSize: 24,
-              fontWeight: 700,
-              color: "var(--text-1)",
-              marginBottom: 6,
+              fontWeight: 800,
+              color: "var(--text)",
+              letterSpacing: "-0.02em",
+              marginBottom: 4,
             }}>
               Join Gurukul AI
             </h1>
             <p style={{ fontSize: 13, color: "var(--text-3)" }}>
-              Select your portal role below
+              Create your educator or administrator workspace
             </p>
           </div>
 
@@ -129,7 +129,7 @@ export default function RegisterPage() {
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)", fontWeight: 700, fontSize: 13 }}>
                 <GraduationCap size={18} />
-                <span>Student (Shishya) Accounts</span>
+                <span>Student Accounts <span className="shloka" style={{ fontWeight: 600, fontSize: "12px", color: "var(--accent)" }}>(शिष्य)</span></span>
               </div>
               <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
                 Students cannot self-register. Your account has been provisioned by your institution admin with your <strong>7-Digit Scholar ID</strong> and default password (<code>student@dsvv123</code>).

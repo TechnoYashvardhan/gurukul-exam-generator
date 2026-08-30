@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { studentApi } from "@/lib/api";
 import type { QuizListItem } from "@/types/auth";
-import { Search, Sparkles, Clock, HelpCircle, CheckCircle2, Play, RefreshCw, Filter } from "lucide-react";
+import { Search, Sparkles, Clock, HelpCircle, CheckCircle2, Play, RefreshCw } from "lucide-react";
 
 interface StudentQuizArenaProps {
   onSelectQuiz: (quizId: string) => void;
@@ -15,11 +15,7 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
   const [search, setSearch] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
 
-  useEffect(() => {
-    loadQuizzes();
-  }, []);
-
-  async function loadQuizzes() {
+  const loadQuizzes = useCallback(async () => {
     setLoading(true);
     try {
       const data = await studentApi.listQuizzes();
@@ -29,7 +25,11 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    loadQuizzes();
+  }, [loadQuizzes]);
 
   const subjects = Array.from(new Set(quizzes.map((q) => q.subject))).filter(Boolean);
 
@@ -45,15 +45,10 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
     <div className="gurukul-page">
       {/* ── Page Header ──────────────────────────────────────── */}
       <div className="page-header">
-        <div className="page-header__breadcrumb">Pariksha / Quiz Arena</div>
-        <h1 className="page-header__title">Interactive Quiz Arena</h1>
-        <div className="page-header__ornament">
-          <div className="page-header__ornament-line" />
-          <div className="page-header__ornament-diamond" />
-          <div className="page-header__ornament-line--right" />
-        </div>
+        <div className="page-header__breadcrumb">Student Portal / Practice & Quizzes</div>
+        <h1 className="page-header__title">Practice Quizzes</h1>
         <p className="page-header__subtitle">
-          Test your mastery online with immediate automated evaluation and feedback
+          Practice questions online and get instant results and step-by-step solutions.
         </p>
       </div>
 
@@ -92,8 +87,8 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <button
             onClick={() => setSelectedSubject("all")}
-            className={`type-pill ${selectedSubject === "all" ? "type-pill--active" : ""}`}
-            style={{ padding: "6px 14px" }}
+            className={`chip-badge ${selectedSubject === "all" ? "chip-badge--accent" : ""}`}
+            style={{ padding: "6px 14px", cursor: "pointer" }}
           >
             All Subjects
           </button>
@@ -101,8 +96,8 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
             <button
               key={sub}
               onClick={() => setSelectedSubject(sub)}
-              className={`type-pill ${selectedSubject === sub ? "type-pill--active" : ""}`}
-              style={{ padding: "6px 14px" }}
+              className={`chip-badge ${selectedSubject === sub ? "chip-badge--accent" : ""}`}
+              style={{ padding: "6px 14px", cursor: "pointer" }}
             >
               {sub}
             </button>
@@ -113,14 +108,25 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
       {/* ── Quizzes Grid ─────────────────────────────────────── */}
       {loading ? (
         <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-3)" }}>
-          <span className="spin" style={{ display: "inline-block", width: 24, height: 24, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", marginBottom: 12 }} />
-          <div>Retrieving available quizzes from the temple...</div>
+          <span
+            className="spin"
+            style={{
+              display: "inline-block",
+              width: 24,
+              height: 24,
+              border: "2px solid currentColor",
+              borderTopColor: "transparent",
+              borderRadius: "50%",
+              marginBottom: 12,
+            }}
+          />
+          <div>Retrieving available quizzes...</div>
         </div>
       ) : filteredQuizzes.length === 0 ? (
-        <div className="empty-state" style={{ marginTop: 20 }}>
-          <span className="empty-state__icon"><Sparkles size={48} /></span>
-          <p className="empty-state__title">No Quizzes Available</p>
-          <p className="empty-state__sub">
+        <div className="lens-card" style={{ padding: 36, textAlign: "center", marginTop: 20 }}>
+          <Sparkles size={36} style={{ color: "var(--accent)", margin: "0 auto 12px" }} />
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>No Quizzes Available</h3>
+          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
             {quizzes.length === 0
               ? "Your teachers or admin have not published any quizzes yet. Check back soon!"
               : "No quizzes match your current search filters."}
@@ -130,24 +136,20 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-            gap: 20,
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+            gap: 18,
           }}
         >
           {filteredQuizzes.map((quiz) => (
             <div
               key={quiz.id}
+              className="lens-card"
               style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-xl)",
-                padding: 24,
-                boxShadow: "var(--shadow-sm)",
+                padding: 22,
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
                 position: "relative",
-                overflow: "hidden",
               }}
             >
               {quiz.attempted && (
@@ -159,44 +161,27 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
                     display: "flex",
                     alignItems: "center",
                     gap: 4,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "var(--forest)",
-                    background: "var(--forest-light)",
-                    border: "1px solid var(--forest)",
-                    padding: "2px 8px",
-                    borderRadius: 100,
                   }}
                 >
-                  <CheckCircle2 size={12} />
-                  <span>Best: {quiz.best_score}%</span>
+                  <span className="chip-badge chip-badge--forest" style={{ fontSize: 10 }}>
+                    <CheckCircle2 size={11} /> Best: {quiz.best_score}%
+                  </span>
                 </div>
               )}
 
               <div>
                 <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: "var(--font-mono)",
-                      padding: "2px 8px",
-                      borderRadius: 100,
-                      background: "var(--accent-light)",
-                      color: "var(--accent)",
-                      border: "1px solid var(--accent-mid)",
-                      fontWeight: 600,
-                    }}
-                  >
+                  <span className="chip-badge chip-badge--accent">
                     {quiz.grade}
                   </span>
                 </div>
 
                 <h3
                   style={{
-                    fontFamily: "var(--font-serif)",
-                    fontSize: 18,
+                    fontFamily: "var(--font-heading)",
+                    fontSize: 16,
                     fontWeight: 700,
-                    color: "var(--text-1)",
+                    color: "var(--text)",
                     marginBottom: 8,
                   }}
                 >
@@ -206,7 +191,7 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
                 {quiz.instructions && (
                   <p
                     style={{
-                      fontSize: 12,
+                      fontSize: 12.5,
                       color: "var(--text-3)",
                       marginBottom: 16,
                       lineHeight: 1.5,
@@ -231,13 +216,19 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
                       display: "flex",
                       alignItems: "center",
                       gap: 6,
-                      background: quiz.is_active_window === false && quiz.status_label.includes("Scheduled")
-                        ? "rgba(59, 130, 246, 0.1)"
-                        : "rgba(239, 68, 68, 0.1)",
-                      color: quiz.is_active_window === false && quiz.status_label.includes("Scheduled")
-                        ? "#2563eb"
-                        : "#dc2626",
-                      border: `1px solid ${quiz.is_active_window === false && quiz.status_label.includes("Scheduled") ? "rgba(59, 130, 246, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
+                      background:
+                        quiz.is_active_window === false && quiz.status_label.includes("Scheduled")
+                          ? "rgba(59, 130, 246, 0.1)"
+                          : "rgba(239, 68, 68, 0.1)",
+                      color:
+                        quiz.is_active_window === false && quiz.status_label.includes("Scheduled")
+                          ? "#2563eb"
+                          : "#dc2626",
+                      border: `1px solid ${
+                        quiz.is_active_window === false && quiz.status_label.includes("Scheduled")
+                          ? "rgba(59, 130, 246, 0.2)"
+                          : "rgba(239, 68, 68, 0.2)"
+                      }`,
                     }}
                   >
                     <Clock size={13} />
@@ -250,10 +241,10 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
                     gap: 8,
-                    padding: "12px 14px",
+                    padding: "10px 12px",
                     background: "var(--surface-sunken)",
                     borderRadius: "var(--radius-md)",
-                    marginBottom: 20,
+                    marginBottom: 18,
                     fontSize: 12,
                   }}
                 >
@@ -263,7 +254,7 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
                   </div>
                   <div style={{ color: "var(--text-2)", display: "flex", alignItems: "center", gap: 6 }}>
                     <Clock size={14} color="var(--gold)" />
-                    <span><strong>{quiz.duration_minutes}</strong> Minutes</span>
+                    <span><strong>{quiz.duration_minutes}</strong> Min</span>
                   </div>
                 </div>
               </div>

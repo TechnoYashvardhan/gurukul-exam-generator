@@ -67,43 +67,43 @@ export default function LoginPage() {
         position: "relative",
         zIndex: 1,
       }}>
-        <div style={{
-          width: "100%",
-          maxWidth: 440,
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-xl)",
-          boxShadow: "var(--shadow-xl)",
-          padding: "36px 32px",
-          backdropFilter: "blur(12px)",
-        }}>
+        <div
+          className="lens-card"
+          style={{
+            width: "100%",
+            maxWidth: 440,
+            padding: "36px 32px",
+            backdropFilter: "blur(12px)",
+          }}
+        >
           {/* Logo & Header */}
           <div style={{ textAlign: "center", marginBottom: 28 }}>
             <div style={{
-              width: 54,
-              height: 54,
-              borderRadius: "50%",
+              width: 52,
+              height: 52,
+              borderRadius: "12px",
               background: "var(--accent-light)",
-              border: "2px solid var(--accent-mid)",
+              border: "1px solid var(--accent-mid)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              margin: "0 auto 16px",
+              margin: "0 auto 14px",
               color: "var(--accent)",
             }}>
-              <BookOpen size={26} />
+              <BookOpen size={24} />
             </div>
             <h1 style={{
-              fontFamily: "var(--font-serif)",
-              fontSize: 26,
-              fontWeight: 700,
-              color: "var(--text-1)",
-              marginBottom: 6,
+              fontFamily: "var(--font-heading)",
+              fontSize: 24,
+              fontWeight: 800,
+              color: "var(--text)",
+              letterSpacing: "-0.02em",
+              marginBottom: 4,
             }}>
               Gurukul AI
             </h1>
             <p style={{ fontSize: 13, color: "var(--text-3)" }}>
-              Sign in to your learning & examination sanctuary
+              Sign in to your curriculum synthesis workspace
             </p>
           </div>
 
@@ -167,7 +167,7 @@ export default function LoginPage() {
                 lineHeight: 1.4,
               }}
             >
-              🎓 <strong>Students (Shishyas):</strong> Sign in with your <strong>7-Digit Scholar ID</strong> (or email) and default password (<code>student@dsvv123</code>). You can change your password anytime from your dashboard.
+              🎓 <strong>Students <span className="shloka" style={{ fontWeight: 600, fontSize: "12px", color: "var(--accent)" }}>(शिष्य)</span>:</strong> Sign in with your <strong>7-Digit Scholar ID</strong> (or email) and default password (<code>student@dsvv123</code>). You can change your password anytime from your dashboard.
             </div>
 
             <button

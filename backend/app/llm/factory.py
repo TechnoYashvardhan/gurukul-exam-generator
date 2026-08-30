@@ -44,10 +44,14 @@ def get_llm_client(provider: str | None = None) -> LLMClient:
             from app.llm.ollama_client import OllamaClient
             return OllamaClient()
 
+        case "openrouter":
+            from app.llm.openrouter_client import OpenRouterClient
+            return OpenRouterClient()
+
         case _:
             raise LLMProviderError(
                 resolved,
                 f"Unknown provider '{resolved}'. "
-                "Valid values: groq | gemini | ollama. "
+                "Valid values: groq | gemini | openrouter | ollama. "
                 "Set LLM_PROVIDER in your .env file.",
             )

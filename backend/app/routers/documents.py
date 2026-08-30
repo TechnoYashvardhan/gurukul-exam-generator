@@ -470,6 +470,69 @@ async def delete_document(
     logger.info("Document deleted | id=%s", document_id)
 
 
+# ── PDF Topic Text Extractor ──────────────────────────────────────────────────
+
+class ExtractTopicsResponse(BaseModel):
+    filename: str
+    extracted_text: str
+    word_count: int
+    char_count: int
+    suggested_subject: str | None = None
+    suggested_title: str | None = None
+
+
+@router.post(
+    "/extract-topics-pdf",
+    response_model=ExtractTopicsResponse,
+    summary="Extract text/topics from a PDF directly for topic focus insertion",
+)
+async def extract_topics_from_pdf(
+    file: UploadFile = File(...),
+) -> ExtractTopicsResponse:
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF files are supported for topic extraction.",
+        )
+
+    contents = await file.read()
+    if len(contents) > 25 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File size exceeds 25 MB limit.",
+        )
+
+    from app.services.document_processor import parse_pdf_bytes
+    import re
+    try:
+        raw_text = parse_pdf_bytes(contents)
+    except Exception as e:
+        logger.warning("PDF topic parse failed: %s", e)
+        raise HTTPException(status_code=400, detail=f"Could not extract text from PDF: {e}")
+
+    cleaned = raw_text.strip()
+    words = cleaned.split()
+
+    # Suggest title from filename
+    clean_stem = Path(file.filename).stem.replace("_", " ").replace("-", " ").title()
+
+    # Detect subject heuristic
+    suggested_subj = None
+    for s in ["Physics", "Chemistry", "Mathematics", "Computer Science", "Biology", "History", "Geography", "English", "Economics"]:
+        if re.search(rf"\b{s}\b", clean_stem, re.IGNORECASE) or re.search(rf"\b{s}\b", cleaned[:500], re.IGNORECASE):
+            suggested_subj = s
+            break
+
+    return ExtractTopicsResponse(
+        filename=file.filename,
+        extracted_text=cleaned,
+        word_count=len(words),
+        char_count=len(cleaned),
+        suggested_subject=suggested_subj,
+        suggested_title=clean_stem,
+    )
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 async def _get_or_404(doc_id: uuid.UUID, db: AsyncSession) -> DocumentORM:

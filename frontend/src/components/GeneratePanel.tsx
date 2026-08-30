@@ -1,7 +1,9 @@
+"use client";
+
 import { useCallback, useEffect, useState } from "react";
 import { documentsApi, generationApi, templatesApi, adminApi } from "@/lib/api";
 import type { DocumentSummary } from "@/types/document";
-import type { TemplateSummary, GeneratedExam } from "@/types/template";
+import type { TemplateSummary, GeneratedExam, ExamTemplate } from "@/types/template";
 import type { ClassSummary } from "@/types/auth";
 import {
   Bot,
@@ -14,30 +16,61 @@ import {
   Sparkles,
   Printer,
   Send,
-  Share2,
-  School,
   Download,
+  ScrollText,
+  Clock,
+  Award,
+  Layers,
+  ArrowRight,
+  RefreshCw,
+  Plus,
+  BookOpen,
+  Library,
+  Sliders,
+  Check,
 } from "lucide-react";
-import { LoadingMessages } from "./LoadingMessages";
 import MathText from "./MathText";
 import { useAuth } from "./AuthProvider";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
 import { downloadExamAsJson } from "@/lib/exportUtils";
+import type { View } from "./Sidebar";
 
 interface GeneratePanelProps {
-  selectedDoc: DocumentSummary | null;
+  docs?: DocumentSummary[];
+  selectedDocId?: string | null;
+  onSelectDoc?: (docId: string | null) => void;
+  selectedDoc?: DocumentSummary | null;
   onExamSaved: (exam: GeneratedExam) => void;
   role?: "admin" | "teacher";
+  onNavigate?: (view: View) => void;
 }
 
-export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole }: GeneratePanelProps) {
+export default function GeneratePanel({
+  docs: propDocs,
+  selectedDocId: propSelectedDocId,
+  onSelectDoc: propOnSelectDoc,
+  selectedDoc: propSelectedDoc,
+  onExamSaved,
+  role: propRole,
+  onNavigate,
+}: GeneratePanelProps) {
   const { user } = useAuth();
   const activeRole = propRole || user?.role || "teacher";
+
+  // Documents & Blueprints state
+  const [internalDocs, setInternalDocs] = useState<DocumentSummary[]>([]);
+  const [internalSelectedDocId, setInternalSelectedDocId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<TemplateSummary[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [selectedTemplateDetail, setSelectedTemplateDetail] = useState<ExamTemplate | null>(null);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  // Classes state (for admin publishing)
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [showPublishModal, setShowPublishModal] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  // Generation state
   const [generating, setGenerating] = useState(false);
   const [progressMsg, setProgressMsg] = useState<string>("Initializing...");
   const [result, setResult] = useState<GeneratedExam | null>(null);
@@ -48,37 +81,83 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
   const [publishedInfo, setPublishedInfo] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
 
-  useEffect(() => {
-    templatesApi.list(activeRole).then(setTemplates).catch(() => { });
-    if (activeRole === "admin") {
-      adminApi.listClasses().then(setClasses).catch(() => { });
+  // Resolve active docs list and selection
+  const docs = propDocs !== undefined ? propDocs : internalDocs;
+  const currentDocId = propSelectedDocId !== undefined ? propSelectedDocId : internalSelectedDocId;
+  const selectedDoc =
+    propSelectedDoc !== undefined
+      ? propSelectedDoc
+      : docs.find((d) => d.id === currentDocId) || null;
+
+  const handleSelectDoc = (id: string | null) => {
+    if (propOnSelectDoc) {
+      propOnSelectDoc(id);
+    } else {
+      setInternalSelectedDocId(id);
     }
-  }, [activeRole]);
+  };
+
+  // Initial data loading
+  useEffect(() => {
+    if (propDocs === undefined) {
+      documentsApi.list().then(setInternalDocs).catch(() => {});
+    }
+
+    setLoadingTemplates(true);
+    templatesApi
+      .list(activeRole)
+      .then((data) => {
+        setTemplates(data);
+        if (data.length > 0 && !selectedTemplateId) {
+          setSelectedTemplateId(data[0].id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingTemplates(false));
+
+    if (activeRole === "admin") {
+      adminApi.listClasses().then(setClasses).catch(() => {});
+    }
+  }, [activeRole, propDocs]);
+
+  // Load full template detail when selected to show live section breakdown
+  useEffect(() => {
+    if (!selectedTemplateId) {
+      setSelectedTemplateDetail(null);
+      return;
+    }
+    templatesApi
+      .get(selectedTemplateId)
+      .then((detail) => setSelectedTemplateDetail(detail.config))
+      .catch(() => setSelectedTemplateDetail(null));
+  }, [selectedTemplateId]);
 
   async function handleGenerate() {
     const tpl = templates.find((t) => t.id === selectedTemplateId);
     if (!tpl) {
-      setError("Please select a template first.");
+      setError("Please select an exam blueprint first.");
       return;
     }
     setError(null);
     setResult(null);
-    setProgressMsg("Connecting to AI models...");
+    setProgressMsg("Connecting to AI model...");
     setGenerating(true);
     try {
-      // Fetch full template config
       const full = await templatesApi.get(tpl.id);
-      const exam = await generationApi.generate({
-        template: full.config,
-        document_id: selectedDoc ? selectedDoc.id : undefined,
-        source_type: selectedDoc ? "document" : "hardcoded",
-        custom_topic: customTopic.trim() || null,
-      }, (msg) => setProgressMsg(msg));
+      const exam = await generationApi.generate(
+        {
+          template: full.config,
+          document_id: selectedDoc ? selectedDoc.id : undefined,
+          source_type: selectedDoc ? "document" : "hardcoded",
+          custom_topic: customTopic.trim() || null,
+        },
+        (msg) => setProgressMsg(msg)
+      );
       setResult(exam);
       setPublished(false);
       onExamSaved(exam);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Generation failed.");
+      setError(e instanceof Error ? e.message : "Generation failed. Please try again.");
     } finally {
       setGenerating(false);
     }
@@ -100,17 +179,14 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
     const targetName = options.targetClassId
       ? classes.find((c) => c.id === options.targetClassId)?.name || "Selected Cohort"
       : "All Cohorts (Global)";
-    
+
     let msg = `🎉 Quiz published to ${targetName}!`;
     if (options.scheduleStartAt) {
       const dt = new Date(options.scheduleStartAt);
-      msg = `🗓️ Quiz scheduled for ${targetName} (Starts: ${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
+      msg = `🗓️ Quiz scheduled for ${targetName} (Starts: ${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`;
     }
     setPublishedInfo(targetName);
-    setToast({
-      message: msg,
-      variant: "success",
-    });
+    setToast({ message: msg, variant: "success" });
   }
 
   const handlePrint = (mode: "exam" | "key") => {
@@ -121,34 +197,35 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
   };
 
   const renderQuestions = (questions: any[], sections?: any[] | null) => {
-    const uniqueSecIds = Array.from(new Set(questions.map(q => q.section_id)));
+    const uniqueSecIds = Array.from(new Set(questions.map((q) => q.section_id)));
     return questions.map((q, idx) => {
       const isFirstInSec = idx === 0 || q.section_id !== questions[idx - 1].section_id;
       const secIndex = uniqueSecIds.indexOf(q.section_id);
       const secLetter = String.fromCharCode(65 + (secIndex >= 0 ? secIndex : 0));
-      const sectionMeta = sections?.find(s => s.id === q.section_id);
-      
+      const sectionMeta = sections?.find((s) => s.id === q.section_id);
+
       let secTitle = "";
       if (sectionMeta?.title) {
-        secTitle = sectionMeta.title.trim().toUpperCase().startsWith("SECTION") 
-          ? sectionMeta.title.trim().toUpperCase() 
+        secTitle = sectionMeta.title.trim().toUpperCase().startsWith("SECTION")
+          ? sectionMeta.title.trim().toUpperCase()
           : `SECTION ${secLetter} — ${sectionMeta.title.trim().toUpperCase()}`;
       } else {
-        const typeLabel = q.type === "mcq" 
-          ? "MULTIPLE CHOICE QUESTIONS" 
-          : q.type.replace('_', ' ').toUpperCase();
+        const typeLabel =
+          q.type === "mcq"
+            ? "MULTIPLE CHOICE QUESTIONS"
+            : q.type.replace("_", " ").toUpperCase();
         secTitle = `SECTION ${secLetter} — ${typeLabel}`;
       }
       const secInstructions = sectionMeta?.instructions;
 
       return (
-        <div key={`${idx}-${q.question_no}`}>
+        <div key={`${idx}-${q.question_no}`} style={{ marginBottom: 16 }}>
           {isFirstInSec && (
             <div className="exam-section-header">
               <div className="exam-section-header__title">
                 <span>{secTitle}</span>
-                <span style={{ fontSize: "12px", opacity: 0.8, fontWeight: 500 }} className="no-print">
-                  {q.marks} Mark{q.marks > 1 ? 's' : ''} each
+                <span className="chip-badge no-print" style={{ fontSize: "11px" }}>
+                  {q.marks} Mark{q.marks > 1 ? "s" : ""} each
                 </span>
               </div>
               {secInstructions && (
@@ -159,34 +236,80 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
 
           <div className="question-card">
             <div className="question-card__header">
-              <span className="question-card__num">Q.{q.question_no}</span>
-              <div className="question-card__text">
+              <span className="question-card__num" style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                [ Q{q.question_no} ]
+              </span>
+              <div className="question-card__text" style={{ fontSize: "14px", lineHeight: 1.6 }}>
                 <MathText content={q.text} />
               </div>
-              <span className="question-card__marks">{q.marks}</span>
-              <span className="question-card__type">{q.type.replace("_", " ")}</span>
+              <span className="chip-badge chip-badge--gold question-card__marks">
+                {q.marks} {q.marks === 1 ? "Mark" : "Marks"}
+              </span>
+              <span className="chip-badge question-card__type no-print">
+                {q.type.replace("_", " ")}
+              </span>
             </div>
 
             {q.options && q.options.length > 0 && (
-              <div className="mcq-options">
+              <div className="mcq-options" style={{ marginTop: 12 }}>
                 {q.options.map((opt: any) => (
                   <div
                     key={opt.key}
                     className={`mcq-option ${activeViewMode === "key" && opt.key === q.answer ? "mcq-option--correct" : ""}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "8px 12px",
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid var(--border)",
+                      marginBottom: "6px",
+                      background: activeViewMode === "key" && opt.key === q.answer ? "var(--forest-light)" : "var(--surface)",
+                    }}
                   >
-                    <div className="flex items-start gap-2">
-                      <strong>({opt.key.toLowerCase()})</strong> 
+                    <span
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        fontWeight: 700,
+                        width: "22px",
+                        height: "22px",
+                        borderRadius: "50%",
+                        background: activeViewMode === "key" && opt.key === q.answer ? "var(--forest)" : "var(--surface-sunken)",
+                        color: activeViewMode === "key" && opt.key === q.answer ? "#fff" : "var(--text)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "12px",
+                      }}
+                    >
+                      {opt.key}
+                    </span>
+                    <span style={{ fontSize: "13.5px" }}>
                       <MathText content={opt.text} />
-                    </div>
+                    </span>
                   </div>
                 ))}
               </div>
             )}
 
             {activeViewMode === "key" && q.answer && (
-              <div className="question-card__answer flex items-start gap-2">
-                <span className="font-semibold">Answer:</span>
-                <MathText content={q.answer} />
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "10px 14px",
+                  background: "var(--forest-light)",
+                  border: "1px solid var(--forest)",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "13px",
+                }}
+              >
+                <div style={{ fontWeight: 700, color: "var(--forest)", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                  <CheckCircle size={15} />
+                  <span>Model Solution & Marking Scheme:</span>
+                </div>
+                <div style={{ color: "var(--text)" }}>
+                  <MathText content={q.answer} />
+                </div>
               </div>
             )}
           </div>
@@ -197,347 +320,608 @@ export default function GeneratePanel({ selectedDoc, onExamSaved, role: propRole
 
   return (
     <div className="gurukul-page">
-      {/* ── Page Header ── */}
-      <div className="page-header no-print">
-        <div className="page-header__breadcrumb">Rachna / Generate</div>
-        <h1 className="page-header__title">Generate Exam</h1>
-        <div className="page-header__ornament">
-          <div className="page-header__ornament-line" />
-          <div className="page-header__ornament-diamond" />
-          <div className="page-header__ornament-line--right" />
+      {toast && <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+
+      {/* ── Top Header ── */}
+      <div className="page-header no-print" style={{ marginBottom: "28px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <span className="chip-badge chip-badge--accent">
+            <Sparkles size={12} /> RACHNA STUDIO
+          </span>
+          <span className="shloka" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
+            रचना परीक्षा निर्माण
+          </span>
         </div>
-        <p className="page-header__subtitle">
-          Select a document and template — the Guru will write the exam
+        <h1 className="page-header__title" style={{ display: "flex", alignItems: "center", gap: 10, margin: 0 }}>
+          <span>Exam Paper Generator</span>
+        </h1>
+        <p className="page-header__subtitle" style={{ marginTop: 4 }}>
+          Select your syllabus source document and an exam blueprint to synthesize balanced examination papers with verified model answer keys.
         </p>
       </div>
 
-      {/* ── Control card ── */}
-      <div className="vidya-card no-print" style={{ maxWidth: "640px", margin: "0 auto 2rem" }}>
-        <div className="vidya-card__header">
-          <Bot size={20} className="text-amber-600" />
-          <h2 className="vidya-card__title">Exam Configuration</h2>
-        </div>
-
-        {/* ── Source info ── */}
-        <div className="vidya-card" style={{ marginBottom: "1.25rem", padding: "0.875rem 1rem" }}>
-          {selectedDoc ? (
-            <div className="flex items-center gap-3">
-              <span style={{ color: "var(--color-accent)" }}>
-                {selectedDoc.source === "upload" ? (
-                  <FileText size={18} />
-                ) : (
-                  <Globe size={18} />
-                )}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p
-                  style={{
-                    fontFamily: "var(--font-body)",
-                    fontWeight: 600,
-                    fontSize: "0.9rem",
-                    color: "var(--color-ink)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {selectedDoc.filename}
-                </p>
-                <p
-                  style={{
-                    fontFamily: "var(--font-body)",
-                    fontSize: "0.75rem",
-                    color: "var(--color-ink-muted)",
-                    marginTop: "2px",
-                  }}
-                >
-                  {selectedDoc.chunk_count} chunks indexed · RAG ready
-                </p>
+      {/* ── Studio Configuration (When No Exam Generated) ── */}
+      {!result && (
+        <div
+          className="no-print"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: "24px",
+            alignItems: "start",
+          }}
+        >
+          {/* ── Left Column: Steps 1, 2 & 3 ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            {/* Step 1: Granth Document Source */}
+            <div className="lens-card" style={{ padding: "22px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "8px",
+                      background: "var(--forest-light)",
+                      color: "var(--forest)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Library size={17} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "15.5px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
+                      1. Syllabus Source (Granth)
+                    </h3>
+                    <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: 0 }}>
+                      Select the textbook or notes to extract questions from
+                    </p>
+                  </div>
+                </div>
+                <span className="chip-badge chip-badge--forest" style={{ fontSize: "10px" }}>
+                  STEP 1
+                </span>
               </div>
-              <span style={{ color: "var(--color-success, #22c55e)" }}>
-                <CheckCircle size={16} />
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <span style={{ color: "var(--color-ink-muted)" }}>
-                <FolderOpen size={18} />
-              </span>
-              <p
-                style={{
-                  fontFamily: "var(--font-body)",
-                  fontSize: "0.85rem",
-                  color: "var(--color-ink-muted)",
-                  margin: 0,
-                }}
-              >
-                Select a <strong>Ready</strong> document from the library above
-              </p>
-            </div>
-          )}
-        </div>
 
-        {/* ── Template selector ── */}
-        <div className="gk-field">
-          <label className="gk-label flex items-center gap-2" htmlFor="gen-template">
-            <ClipboardList size={15} />
-            Exam Template <span style={{ color: "var(--color-danger, #ef4444)" }}>*</span>
-          </label>
-          <select
-            id="gen-template"
-            className="gk-select"
-            value={selectedTemplateId}
-            onChange={(e) => setSelectedTemplateId(e.target.value)}
-          >
-            <option value="">— Choose a template —</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} · {t.subject} · {t.grade}
-              </option>
-            ))}
-          </select>
-          {templates.length === 0 && (
-            <p
+              {docs.length === 0 ? (
+                <div
+                  style={{
+                    padding: "20px",
+                    textAlign: "center",
+                    background: "var(--surface-sunken)",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px dashed var(--border)",
+                  }}
+                >
+                  <FolderOpen size={28} style={{ color: "var(--text-3)", margin: "0 auto 8px" }} />
+                  <p style={{ fontSize: "13px", color: "var(--text-2)", marginBottom: "10px" }}>
+                    No documents uploaded in your library yet.
+                  </p>
+                  {onNavigate && (
+                    <button
+                      className="gk-btn gk-btn--secondary gk-btn--sm"
+                      onClick={() => onNavigate("library")}
+                    >
+                      <Plus size={13} /> Upload to Granth Library
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "240px", overflowY: "auto", paddingRight: "4px" }}>
+                  {/* General Knowledge option */}
+                  <div
+                    onClick={() => handleSelectDoc(null)}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "var(--radius-sm)",
+                      border: currentDocId === null ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                      background: currentDocId === null ? "var(--accent-light)" : "var(--surface-sunken)",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <Globe size={16} color={currentDocId === null ? "var(--accent)" : "var(--text-3)"} />
+                      <div>
+                        <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)" }}>
+                          Curriculum Subject Knowledge (No Document)
+                        </div>
+                        <div style={{ fontSize: "11px", color: "var(--text-3)" }}>
+                          Generates standard textbook questions based on subject & grade
+                        </div>
+                      </div>
+                    </div>
+                    {currentDocId === null && <Check size={16} color="var(--accent)" />}
+                  </div>
+
+                  {/* Document cards */}
+                  {docs.map((doc) => {
+                    const isSelected = doc.id === currentDocId;
+                    return (
+                      <div
+                        key={doc.id}
+                        onClick={() => handleSelectDoc(doc.id)}
+                        style={{
+                          padding: "10px 14px",
+                          borderRadius: "var(--radius-sm)",
+                          border: isSelected ? "1.5px solid var(--forest)" : "1px solid var(--border)",
+                          background: isSelected ? "var(--forest-light)" : "var(--surface-sunken)",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1, marginRight: 8 }}>
+                          <FileText size={16} color={isSelected ? "var(--forest)" : "var(--text-3)"} style={{ flexShrink: 0 }} />
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {doc.filename}
+                            </div>
+                            <div style={{ fontSize: "11px", color: "var(--text-3)", display: "flex", alignItems: "center", gap: 6, marginTop: 1 }}>
+                              <span>{doc.subject || "General"}</span>
+                              <span>•</span>
+                              <span>{doc.chunk_count} Chunks Indexed</span>
+                            </div>
+                          </div>
+                        </div>
+                        {isSelected && <Check size={16} color="var(--forest)" style={{ flexShrink: 0 }} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Step 2: Vidya Exam Blueprint */}
+            <div className="lens-card" style={{ padding: "22px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "8px",
+                      background: "var(--gold-light)",
+                      color: "var(--gold-border)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <BookOpen size={17} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "15.5px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
+                      2. Exam Blueprint (Vidya)
+                    </h3>
+                    <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: 0 }}>
+                      Choose your layout, marks, and question formats
+                    </p>
+                  </div>
+                </div>
+                <span className="chip-badge chip-badge--gold" style={{ fontSize: "10px" }}>
+                  STEP 2
+                </span>
+              </div>
+
+              {templates.length === 0 ? (
+                <div
+                  style={{
+                    padding: "20px",
+                    textAlign: "center",
+                    background: "var(--surface-sunken)",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px dashed var(--border)",
+                  }}
+                >
+                  <ScrollText size={28} style={{ color: "var(--text-3)", margin: "0 auto 8px" }} />
+                  <p style={{ fontSize: "13px", color: "var(--text-2)", marginBottom: "10px" }}>
+                    No blueprints available. Create one to define sections and marks.
+                  </p>
+                  {onNavigate && (
+                    <button
+                      className="gk-btn gk-btn--secondary gk-btn--sm"
+                      onClick={() => onNavigate("builder")}
+                    >
+                      <Plus size={13} /> Create Blueprint in Vidya
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px" }}>
+                  {templates.map((tpl) => {
+                    const isSelected = tpl.id === selectedTemplateId;
+                    return (
+                      <div
+                        key={tpl.id}
+                        onClick={() => setSelectedTemplateId(tpl.id)}
+                        style={{
+                          padding: "12px",
+                          borderRadius: "var(--radius-sm)",
+                          border: isSelected ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                          background: isSelected ? "var(--accent-light)" : "var(--surface-sunken)",
+                          cursor: "pointer",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                          <span style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text)", lineHeight: 1.3 }}>
+                            {tpl.name}
+                          </span>
+                          {isSelected && <Check size={16} color="var(--accent)" style={{ flexShrink: 0 }} />}
+                        </div>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: "auto" }}>
+                          <span className="chip-badge" style={{ fontSize: "10px", padding: "1px 6px" }}>
+                            {tpl.subject}
+                          </span>
+                          <span className="chip-badge" style={{ fontSize: "10px", padding: "1px 6px" }}>
+                            {tpl.grade}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Step 3: Custom Focus & Instructions (Optional) */}
+            <div className="lens-card" style={{ padding: "20px 22px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                <Sliders size={16} color="var(--accent)" />
+                <h4 style={{ fontFamily: "var(--font-heading)", fontSize: "14px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
+                  Custom Focus & Instructions (Optional)
+                </h4>
+              </div>
+              <input
+                type="text"
+                className="gk-input"
+                placeholder="e.g. Focus on Chapter 3 numericals, include conceptual reasoning questions..."
+                value={customTopic}
+                onChange={(e) => setCustomTopic(e.target.value)}
+                style={{ fontSize: "13px" }}
+              />
+            </div>
+          </div>
+
+          {/* ── Right Column: Live Blueprint Summary & Synthesis Hub ── */}
+          <div style={{ position: "sticky", top: "20px" }}>
+            <div
+              className="lens-card"
               style={{
-                fontFamily: "var(--font-body)",
-                fontSize: "0.78rem",
-                color: "var(--color-ink-muted)",
-                marginTop: "0.4rem",
+                padding: "26px",
+                border: "1.5px solid var(--border)",
+                background: "linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%)",
+                boxShadow: "var(--shadow)",
               }}
             >
-              No templates yet. Go to the <strong>Builder</strong> tab to create one first.
-            </p>
-          )}
-        </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <span className="chip-badge chip-badge--accent">
+                  <Sparkles size={11} /> SYNTHESIS HUB
+                </span>
+                <span style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}>
+                  Ready to compile
+                </span>
+              </div>
 
-        {/* ── Error message ── */}
-        {error && (
-          <div
-            className="flex items-center gap-2"
-            style={{
-              fontFamily: "var(--font-body)",
-              fontSize: "0.85rem",
-              color: "var(--color-danger, #ef4444)",
-              background: "rgba(239,68,68,0.08)",
-              border: "1px solid rgba(239,68,68,0.25)",
-              borderRadius: "var(--radius-md, 8px)",
-              padding: "0.6rem 0.9rem",
-              marginTop: "0.75rem",
-            }}
-          >
-            <AlertTriangle size={15} />
-            {error}
-          </div>
-        )}
+              <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "18px", fontWeight: 800, color: "var(--text)", marginBottom: 16 }}>
+                Exam Overview
+              </h3>
 
-        {/* ── Generate button ── */}
-        <button
-          className="generate-cta"
-          onClick={handleGenerate}
-          disabled={generating || !selectedTemplateId}
-          style={{ marginTop: "1.25rem" }}
-        >
-          <Sparkles size={18} />
-          {generating ? "Generating…" : "Generate Exam Paper"}
-        </button>
-      </div>
-
-      {/* ── Lotus loader ── */}
-      {generating && (
-        <div className="lotus-loader no-print">
-          <div className="lotus-loader__petals">
-            {[...Array(8)].map((_, i) => (
+              {/* Specs Summary Grid */}
               <div
-                key={i}
-                className="lotus-loader__petal"
-                style={{ "--r": `${i * 45}deg` } as React.CSSProperties}
-              />
-            ))}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 10,
+                  marginBottom: 18,
+                }}
+              >
+                <div style={{ padding: "10px", background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700 }}>
+                    Subject & Class
+                  </div>
+                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text)", marginTop: 2 }}>
+                    {selectedTemplateDetail?.subject || "Subject"} • {selectedTemplateDetail?.grade || "Grade"}
+                  </div>
+                </div>
+
+                <div style={{ padding: "10px", background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700 }}>
+                    Total Marks & Time
+                  </div>
+                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--gold-border)", marginTop: 2 }}>
+                    {selectedTemplateDetail?.total_marks ? `${selectedTemplateDetail.total_marks} Marks` : "Marks"} • {selectedTemplateDetail?.duration_minutes ? `${selectedTemplateDetail.duration_minutes}m` : "Time"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Source Document Tag */}
+              <div style={{ marginBottom: 18, padding: "10px 12px", background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700, marginBottom: 3 }}>
+                  Syllabus Document Source
+                </div>
+                <div style={{ fontSize: "12.5px", color: "var(--text)", display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
+                  <FileText size={14} color="var(--forest)" />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {selectedDoc ? selectedDoc.filename : "Curriculum Standard Knowledge (No PDF)"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Section breakdown */}
+              {selectedTemplateDetail?.sections && selectedTemplateDetail.sections.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>
+                    Sections Planned ({selectedTemplateDetail.sections.length})
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {selectedTemplateDetail.sections.map((sec, i) => (
+                      <div
+                        key={sec.id || i}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          fontSize: "12px",
+                          padding: "5px 8px",
+                          borderRadius: 6,
+                          background: "var(--surface)",
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        <span style={{ fontWeight: 600, color: "var(--text)" }}>
+                          {sec.title || `Section ${String.fromCharCode(65 + i)}`}
+                        </span>
+                        <span className="chip-badge" style={{ fontSize: "10px", padding: "1px 6px" }}>
+                          {sec.num_questions} Qs • {sec.marks_per_question * sec.num_questions}M
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 12px",
+                    background: "var(--terracotta-light)",
+                    border: "1px solid var(--terracotta)",
+                    color: "var(--terracotta)",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "12.5px",
+                    marginBottom: 16,
+                  }}
+                >
+                  <AlertTriangle size={16} />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Synthesis Button & Integrated Progress */}
+              {generating ? (
+                <div
+                  style={{
+                    padding: "18px",
+                    borderRadius: "var(--radius-md)",
+                    background: "var(--surface-sunken)",
+                    border: "1.5px solid var(--accent-mid)",
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
+                    <span className="spin" style={{ width: 18, height: 18, border: "2px solid var(--accent)", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block" }} />
+                    <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--accent)" }}>
+                      Synthesizing Questions...
+                    </span>
+                  </div>
+                  <p style={{ fontSize: "12.5px", color: "var(--text-2)", margin: 0 }}>
+                    {progressMsg}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  className="gk-btn gk-btn--primary"
+                  onClick={handleGenerate}
+                  disabled={!selectedTemplateId}
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    padding: "14px 20px",
+                    fontSize: "15px",
+                    fontWeight: 800,
+                    borderRadius: "var(--radius-md)",
+                    boxShadow: "0 4px 18px rgba(234, 88, 12, 0.35)",
+                  }}
+                >
+                  <Sparkles size={18} />
+                  Generate Exam Paper (रचना करें)
+                </button>
+              )}
+            </div>
           </div>
-          <LoadingMessages message={progressMsg} />
         </div>
       )}
 
-      {/* ✨ Result ✨ */}
+      {/* ── Generated Exam Result View ── */}
       {result && (
-        <>
-          <div className="no-print" style={{
-            display: "flex", alignItems: "center", gap: "8px",
-            padding: "12px 16px", background: "var(--success-light, #dcfce7)",
-            color: "var(--success-dark, #166534)", borderRadius: "8px",
-            marginBottom: "16px", border: "1px solid var(--success-mid, #bbf7d0)"
-          }}>
-            <CheckCircle size={18} />
-            <span style={{ fontSize: "14px", fontWeight: 500 }}>Successfully generated and saved to your Itihas (History).</span>
-          </div>
-          
-          <div className="exam-toolbar no-print">
-            <div className="exam-toolbar__modes">
-              <button
-                type="button"
-                className={`exam-toolbar__mode-btn ${activeViewMode === "exam" ? "exam-toolbar__mode-btn--active" : ""}`}
-                onClick={() => setActiveViewMode("exam")}
+        <div>
+          {/* Success Banner & Action Toolbar */}
+          <div
+            className="no-print"
+            style={{
+              padding: "16px 20px",
+              background: "var(--surface)",
+              border: "1.5px solid var(--border)",
+              borderRadius: "var(--radius-lg)",
+              marginBottom: "24px",
+              boxShadow: "var(--shadow)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 14,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: "50%",
+                  background: "var(--forest-light)",
+                  color: "var(--forest)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
               >
-                <FileText size={14} />
-                Question Paper
-              </button>
-              <button
-                type="button"
-                className={`exam-toolbar__mode-btn ${activeViewMode === "key" ? "exam-toolbar__mode-btn--active" : ""}`}
-                onClick={() => setActiveViewMode("key")}
-              >
-                <CheckCircle size={14} />
-                Answer Key & Solutions
-              </button>
+                <CheckCircle size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: "15px", fontWeight: 800, color: "var(--text)", margin: 0 }}>
+                  Exam Paper Generated & Saved to Itihas
+                </h3>
+                <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0 }}>
+                  {result.heading_details || `${result.subject} Examination`} • {result.total_marks} Marks • {result.questions?.length || 0} Questions
+                </p>
+              </div>
             </div>
-            
-            <div className="exam-toolbar__actions" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              {activeRole === "admin" && (
+
+            {/* Actions */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              {/* Mode Toggle */}
+              <div
+                style={{
+                  display: "flex",
+                  background: "var(--surface-sunken)",
+                  padding: "3px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--border)",
+                }}
+              >
                 <button
-                  type="button"
+                  onClick={() => setActiveViewMode("exam")}
                   className="gk-btn"
-                  onClick={() => setShowPublishModal(true)}
                   style={{
-                    background: published ? "#15803d" : "#ea580c",
-                    color: "#ffffff",
-                    borderColor: published ? "#166534" : "#c2410c",
-                    boxShadow: "0 2px 8px rgba(234, 88, 12, 0.25)",
-                    fontWeight: 600,
-                    height: 32,
-                    fontSize: 12.5,
+                    padding: "5px 12px",
+                    fontSize: "12px",
+                    borderRadius: "4px",
+                    background: activeViewMode === "exam" ? "var(--surface)" : "transparent",
+                    color: activeViewMode === "exam" ? "var(--accent)" : "var(--text-2)",
+                    fontWeight: activeViewMode === "exam" ? 700 : 500,
+                    boxShadow: activeViewMode === "exam" ? "var(--shadow-sm)" : "none",
                   }}
                 >
-                  {published ? (
-                    <>
-                      <CheckCircle size={14} />
-                      Published {publishedInfo ? `(${publishedInfo})` : ""}
-                    </>
-                  ) : (
-                    <>
-                      <Send size={14} />
-                      Publish to Students...
-                    </>
-                  )}
+                  Question Paper (प्रश्नपत्र)
                 </button>
-              )}
+                <button
+                  onClick={() => setActiveViewMode("key")}
+                  className="gk-btn"
+                  style={{
+                    padding: "5px 12px",
+                    fontSize: "12px",
+                    borderRadius: "4px",
+                    background: activeViewMode === "key" ? "var(--surface)" : "transparent",
+                    color: activeViewMode === "key" ? "var(--accent)" : "var(--text-2)",
+                    fontWeight: activeViewMode === "key" ? 700 : 500,
+                    boxShadow: activeViewMode === "key" ? "var(--shadow-sm)" : "none",
+                  }}
+                >
+                  Answer Key (उत्तर कुंजी)
+                </button>
+              </div>
+
+              {/* Print Button */}
               <button
-                type="button"
+                className="gk-btn gk-btn--secondary"
+                onClick={() => handlePrint(activeViewMode)}
+                style={{ fontSize: "12px", padding: "6px 12px", gap: 6 }}
+              >
+                <Printer size={14} /> Print {activeViewMode === "exam" ? "Paper" : "Key"}
+              </button>
+
+              {/* JSON Export */}
+              <button
                 className="gk-btn gk-btn--secondary"
                 onClick={() => downloadExamAsJson(result)}
-                title="Export questions into a downloadable .json file"
-                style={{ gap: 5, color: "var(--accent)" }}
+                style={{ fontSize: "12px", padding: "6px 12px", gap: 6 }}
               >
-                <Download size={14} />
-                Export JSON (.json)
+                <Download size={14} /> JSON
               </button>
+
+              {/* Publish to Students */}
               <button
-                type="button"
                 className="gk-btn gk-btn--primary"
-                onClick={() => handlePrint("exam")}
+                onClick={() => setShowPublishModal(true)}
+                style={{ fontSize: "12px", padding: "6px 14px", gap: 6 }}
               >
-                <Printer size={14} />
-                Print Exam Paper
+                <Send size={14} /> Publish Quiz
               </button>
+
+              {/* Reset to create another */}
               <button
-                type="button"
-                className="gk-btn gk-btn--secondary"
-                onClick={() => handlePrint("key")}
+                className="gk-btn gk-btn--ghost"
+                onClick={() => setResult(null)}
+                style={{ fontSize: "12px", padding: "6px 10px" }}
               >
-                <Printer size={14} />
-                Print Answer Key
+                <RefreshCw size={13} /> Create Another
               </button>
             </div>
           </div>
 
+          {/* ── Printable Academic Exam Paper Sheet ── */}
+          <div className="exam-paper" style={{ background: "var(--surface)", padding: "36px 44px", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
+            {/* School Header */}
+            <div className="exam-header" style={{ textAlign: "center", borderBottom: "2px solid var(--border)", paddingBottom: "18px", marginBottom: "24px" }}>
+              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "24px", fontWeight: 800, color: "var(--text)", margin: 0, textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                {result.heading_details || `${result.subject} EXAMINATION`}
+              </h1>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", fontSize: "14px", fontWeight: 600, color: "var(--text-2)" }}>
+                <span>Subject: {result.subject}</span>
+                <span>Class: {result.grade}</span>
+                <span>Time: {result.duration_minutes} Minutes</span>
+                <span>Max Marks: {result.total_marks}</span>
+              </div>
+              {result.instructions && (
+                <div style={{ textAlign: "left", marginTop: "14px", fontSize: "12px", color: "var(--text-3)", borderTop: "1px dashed var(--border)", paddingTop: "10px" }}>
+                  <div style={{ fontWeight: 700, color: "var(--text-2)", marginBottom: 4 }}>General Instructions:</div>
+                  <div style={{ whiteSpace: "pre-line" }}>{result.instructions}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Questions Container */}
+            <div className="exam-questions">
+              {renderQuestions(result.questions || [], result.sections)}
+            </div>
+          </div>
+
+          {/* Publish Modal */}
           <PublishQuizModal
             isOpen={showPublishModal}
             onClose={() => setShowPublishModal(false)}
             onConfirm={handleConfirmPublish}
+            examTitle={result.heading_details || `${result.subject} Examination`}
             classes={classes}
-            examTitle={result.heading_details || "Generated Quiz"}
-            subject={result.subject}
           />
-
-          {toast && (
-            <div className="no-print" style={{ maxWidth: "800px", margin: "0 auto 1rem" }}>
-              <Toast
-                message={toast.message}
-                variant={toast.variant}
-                onClose={() => setToast(null)}
-              />
-            </div>
-          )}
-
-          <div
-            className={`exam-result ${activeViewMode === "key" ? "print-key-only exam-result--key" : "print-exam-only exam-result--exam"}`}
-            id="exam-result"
-          >
-            {/* Header */}
-            <div className="exam-result__header">
-              {result.heading_details && (
-                <div
-                  className="exam-result__institution"
-                  dangerouslySetInnerHTML={{ __html: result.heading_details }}
-                />
-              )}
-              {activeViewMode === "key" && (
-                <div style={{ textAlign: "center", fontWeight: 700, fontSize: "13pt", margin: "4px 0", color: "var(--accent, #b45309)" }}>
-                  ANSWER KEY & MARKING SCHEME
-                </div>
-              )}
-              <div className="exam-result__meta">
-                <span>Total Time: {result.duration_minutes} Minutes</span>
-                <span>Maximum Marks: {result.total_marks}</span>
-              </div>
-            </div>
-
-            <hr className="exam-result__divider" />
-
-            <div className="exam-result__body">
-              {/* Instructions */}
-              {result.instructions && (
-                <div className="exam-result__instructions-box">
-                  <div className="exam-result__instructions-title">General Instructions</div>
-                  <div
-                    className="exam-result__instructions-content"
-                    style={{ fontFamily: "inherit", margin: 0 }}
-                    dangerouslySetInnerHTML={{ __html: result.instructions }}
-                  />
-                </div>
-              )}
-
-              {/* Questions with Section Headings */}
-              {renderQuestions(result.questions || [], result.sections)}
-            </div>
-
-            {/* Print actions */}
-            <div className="exam-print-actions no-print">
-              <button
-                className="gk-btn gk-btn--secondary"
-                onClick={() => downloadExamAsJson(result)}
-                style={{ marginRight: "10px" }}
-              >
-                <Download size={15} style={{ marginRight: "6px" }} />
-                Export JSON File (.json)
-              </button>
-              <button
-                className="gk-btn gk-btn--primary"
-                onClick={() => handlePrint("exam")}
-                style={{ marginRight: "10px" }}
-              >
-                <Printer size={15} style={{ marginRight: "6px" }} />
-                Print Exam Paper
-              </button>
-              <button
-                className="gk-btn gk-btn--secondary"
-                onClick={() => handlePrint("key")}
-              >
-                <Printer size={15} style={{ marginRight: "6px" }} />
-                Print Answer Key
-              </button>
-            </div>
-          </div>
-        </>
+        </div>
       )}
     </div>
   );

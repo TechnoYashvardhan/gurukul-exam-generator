@@ -15,7 +15,9 @@ import {
   Link as LinkIcon,
   CheckCircle,
   HelpCircle,
-  Tag
+  Tag,
+  FileText,
+  Check,
 } from "lucide-react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
@@ -40,6 +42,9 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
   const [webContext, setWebContext] = useLocalStorage("lib-web-context", "");
   const [webUrl, setWebUrl] = useLocalStorage("lib-web-url", "");
   const [fetching, setFetching] = useState(false);
+  const [webDragging, setWebDragging] = useState(false);
+  const [extractingWeb, setExtractingWeb] = useState(false);
+  const webPdfRef = useRef<HTMLInputElement>(null);
 
   // Tab 3: Custom Topics / Unit Test
   const [customTitle, setCustomTitle] = useLocalStorage("lib-custom-title", "");
@@ -47,6 +52,50 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
   const [customGrade, setCustomGrade] = useLocalStorage("lib-custom-grade", "");
   const [customTopics, setCustomTopics] = useLocalStorage("lib-custom-topics", "");
   const [savingCustom, setSavingCustom] = useState(false);
+  const [customDragging, setCustomDragging] = useState(false);
+  const [extractingCustom, setExtractingCustom] = useState(false);
+  const customPdfRef = useRef<HTMLInputElement>(null);
+
+  const [extractedInfo, setExtractedInfo] = useState<{
+    source: "web" | "custom";
+    filename: string;
+    wordCount: number;
+  } | null>(null);
+
+  async function handleExtractTopicPdf(file: File, targetTab: "web" | "custom") {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setError("Please drop or upload a valid PDF file.");
+      return;
+    }
+    setError(null);
+    if (targetTab === "web") setExtractingWeb(true);
+    else setExtractingCustom(true);
+
+    try {
+      const res = await documentsApi.extractTopicsPdf(file);
+      if (targetTab === "web") {
+        setWebContext(res.extracted_text);
+        if (!webSubject.trim() && res.suggested_subject) {
+          setWebSubject(res.suggested_subject);
+        }
+        setExtractedInfo({ source: "web", filename: res.filename, wordCount: res.word_count });
+      } else {
+        setCustomTopics(res.extracted_text);
+        if (!customTitle.trim() && res.suggested_title) {
+          setCustomTitle(res.suggested_title);
+        }
+        if (!customSubject.trim() && res.suggested_subject) {
+          setCustomSubject(res.suggested_subject);
+        }
+        setExtractedInfo({ source: "custom", filename: res.filename, wordCount: res.word_count });
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to extract topics from PDF.");
+    } finally {
+      if (targetTab === "web") setExtractingWeb(false);
+      else setExtractingCustom(false);
+    }
+  }
 
   // Handlers
   async function handleFile(file: File) {
@@ -132,30 +181,30 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
   };
 
   return (
-    <div className="vidya-card" style={{ marginBottom: 8 }}>
+    <div className="lens-card" style={{ padding: "24px", marginBottom: 16 }}>
       {/* Sub-tabs */}
-      <div className="lib-tabs" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+      <div className="lib-tabs" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
         <button
           type="button"
-          className={`lib-tab ${tab === "upload" ? "lib-tab--active" : ""}`}
+          className={`gk-btn ${tab === "upload" ? "gk-btn--primary" : "gk-btn--secondary"}`}
           onClick={() => { setTab("upload"); setError(null); }}
-          style={{ justifyContent: "center" }}
+          style={{ justifyContent: "center", fontSize: "12.5px" }}
         >
           <Upload size={14} /> Upload PDF
         </button>
         <button
           type="button"
-          className={`lib-tab ${tab === "web" ? "lib-tab--active" : ""}`}
+          className={`gk-btn ${tab === "web" ? "gk-btn--primary" : "gk-btn--secondary"}`}
           onClick={() => { setTab("web"); setError(null); }}
-          style={{ justifyContent: "center" }}
+          style={{ justifyContent: "center", fontSize: "12.5px" }}
         >
           <Globe size={14} /> Web & Online URL
         </button>
         <button
           type="button"
-          className={`lib-tab ${tab === "custom" ? "lib-tab--active" : ""}`}
+          className={`gk-btn ${tab === "custom" ? "gk-btn--primary" : "gk-btn--secondary"}`}
           onClick={() => { setTab("custom"); setError(null); }}
-          style={{ justifyContent: "center" }}
+          style={{ justifyContent: "center", fontSize: "12.5px" }}
         >
           <FileCode size={14} /> Custom Topics & Quiz
         </button>
@@ -339,11 +388,81 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
             <textarea
               id="web-context"
               className="gk-textarea"
-              rows={2}
-              placeholder="e.g. Ray Optics, Snell's Law, Total Internal Reflection, Optical Instruments"
+              rows={3}
+              placeholder="e.g. Ray Optics, Snell's Law, Total Internal Reflection, Optical Instruments (or drop a syllabus PDF below)"
               value={webContext}
               onChange={(e) => setWebContext(e.target.value)}
             />
+
+            {/* Drag & Drop PDF topic inserter */}
+            <div
+              className={`upload-zone upload-zone--compact ${webDragging ? "upload-zone--dragover" : ""}`}
+              onDragOver={(e) => { e.preventDefault(); setWebDragging(true); }}
+              onDragLeave={() => setWebDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setWebDragging(false);
+                const f = e.dataTransfer.files[0];
+                if (f) handleExtractTopicPdf(f, "web");
+              }}
+              onClick={() => !extractingWeb && webPdfRef.current?.click()}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "1px dashed var(--border)",
+                background: webDragging ? "rgba(217, 119, 6, 0.08)" : "var(--bg-2)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                fontSize: 12.5,
+                color: "var(--text-2)",
+                marginTop: 6,
+                transition: "all 0.15s ease",
+              }}
+            >
+              <input
+                ref={webPdfRef}
+                type="file"
+                accept=".pdf"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleExtractTopicPdf(f, "web");
+                  e.target.value = "";
+                }}
+              />
+              {extractingWeb ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)" }}>
+                  <span className="spin" style={{ width: 14, height: 14, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%" }} />
+                  <span>Extracting topics & syllabus from PDF...</span>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <FileText size={16} style={{ color: "var(--accent)" }} />
+                    <span><strong>Insert Topics from PDF:</strong> Drag & drop your PDF file here (or click to browse)</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--bg)", padding: "2px 8px", borderRadius: 4 }}>
+                    Auto-fills text
+                  </span>
+                </>
+              )}
+            </div>
+
+            {extractedInfo && extractedInfo.source === "web" && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11.5, color: "#16a34a", background: "rgba(22, 163, 74, 0.08)", padding: "4px 10px", borderRadius: 6, marginTop: 4 }}>
+                <span>✅ Inserted {extractedInfo.wordCount} words from <strong>{extractedInfo.filename}</strong></span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setExtractedInfo(null); setWebContext(""); }}
+                  style={{ background: "transparent", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 11 }}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
           </div>
 
           <button
@@ -469,11 +588,81 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
               id="custom-topics"
               className="gk-textarea"
               rows={5}
-              placeholder="Paste or enter chapters, formulas, theorems, and key concepts..."
+              placeholder="Paste or enter chapters, formulas, theorems, and key concepts (or drop a syllabus PDF below)..."
               value={customTopics}
               onChange={(e) => setCustomTopics(e.target.value)}
               required
             />
+
+            {/* Drag & Drop PDF topic inserter for Tab 3 */}
+            <div
+              className={`upload-zone upload-zone--compact ${customDragging ? "upload-zone--dragover" : ""}`}
+              onDragOver={(e) => { e.preventDefault(); setCustomDragging(true); }}
+              onDragLeave={() => setCustomDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setCustomDragging(false);
+                const f = e.dataTransfer.files[0];
+                if (f) handleExtractTopicPdf(f, "custom");
+              }}
+              onClick={() => !extractingCustom && customPdfRef.current?.click()}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                border: "1px dashed var(--border)",
+                background: customDragging ? "rgba(217, 119, 6, 0.08)" : "var(--bg-2)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                fontSize: 12.5,
+                color: "var(--text-2)",
+                marginTop: 6,
+                transition: "all 0.15s ease",
+              }}
+            >
+              <input
+                ref={customPdfRef}
+                type="file"
+                accept=".pdf"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleExtractTopicPdf(f, "custom");
+                  e.target.value = "";
+                }}
+              />
+              {extractingCustom ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)" }}>
+                  <span className="spin" style={{ width: 14, height: 14, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%" }} />
+                  <span>Extracting topics & title from PDF...</span>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <FileText size={16} style={{ color: "var(--accent)" }} />
+                    <span><strong>Import Topics from PDF:</strong> Drag & drop your PDF file here (or click to browse)</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--bg)", padding: "2px 8px", borderRadius: 4 }}>
+                    Auto-fills form
+                  </span>
+                </>
+              )}
+            </div>
+
+            {extractedInfo && extractedInfo.source === "custom" && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11.5, color: "#16a34a", background: "rgba(22, 163, 74, 0.08)", padding: "4px 10px", borderRadius: 6, marginTop: 4 }}>
+                <span>✅ Populated {extractedInfo.wordCount} words from <strong>{extractedInfo.filename}</strong></span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setExtractedInfo(null); setCustomTopics(""); }}
+                  style={{ background: "transparent", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 11 }}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
           </div>
 
           <button

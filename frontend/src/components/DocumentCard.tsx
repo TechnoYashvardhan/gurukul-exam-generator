@@ -92,14 +92,14 @@ export default function DocumentCard({
       </div>
 
       {/* Tags */}
-      <div className="doc-card__meta">
-        {doc.subject && <span className="gk-tag">{doc.subject}</span>}
-        {doc.grade && <span className="gk-tag">{doc.grade}</span>}
-        {doc.page_count && <span className="gk-tag">{doc.page_count} pages</span>}
+      <div className="doc-card__meta" style={{ display: "flex", gap: 4, flexWrap: "wrap", margin: "8px 0" }}>
+        {doc.subject && <span className="chip-badge">{doc.subject}</span>}
+        {doc.grade && <span className="chip-badge">{doc.grade}</span>}
+        {doc.page_count && <span className="chip-badge">{doc.page_count} pages</span>}
         {doc.chunk_count > 0 && (
-          <span className="gk-tag gk-tag--accent">{doc.chunk_count} chunks</span>
+          <span className="chip-badge chip-badge--accent">{doc.chunk_count} chunks</span>
         )}
-        <span className="gk-tag" style={{ opacity: 0.7 }}>
+        <span className="chip-badge">
           {isWebFetch ? "Web" : "PDF"}
         </span>
       </div>

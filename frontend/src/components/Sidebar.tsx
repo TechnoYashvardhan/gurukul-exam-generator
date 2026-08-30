@@ -1,21 +1,20 @@
+"use client";
+
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import {
   Sun,
   Moon,
   BookOpen,
-  ScrollText,
   Sparkles,
   Library,
   History,
-  Flower2,
   Home,
   LogOut,
   GraduationCap,
   ShieldCheck,
-  CheckCircle,
   Send,
   KeyRound,
   FileCode2,
@@ -34,242 +33,355 @@ interface SidebarProps {
 const ADMIN_NAV_ITEMS: {
   id: View;
   sanskrit: string;
+  hindi: string;
   english: string;
   icon: React.ReactNode;
 }[] = [
   {
     id: "dashboard",
     sanskrit: "Aashram",
-    english: "Home",
-    icon: <Home size={18} />,
+    hindi: "आश्रम",
+    english: "Home Desk",
+    icon: <Home size={17} />,
   },
   {
     id: "shishyas",
-    sanskrit: "Shishya",
+    sanskrit: "Students",
+    hindi: "शिष्य",
     english: "Students & Cohorts",
-    icon: <GraduationCap size={18} />,
+    icon: <GraduationCap size={17} />,
   },
   {
     id: "publishes",
     sanskrit: "Prakashan",
-    english: "Publishes",
-    icon: <Send size={18} />,
+    hindi: "प्रकाशन",
+    english: "Published Quizzes",
+    icon: <Send size={17} />,
   },
   {
     id: "builder",
     sanskrit: "Vidya",
-    english: "Templates",
-    icon: <BookOpen size={18} />,
+    hindi: "विद्या",
+    english: "Exam Blueprints",
+    icon: <BookOpen size={17} />,
   },
   {
     id: "library",
     sanskrit: "Granth",
-    english: "Library",
-    icon: <Library size={18} />,
+    hindi: "ग्रन्थ",
+    english: "Syllabus Library",
+    icon: <Library size={17} />,
   },
   {
     id: "generate",
     sanskrit: "Rachna",
-    english: "Generate",
-    icon: <Sparkles size={18} />,
+    hindi: "रचना",
+    english: "Generate Exam",
+    icon: <Sparkles size={17} />,
   },
   {
     id: "import_json",
     sanskrit: "Aayat",
+    hindi: "आयात",
     english: "JSON Import",
-    icon: <FileCode2 size={18} />,
+    icon: <FileCode2 size={17} />,
   },
   {
     id: "history",
     sanskrit: "Itihas",
-    english: "History",
-    icon: <History size={18} />,
+    hindi: "इतिहास",
+    english: "Exam Archives",
+    icon: <History size={17} />,
   },
 ];
 
 const DEFAULT_NAV_ITEMS: {
   id: View;
   sanskrit: string;
+  hindi: string;
   english: string;
   icon: React.ReactNode;
 }[] = [
   {
     id: "dashboard",
     sanskrit: "Aashram",
-    english: "Home",
-    icon: <Home size={18} />,
+    hindi: "आश्रम",
+    english: "Home Desk",
+    icon: <Home size={17} />,
   },
   {
     id: "builder",
     sanskrit: "Vidya",
-    english: "Templates",
-    icon: <BookOpen size={18} />,
+    hindi: "विद्या",
+    english: "Exam Blueprints",
+    icon: <BookOpen size={17} />,
   },
   {
     id: "library",
     sanskrit: "Granth",
-    english: "Library",
-    icon: <Library size={18} />,
+    hindi: "ग्रन्थ",
+    english: "Syllabus Library",
+    icon: <Library size={17} />,
   },
   {
     id: "generate",
     sanskrit: "Rachna",
-    english: "Generate",
-    icon: <Sparkles size={18} />,
+    hindi: "रचना",
+    english: "Generate Exam",
+    icon: <Sparkles size={17} />,
   },
   {
     id: "import_json",
     sanskrit: "Aayat",
+    hindi: "आयात",
     english: "JSON Import",
-    icon: <FileCode2 size={18} />,
+    icon: <FileCode2 size={17} />,
   },
   {
     id: "history",
     sanskrit: "Itihas",
-    english: "History",
-    icon: <History size={18} />,
+    hindi: "इतिहास",
+    english: "Exam Archives",
+    icon: <History size={17} />,
   },
 ];
 
 const STUDENT_NAV_ITEMS: {
   id: View;
   sanskrit: string;
+  hindi: string;
   english: string;
   icon: React.ReactNode;
 }[] = [
   {
     id: "dashboard",
     sanskrit: "Aashram",
-    english: "Dashboard",
-    icon: <Home size={18} />,
+    hindi: "आश्रम",
+    english: "My Dashboard",
+    icon: <Home size={17} />,
   },
   {
     id: "quiz",
     sanskrit: "Pariksha",
+    hindi: "परीक्षा",
     english: "Quiz Arena",
-    icon: <Sparkles size={18} />,
+    icon: <Sparkles size={17} />,
   },
   {
     id: "history",
     sanskrit: "Itihas",
+    hindi: "इतिहास",
     english: "My Attempts",
-    icon: <History size={18} />,
+    icon: <History size={17} />,
   },
 ];
 
+const emptySubscribe = () => () => {};
+
 export default function Sidebar({ activeView, onViewChange, role: propRole }: SidebarProps) {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const { user, logout, setMockRole } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const isDark = theme === "dark";
   const activeRole = propRole || user?.role || "teacher";
   const navItems = activeRole === "student" ? STUDENT_NAV_ITEMS : activeRole === "admin" ? ADMIN_NAV_ITEMS : DEFAULT_NAV_ITEMS;
 
-  const roleLabels = {
-    admin: { name: "Admin Sanctuary", color: "var(--terracotta)", icon: <ShieldCheck size={14} /> },
-    teacher: { name: "Teacher Ashram", color: "var(--forest)", icon: <BookOpen size={14} /> },
-    student: { name: "Student Arena", color: "var(--gold)", icon: <GraduationCap size={14} /> },
-  };
-
-  const currentRoleMeta = roleLabels[activeRole] || roleLabels.teacher;
+  const roleMeta = {
+    admin: { label: "Admin Portal", hindi: "प्रशासक", color: "var(--terracotta)", icon: <ShieldCheck size={13} /> },
+    teacher: { label: "Teacher Ashram", hindi: "शिक्षक", color: "var(--forest)", icon: <BookOpen size={13} /> },
+    student: { label: "Student Arena", hindi: "विद्यार्थी", color: "var(--gold)", icon: <GraduationCap size={13} /> },
+  }[activeRole] || { label: "Teacher Ashram", hindi: "शिक्षक", color: "var(--forest)", icon: <BookOpen size={13} /> };
 
   return (
     <aside className="gurukul-sidebar" aria-label="Main navigation">
-      {/* Logo */}
-      <a href="/" className="gurukul-sidebar__logo">
-        <div className="gurukul-sidebar__logo-icon" aria-hidden="true">
-          {/* Diya SVG icon */}
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="16" cy="9" rx="3" ry="5" fill="hsl(38, 95%, 60%)" opacity="0.9" />
-            <ellipse cx="16" cy="10" rx="1.5" ry="3" fill="hsl(48, 100%, 80%)" />
-            <rect x="15.5" y="13" width="1" height="3" rx="0.5" fill="hsl(25, 40%, 35%)" />
-            <path d="M8 18 Q8 24 16 25 Q24 24 24 18 L22 16 H10 Z" fill="hsl(35, 70%, 55%)" />
-            <path d="M8 18 Q8 22 16 23 Q24 22 24 18" stroke="hsl(35, 60%, 40%)" strokeWidth="0.5" fill="none" />
-            <path d="M22 20 Q28 20 28 17" stroke="hsl(35, 70%, 55%)" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-            <ellipse cx="13" cy="20" rx="2" ry="1" fill="hsl(38, 80%, 70%)" opacity="0.4" />
-          </svg>
+      {/* Brand Header */}
+      <a
+        href="/"
+        style={{
+          padding: "20px 18px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          textDecoration: "none",
+        }}
+      >
+        <div
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: "10px",
+            background: "linear-gradient(135deg, var(--accent) 0%, var(--gold) 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#ffffff",
+            boxShadow: "0 4px 14px rgba(234, 88, 12, 0.3)",
+            flexShrink: 0,
+          }}
+        >
+          <Sparkles size={20} />
         </div>
         <div>
-          <div className="gurukul-sidebar__logo-text">Gurukul AI</div>
-          <div className="gurukul-sidebar__logo-sub">{currentRoleMeta.name}</div>
+          <div
+            style={{
+              fontFamily: "var(--font-heading)",
+              fontSize: "17px",
+              fontWeight: 800,
+              color: "var(--text)",
+              letterSpacing: "-0.02em",
+              lineHeight: 1.2,
+            }}
+          >
+            Gurukul AI
+          </div>
+          <div
+            style={{
+              fontSize: "11px",
+              fontFamily: "var(--font-mono)",
+              color: "var(--text-3)",
+              letterSpacing: "0.03em",
+            }}
+          >
+            Exam Generator
+          </div>
         </div>
       </a>
 
       {/* Role Pill */}
-      <div style={{
-        margin: "0 12px 14px",
-        padding: "7px 12px",
-        borderRadius: "var(--radius-md)",
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        fontSize: 12,
-        color: currentRoleMeta.color,
-        fontWeight: 600,
-      }}>
-        {currentRoleMeta.icon}
-        <span style={{ textTransform: "capitalize" }}>{activeRole} Portal</span>
-      </div>
-
-      {/* Lotus divider */}
-      <div className="lotus-divider">
-        <span className="lotus-divider__icon"><Flower2 size={14} /></span>
-      </div>
-
-      {/* Navigation */}
-      <nav className="gurukul-sidebar__nav" aria-label="Primary navigation">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            className={`gurukul-sidebar__nav-item ${
-              activeView === item.id ? "gurukul-sidebar__nav-item--active" : ""
-            }`}
-            onClick={() => onViewChange(item.id)}
-            aria-current={activeView === item.id ? "page" : undefined}
-          >
-            <span className="gurukul-sidebar__nav-icon" aria-hidden="true">
-              {item.icon}
-            </span>
-            <span className="gurukul-sidebar__nav-labels">
-              <span className="gurukul-sidebar__nav-sanskrit">{item.sanskrit}</span>
-              <span className="gurukul-sidebar__nav-english">{item.english}</span>
-            </span>
-          </button>
-        ))}
-      </nav>
-
-      {/* Footer */}
-      <div className="gurukul-sidebar__footer">
-        <div className="lotus-divider" style={{ marginBottom: 12 }}>
-          <span className="lotus-divider__icon"><Flower2 size={14} /></span>
-        </div>
-
-        {/* User Info & Logout */}
-        {user && (
-          <div style={{
+      <div style={{ padding: "0 14px 12px" }}>
+        <div
+          style={{
+            padding: "6px 10px",
+            borderRadius: "var(--radius-sm)",
+            background: "var(--surface-sunken)",
+            border: "1px solid var(--border)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "8px 10px",
-            background: "var(--surface)",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--border)",
-            marginBottom: 10,
-          }}>
-            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 6 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
-                {user.full_name || "Scholar"}
+            gap: 7,
+            fontSize: "11.5px",
+            color: roleMeta.color,
+            fontWeight: 700,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {roleMeta.icon}
+            <span>{roleMeta.label}</span>
+          </div>
+          <span className="shloka" style={{ fontSize: "11px", fontWeight: 600, opacity: 0.85 }}>
+            {roleMeta.hindi}
+          </span>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav
+        className="gurukul-sidebar__nav"
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: 3,
+          padding: "6px 10px",
+          overflowY: "auto",
+        }}
+        aria-label="Primary navigation"
+      >
+        {navItems.map((item) => {
+          const isActive = activeView === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onViewChange(item.id)}
+              className="gk-btn"
+              style={{
+                width: "100%",
+                padding: "9px 12px",
+                borderRadius: "var(--radius-sm)",
+                justifyContent: "flex-start",
+                gap: 10,
+                background: isActive ? "var(--accent-light)" : "transparent",
+                color: isActive ? "var(--accent)" : "var(--text-2)",
+                border: isActive ? "1px solid var(--accent-mid)" : "1px solid transparent",
+                fontWeight: isActive ? 700 : 500,
+                transition: "all 0.15s ease",
+                textAlign: "left",
+              }}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <span
+                style={{
+                  color: isActive ? "var(--accent)" : "var(--text-3)",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                {item.icon}
+              </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0, flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "13px", lineHeight: 1.2, fontWeight: isActive ? 700 : 600 }}>
+                    {item.sanskrit}
+                  </span>
+                  <span
+                    className="shloka"
+                    style={{
+                      fontSize: "11.5px",
+                      color: isActive ? "var(--accent)" : "var(--text-3)",
+                      fontStyle: "normal",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {item.hindi}
+                  </span>
+                </div>
+                <span
+                  style={{
+                    fontSize: "10.5px",
+                    color: isActive ? "var(--accent-hover)" : "var(--text-3)",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                >
+                  {item.english}
+                </span>
               </div>
-              <div style={{ fontSize: 10, color: "var(--text-3)" }}>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Footer / User Profile & Theme */}
+      <div
+        style={{
+          padding: "12px 14px 16px",
+          borderTop: "1px solid var(--border)",
+          background: "var(--surface)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
+        {/* User Card */}
+        {user && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "8px 10px",
+              background: "var(--surface-sunken)",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 6 }}>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text)" }}>
+                {user.full_name || "User"}
+              </div>
+              <div style={{ fontSize: "10px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}>
                 {user.scholar_id ? `ID: ${user.scholar_id}` : user.email}
               </div>
             </div>
@@ -277,32 +389,18 @@ export default function Sidebar({ activeView, onViewChange, role: propRole }: Si
               <button
                 onClick={() => setShowPasswordModal(true)}
                 title="Change Password"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--text-2)",
-                  cursor: "pointer",
-                  padding: 4,
-                  display: "flex",
-                  alignItems: "center",
-                }}
+                className="gk-btn gk-btn--icon"
+                style={{ width: 26, height: 26, padding: 0 }}
               >
-                <KeyRound size={14} />
+                <KeyRound size={13} />
               </button>
               <button
                 onClick={logout}
                 title="Sign Out"
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--terracotta)",
-                  cursor: "pointer",
-                  padding: 4,
-                  display: "flex",
-                  alignItems: "center",
-                }}
+                className="gk-btn gk-btn--icon"
+                style={{ width: 26, height: 26, padding: 0, color: "var(--terracotta)" }}
               >
-                <LogOut size={14} />
+                <LogOut size={13} />
               </button>
             </div>
           </div>
@@ -313,33 +411,24 @@ export default function Sidebar({ activeView, onViewChange, role: propRole }: Si
           onClose={() => setShowPasswordModal(false)}
         />
 
-        {/* Theme toggle */}
+        {/* Theme Toggle Button */}
         {mounted && (
           <button
-            className="theme-toggle"
             onClick={() => setTheme(isDark ? "light" : "dark")}
+            className="gk-btn gk-btn--secondary"
+            style={{
+              width: "100%",
+              justifyContent: "center",
+              fontSize: "12px",
+              padding: "7px 12px",
+              gap: 8,
+            }}
             aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
           >
-            <span className="theme-toggle__icon">
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
-            </span>
-            {isDark ? "Day Ashram" : "Night Ashram"}
+            {isDark ? <Sun size={14} color="var(--gold)" /> : <Moon size={14} color="var(--accent)" />}
+            <span>{isDark ? "Day Mode" : "Night Mode"}</span>
           </button>
         )}
-
-        {/* AI tagline */}
-        <p
-          style={{
-            fontSize: 10,
-            color: "var(--text-3)",
-            marginTop: 10,
-            textAlign: "center",
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-          }}
-        >
-          Gurukul AI Ecosystem
-        </p>
       </div>
     </aside>
   );

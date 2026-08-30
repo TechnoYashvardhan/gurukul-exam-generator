@@ -1,45 +1,49 @@
 /* ═══════════════════════════════════════════════════════════════════
-   GURUKUL AI — Design System
-   "Where Ancient Wisdom Meets Modern Intelligence"
+   GURUKUL AI — Modern High-Contrast Design System
    ═══════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Amita:wght@400;700&family=Cinzel:wght@400;600&family=Fira+Sans:wght@400;500&family=Great+Vibes&family=Inconsolata:wght@400;500&family=Jaini&family=JetBrains+Mono:wght@400;500&family=Lato:wght@400;700&family=Lora:wght@400;600&family=Merriweather:wght@400;700&family=Montserrat:wght@400;600;700&family=Nunito:wght@400;600&family=Open+Sans:wght@400;600&family=Outfit:wght@300;400;500;600;700&family=Oswald:wght@400;500&family=Playfair+Display:wght@400;600&family=Quicksand:wght@400;600&family=Raleway:wght@400;600&family=Roboto:wght@400;500;700&family=Rubik:wght@400;500&family=Work+Sans:wght@400;500&display=swap');
 @import "tailwindcss";
 
-/* ✨ CSS Custom Properties - Modern Gurukul Light ✨ */
+/* ✨ CSS Custom Properties - Modern Clean Light ✨ */
 :root {
-  --font-display: 'Outfit', system-ui, sans-serif;
-  --font-heading: 'Outfit', system-ui, sans-serif;
-  --font-body: 'Outfit', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --font-hindi: 'Noto Serif Devanagari', 'Noto Sans Devanagari', system-ui, sans-serif;
+  --font-devanagari: 'Noto Serif Devanagari', 'Noto Sans Devanagari', system-ui, sans-serif;
+  --font-shloka: 'Noto Serif Devanagari', 'Noto Sans Devanagari', Georgia, serif;
+  --font-serif: 'Noto Serif Devanagari', Georgia, serif;
 
-  /* Backgrounds (Crisp, High-Contrast Zinc) */
-  --bg: #FAFAFA;
-  --bg-2: #F4F4F5;
+  /* Backgrounds */
+  --bg: #F8F9FA;
+  --bg-2: #F1F3F5;
   --surface: #FFFFFF;
-  --surface-2: #FAFAFA;
+  --surface-2: #F8F9FA;
+  --surface-sunken: #EDF0F3;
 
   /* Sidebar */
   --sidebar-bg: #FFFFFF;
-  --sidebar-border: #E4E4E7;
+  --sidebar-border: #E2E8F0;
 
-  /* Text */
-  --text: #18181B;
-  --text-2: #52525B;
-  --text-3: #A1A1AA;
+  /* Text (Crisp slate) */
+  --text: #0F172A;
+  --text-1: #0F172A;
+  --text-2: #475569;
+  --text-3: #94A3B8;
 
-  /* Accent (Vibrant Saffron) */
+  /* Accent (Vibrant Saffron Terracotta) */
   --accent: #EA580C;
   --accent-light: #FFEDD5;
   --accent-mid: #F97316;
   --accent-hover: #C2410C;
   --accent-text: #FFFFFF;
 
-  /* Gold (Radiant Deep Yellow) */
-  --gold: #EAB308;
-  --gold-light: #FEF9C3;
-  --gold-border: #D97706;
-  --gold-dim: #FBBF24;
+  /* Gold (Radiant Amber) */
+  --gold: #D97706;
+  --gold-light: #FEF3C7;
+  --gold-border: #B45309;
+  --gold-dim: #F59E0B;
 
   /* Semantic */
   --forest: #059669;
@@ -50,116 +54,115 @@
   --amber-light: #FFFBEB;
 
   /* Borders */
-  --border: #E4E4E7;
+  --border: #E2E8F0;
+  --border-light: #EDF2F7;
   --border-focus: #EA580C;
 
   /* Difficulty */
   --easy-color: #059669;
   --easy-bg: #ECFDF5;
-  --easy-glow: 0 0 12px rgba(5, 150, 105, 0.2);
+  --easy-glow: 0 0 12px rgba(5, 150, 105, 0.15);
   --medium-color: #D97706;
   --medium-bg: #FFFBEB;
-  --medium-glow: 0 0 12px rgba(217, 119, 6, 0.2);
+  --medium-glow: 0 0 12px rgba(217, 119, 6, 0.15);
   --hard-color: #E11D48;
   --hard-bg: #FFF1F2;
-  --hard-glow: 0 0 12px rgba(225, 29, 72, 0.2);
+  --hard-glow: 0 0 12px rgba(225, 29, 72, 0.15);
   --extreme-color: #7C3AED;
   --extreme-bg: #F5F3FF;
-  --extreme-glow: 0 0 12px rgba(124, 58, 237, 0.2);
+  --extreme-glow: 0 0 12px rgba(124, 58, 237, 0.15);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-  --shadow-gold: 0 4px 20px rgba(234, 179, 8, 0.25);
-  --shadow-accent: 0 4px 20px rgba(234, 88, 12, 0.25);
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
+  --shadow-lg: 0 16px 32px -6px rgba(15, 23, 42, 0.08), 0 6px 12px -3px rgba(15, 23, 42, 0.04);
+  --shadow-gold: 0 4px 18px rgba(217, 119, 6, 0.2);
+  --shadow-accent: 0 4px 18px rgba(234, 88, 12, 0.2);
 
   /* Shape */
   --radius-sm: 6px;
+  --radius-md: 10px;
   --radius: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 26px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
 
   /* Motion */
-  --t: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  --t-slow: 380ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --t-slow: 350ms cubic-bezier(0.16, 1, 0.3, 1);
   --t-spring: 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  --t-meditative: 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
   /* Sidebar */
-  --sidebar-w: 236px;
+  --sidebar-w: 240px;
 }
 
 /* ✨ CSS Custom Properties - Modern Gurukul Dark ✨ */
 .dark {
   /* Backgrounds */
-  --bg: #09090B;
-  --bg-2: #18181B;
-  --surface: #18181B;
-  --surface-2: #27272A;
+  --bg: #090A0F;
+  --bg-2: #12131A;
+  --surface: #12131A;
+  --surface-2: #1A1B24;
+  --surface-sunken: #0B0C11;
 
   /* Sidebar */
-  --sidebar-bg: #18181B;
-  --sidebar-border: #27272A;
+  --sidebar-bg: #101117;
+  --sidebar-border: #1E202C;
 
   /* Text */
-  --text: #FAFAFA;
-  --text-2: #A1A1AA;
-  --text-3: #71717A;
+  --text: #F8FAFC;
+  --text-1: #F8FAFC;
+  --text-2: #94A3B8;
+  --text-3: #64748B;
 
   /* Accent (Glowing Saffron) */
   --accent: #F97316;
-  --accent-light: #7C2D12;
+  --accent-light: rgba(249, 115, 22, 0.15);
   --accent-mid: #EA580C;
   --accent-hover: #FB923C;
   --accent-text: #FFFFFF;
 
   /* Gold (Radiant Gold) */
-  --gold: #FACC15;
-  --gold-light: #713F12;
-  --gold-border: #CA8A04;
-  --gold-dim: #854D0E;
+  --gold: #FBBF24;
+  --gold-light: rgba(251, 191, 36, 0.15);
+  --gold-border: #D97706;
+  --gold-dim: #F59E0B;
 
   /* Semantic */
   --forest: #34D399;
-  --forest-light: #064E3B;
+  --forest-light: rgba(52, 211, 153, 0.15);
   --terracotta: #FB7185;
-  --terracotta-light: #881337;
+  --terracotta-light: rgba(251, 113, 133, 0.15);
   --amber-hot: #FBBF24;
-  --amber-light: #78350F;
+  --amber-light: rgba(251, 191, 36, 0.15);
 
   /* Borders */
-  --border: #27272A;
+  --border: #1E202C;
+  --border-light: #181922;
   --border-focus: #F97316;
 
   /* Difficulty */
   --easy-color: #34D399;
-  --easy-bg: #064E3B;
+  --easy-bg: rgba(52, 211, 153, 0.12);
   --easy-glow: 0 0 12px rgba(52, 211, 153, 0.2);
   --medium-color: #FBBF24;
-  --medium-bg: #78350F;
+  --medium-bg: rgba(251, 191, 36, 0.12);
   --medium-glow: 0 0 12px rgba(251, 191, 36, 0.2);
   --hard-color: #FB7185;
-  --hard-bg: #881337;
+  --hard-bg: rgba(251, 113, 133, 0.12);
   --hard-glow: 0 0 12px rgba(251, 113, 133, 0.2);
   --extreme-color: #A78BFA;
-  --extreme-bg: #4C1D95;
+  --extreme-bg: rgba(167, 139, 250, 0.12);
   --extreme-glow: 0 0 12px rgba(167, 139, 250, 0.2);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -2px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -4px rgba(0, 0, 0, 0.7);
-  --shadow-gold: 0 4px 20px rgba(250, 204, 21, 0.25);
-  --shadow-accent: 0 4px 20px rgba(249, 115, 22, 0.25);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.6);
+  --shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.7), 0 2px 4px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 32px -6px rgba(0, 0, 0, 0.8), 0 6px 12px -3px rgba(0, 0, 0, 0.6);
+  --shadow-gold: 0 4px 20px rgba(250, 204, 21, 0.2);
+  --shadow-accent: 0 4px 20px rgba(249, 115, 22, 0.2);
 }
 
 ::selection {
-  background: var(--accent);
-  color: var(--accent-text);
-}
-
-::-moz-selection {
   background: var(--accent);
   color: var(--accent-text);
 }
@@ -184,18 +187,78 @@ body {
   background: var(--bg);
   color: var(--text);
   line-height: 1.6;
-  transition: background var(--t-slow), color var(--t-slow);
-  overflow: auto;
-  /* App is full viewport — no body scroll */
+  transition: background var(--t), color var(--t);
+  overflow: hidden;
+}
+
+/* ── Custom Sleek Scrollbar ───────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
 }
 
 /* ── Root App Layout ──────────────────────────────────────────────── */
 .gurukul-app {
   display: flex;
+  height: 100vh;
   height: 100dvh;
   width: 100vw;
   overflow: hidden;
   position: relative;
+  background: var(--bg);
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+.gurukul-sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  max-width: var(--sidebar-w);
+  height: 100%;
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
+  transition: background var(--t), border-color var(--t);
+  overflow: hidden;
+}
+
+.gurukul-content {
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 100%;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 1;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg);
 }
 
 /* Faint mandala watermark behind everything */
@@ -416,13 +479,7 @@ body {
 }
 
 /* ── Main Content Area ────────────────────────────────────────────── */
-.gurukul-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  position: relative;
-  z-index: 1;
-}
+
 
 .gurukul-page {
   min-height: 100%;
@@ -503,11 +560,55 @@ body {
   margin-top: 6px;
   font-size: 14px;
   color: var(--text-2);
-  font-style: italic;
+  font-style: normal;
   font-family: var(--font-heading);
 }
 
-/* ── Vidya Cards (main surface cards) ────────────────────────────── */
+.shloka, .sloka, .sanskrit-text, .hindi-text {
+  font-family: var(--font-shloka);
+  font-style: normal !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.8;
+}
+
+/* ── Interactive Lens Cards & Vidya Surfaces ─────────────────────── */
+.lens-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.lens-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(420px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(234, 88, 12, 0.08), transparent 80%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+.dark .lens-card::before {
+  background: radial-gradient(420px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(249, 115, 22, 0.12), transparent 80%);
+}
+
+.lens-card:hover::before {
+  opacity: 1;
+}
+
+.lens-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(234, 88, 12, 0.3);
+  box-shadow: var(--shadow-lg);
+}
+
 .vidya-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -516,23 +617,13 @@ body {
   padding: 24px;
   position: relative;
   overflow: hidden;
-  transition: box-shadow var(--t), border-color var(--t);
-}
-
-.vidya-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3px;
-  bottom: 0;
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  background: linear-gradient(180deg, var(--gold), var(--accent));
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
 }
 
 .vidya-card:hover {
+  transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
-  border-color: var(--gold-dim);
+  border-color: var(--border-focus);
 }
 
 .vidya-card__header {
@@ -545,9 +636,9 @@ body {
 .vidya-card__title {
   font-family: var(--font-heading);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -556,6 +647,41 @@ body {
 .vidya-card__title-icon {
   color: var(--accent);
   flex-shrink: 0;
+}
+
+/* ── Modern Chip Badge ────────────────────────────────────────────── */
+.chip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  user-select: none;
+}
+
+.chip-badge--accent {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent-mid);
+}
+
+.chip-badge--gold {
+  background: var(--gold-light);
+  color: var(--gold-border);
+  border-color: var(--gold);
+}
+
+.chip-badge--forest {
+  background: var(--forest-light);
+  color: var(--forest);
+  border-color: var(--forest);
 }
 
 /* ── Form Elements ────────────────────────────────────────────────── */
@@ -582,7 +708,7 @@ body {
 .gk-input,
 .gk-textarea,
 .gk-select {
-  background-color: var(--bg-2);
+  background-color: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
@@ -598,14 +724,13 @@ body {
 .gk-input::placeholder,
 .gk-textarea::placeholder {
   color: var(--text-3);
-  font-style: italic;
 }
 
 .gk-input:focus,
 .gk-textarea:focus,
 .gk-select:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12); /* Saffron focus ring instead of old yellow */
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
   background-color: var(--surface);
 }
 
@@ -628,28 +753,28 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23A1A1AA'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
 }
 
-/* ── Buttons ──────────────────────────────────────────────────────── */
+/* ── Buttons (Tactile Spring Physics) ─────────────────────────────── */
 .gk-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 10px 18px;
   border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13.5px;
+  font-weight: 600;
   font-family: var(--font-body);
   cursor: pointer;
-  border: none;
-  transition: background var(--t), box-shadow var(--t), transform var(--t), opacity var(--t);
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
-  overflow: hidden;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   white-space: nowrap;
+  user-select: none;
 }
 
 .gk-btn:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.97) translateY(1px);
 }
 
 .gk-btn:disabled {
@@ -1649,31 +1774,13 @@ body {
 }
 
 .exam-result__header {
-  background: var(--bg-2);
-  padding: 32px;
+  background: var(--surface);
+  padding: 28px 32px;
   text-align: center;
-  border-bottom: 2px solid var(--gold-border);
+  border-bottom: 2px solid var(--border);
   position: relative;
 }
 
-.exam-result__header::before,
-.exam-result__header::after {
-  content: '❧';
-  position: absolute;
-  color: var(--gold-border);
-  font-size: 18px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.exam-result__header::before {
-  left: 20px;
-}
-
-.exam-result__header::after {
-  right: 20px;
-  transform: translateY(-50%) scaleX(-1);
-}
 
 /* ── Exam Preview Action Toolbar ─────────────────────────────────── */
 .exam-toolbar {
@@ -2087,7 +2194,7 @@ body {
   font-size: 13px;
   color: var(--text-3);
   max-width: 280px;
-  font-style: italic;
+  font-style: normal;
 }
 
 /* ── Utility ──────────────────────────────────────────────────────── */
