@@ -1,11 +1,5 @@
 """
-Gemini LLM client — uses Google's generativeai SDK.
-
-Free tier (as of 2025):
-  - No credit card required
-  - 1,500 requests/day for Gemini 1.5 Flash
-  - 1,000,000 tokens/minute for Gemini 1.5 Flash
-  - Get your key at: https://aistudio.google.com → Get API Key
+Gemini LLM client — uses Google's Generative AI SDK with auto-model fallback.
 """
 
 import logging
@@ -19,6 +13,13 @@ from app.llm.base import LLMClient, LLMProviderError
 
 logger = logging.getLogger(__name__)
 
+FALLBACK_MODELS = [
+    "models/gemini-3.6-flash",
+    "models/gemini-flash-latest",
+    "models/gemini-2.5-flash",
+    "models/gemini-1.5-flash",
+]
+
 
 class GeminiClient(LLMClient):
     def __init__(self) -> None:
@@ -28,7 +29,7 @@ class GeminiClient(LLMClient):
                 "GEMINI_API_KEY is not set. Get a free key at https://aistudio.google.com",
             )
         genai.configure(api_key=settings.gemini_api_key)
-        self._model_name = settings.gemini_model
+        self._model_name = settings.gemini_model or "models/gemini-3.6-flash"
 
     @property
     def provider_name(self) -> str:
@@ -45,38 +46,48 @@ class GeminiClient(LLMClient):
         temperature: float = 0.3,
         max_tokens: int = 4096,
     ) -> str:
-        logger.debug(
-            "Gemini request | model=%s | temp=%s | max_tokens=%d",
-            self._model_name, temperature, max_tokens,
-        )
-        try:
-            model = genai.GenerativeModel(
-                model_name=self._model_name,
-                system_instruction=system_prompt,
-            )
-            generation_config = GenerationConfig(
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-                response_mime_type="application/json",
-            )
-            response = await model.generate_content_async(
-                user_message,
-                generation_config=generation_config,
-            )
-            content = response.text or ""
-            logger.debug("Gemini response received | length=%d chars", len(content))
-            return content
+        models_to_try = [self._model_name] + [m for m in FALLBACK_MODELS if m != self._model_name]
+        is_json = "json" in system_prompt.lower() or "json" in user_message.lower()
 
-        except ResourceExhausted as exc:
-            logger.warning("Gemini quota exhausted: %s", exc)
-            raise LLMProviderError(
-                "gemini",
-                "Quota exhausted. Free tier: 1,500 req/day for Gemini 1.5 Flash.",
-                original=exc,
-            )
-        except DeadlineExceeded as exc:
-            logger.error("Gemini request timed out: %s", exc)
-            raise LLMProviderError("gemini", "Request timed out.", original=exc)
-        except GoogleAPIError as exc:
-            logger.error("Gemini API error: %s", exc)
-            raise LLMProviderError("gemini", f"API error: {exc}", original=exc)
+        last_error = None
+        for candidate_model in models_to_try:
+            try:
+                model = genai.GenerativeModel(
+                    model_name=candidate_model,
+                    system_instruction=system_prompt,
+                )
+                config_kwargs = {
+                    "temperature": temperature,
+                    "max_output_tokens": max_tokens,
+                }
+                if is_json:
+                    config_kwargs["response_mime_type"] = "application/json"
+
+                generation_config = GenerationConfig(**config_kwargs)
+                response = await model.generate_content_async(
+                    user_message,
+                    generation_config=generation_config,
+                )
+                content = response.text or ""
+                self._model_name = candidate_model
+                logger.debug("Gemini response received from %s | length=%d chars", candidate_model, len(content))
+                return content
+
+            except ResourceExhausted as exc:
+                logger.warning("Gemini quota exhausted on %s: %s", candidate_model, exc)
+                raise LLMProviderError(
+                    "gemini",
+                    "Gemini API quota exhausted. Please check rate limits.",
+                    original=exc,
+                )
+            except DeadlineExceeded as exc:
+                logger.error("Gemini request timed out on %s: %s", candidate_model, exc)
+                last_error = exc
+            except GoogleAPIError as exc:
+                logger.warning("Gemini API error on model %s: %s. Trying next candidate...", candidate_model, exc)
+                last_error = exc
+            except Exception as exc:
+                logger.warning("Gemini error on %s: %s", candidate_model, exc)
+                last_error = exc
+
+        raise LLMProviderError("gemini", f"All Gemini model candidates failed. Last error: {last_error}", original=last_error)
