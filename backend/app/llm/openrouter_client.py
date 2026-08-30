@@ -22,6 +22,8 @@ from app.llm.base import LLMClient, LLMProviderError
 logger = logging.getLogger(__name__)
 
 OPENROUTER_FALLBACK_MODELS = [
+    "meta-llama/llama-3.3-70b-instruct",
+    "deepseek/deepseek-r1",
     "openrouter/free",
     "nvidia/nemotron-3-ultra-550b-a55b:free",
     "google/gemma-4-31b-it:free",
