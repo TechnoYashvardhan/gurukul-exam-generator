@@ -135,7 +135,17 @@ export default function AdminPublishedManager() {
     }
   }
 
-  const cleanTitle = (raw: string) => (raw || "").replace(/<[^>]*>?/gm, " ").replace(/\s+/g, " ").trim();
+  const cleanTitle = (raw: string) =>
+    (raw || "")
+      .replace(/<[^>]*>?/gm, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
   // Filtered quizzes
   const filteredQuizzes = quizzes.filter((q) => {

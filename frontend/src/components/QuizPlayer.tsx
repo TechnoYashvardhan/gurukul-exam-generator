@@ -637,9 +637,11 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
             >
               {currentQ.type.replace(/_/g, " ")} · {currentQ.marks || 1} Marks
             </span>
-            <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>
-              Section {currentQ.section_id}
-            </span>
+            {currentQ.section_id && !currentQ.section_id.toLowerCase().includes("default") && (
+              <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>
+                Section {currentQ.section_id.replace(/^s-?/i, "").toUpperCase()}
+              </span>
+            )}
           </div>
 
           {/* Question Text with KaTeX */}
