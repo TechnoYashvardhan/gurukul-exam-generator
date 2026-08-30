@@ -443,10 +443,10 @@ SECTION RULES:
 
    In "options", provide exactly 4 distinct matching code combinations:
    [
-     {"key": "A", "text": "1-(q), 2-(s), 3-(r), 4-(p)"},
-     {"key": "B", "text": "1-(p), 2-(q), 3-(s), 4-(r)"},
-     {"key": "C", "text": "1-(s), 2-(q), 3-(r), 4-(p)"},
-     {"key": "D", "text": "1-(q), 2-(r), 3-(s), 4-(p)"}
+     {{"key": "A", "text": "1-(q), 2-(s), 3-(r), 4-(p)"}},
+     {{"key": "B", "text": "1-(p), 2-(q), 3-(s), 4-(r)"}},
+     {{"key": "C", "text": "1-(s), 2-(q), 3-(r), 4-(p)"}},
+     {{"key": "D", "text": "1-(q), 2-(r), 3-(s), 4-(p)"}}
    ]
    and set "answer" to the single correct option key ("A", "B", "C", or "D").
 10. IF type is "short_answer", "long_answer", or "case_study": set "options" to null and set "answer" to a complete model answer.
