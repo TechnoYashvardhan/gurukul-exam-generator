@@ -96,8 +96,8 @@ export default function Dashboard({ onNavigate, historyEntries = [] }: Dashboard
               marginBottom: "12px",
             }}
           >
-            Create balanced examination papers <br className="hidden md:inline" />
-            <span style={{ color: "var(--accent)" }}>from your curriculum syllabus.</span>
+            Create Balanced Examination Papers <br className="hidden md:inline" />
+            <span style={{ color: "var(--accent)" }}>From Your Curriculum Syllabus.</span>
           </h1>
 
           <p

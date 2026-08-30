@@ -410,28 +410,29 @@ export default function GeneratePanel({
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "240px", overflowY: "auto", paddingRight: "4px" }}>
-                  {/* General Knowledge option */}
+                  {/* No document option */}
                   <div
                     onClick={() => handleSelectDoc(null)}
                     style={{
-                      padding: "10px 14px",
+                      padding: "12px 14px",
                       borderRadius: "var(--radius-sm)",
                       border: currentDocId === null ? "1.5px solid var(--accent)" : "1px solid var(--border)",
-                      background: currentDocId === null ? "var(--accent-light)" : "var(--surface-sunken)",
+                      background: currentDocId === null ? "var(--accent-light)" : "var(--surface)",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
                       transition: "all 0.15s ease",
+                      boxShadow: "var(--shadow-sm)",
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <Globe size={16} color={currentDocId === null ? "var(--accent)" : "var(--text-3)"} />
+                      <Globe size={16} color={currentDocId === null ? "var(--accent)" : "var(--text-2)"} />
                       <div>
-                        <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)" }}>
+                        <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text)" }}>
                           Curriculum Subject Knowledge (No Document)
                         </div>
-                        <div style={{ fontSize: "11px", color: "var(--text-3)" }}>
+                        <div style={{ fontSize: "11.5px", color: "var(--text-2)", marginTop: 2 }}>
                           Generates standard textbook questions based on subject & grade
                         </div>
                       </div>
@@ -447,25 +448,26 @@ export default function GeneratePanel({
                         key={doc.id}
                         onClick={() => handleSelectDoc(doc.id)}
                         style={{
-                          padding: "10px 14px",
+                          padding: "12px 14px",
                           borderRadius: "var(--radius-sm)",
                           border: isSelected ? "1.5px solid var(--forest)" : "1px solid var(--border)",
-                          background: isSelected ? "var(--forest-light)" : "var(--surface-sunken)",
+                          background: isSelected ? "var(--forest-light)" : "var(--surface)",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
                           transition: "all 0.15s ease",
+                          boxShadow: "var(--shadow-sm)",
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1, marginRight: 8 }}>
-                          <FileText size={16} color={isSelected ? "var(--forest)" : "var(--text-3)"} style={{ flexShrink: 0 }} />
+                          <FileText size={16} color={isSelected ? "var(--forest)" : "var(--text-2)"} style={{ flexShrink: 0 }} />
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {doc.filename}
                             </div>
-                            <div style={{ fontSize: "11px", color: "var(--text-3)", display: "flex", alignItems: "center", gap: 6, marginTop: 1 }}>
-                              <span>{doc.subject || "General"}</span>
+                            <div style={{ fontSize: "11.5px", color: "var(--text-2)", display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                              <span style={{ fontWeight: 600 }}>{doc.subject || "General"}</span>
                               <span>•</span>
                               <span>{doc.chunk_count} Chunks Indexed</span>
                             </div>
@@ -516,7 +518,7 @@ export default function GeneratePanel({
                   style={{
                     padding: "20px",
                     textAlign: "center",
-                    background: "var(--surface-sunken)",
+                    background: "var(--surface)",
                     borderRadius: "var(--radius-md)",
                     border: "1px dashed var(--border)",
                   }}
@@ -543,28 +545,50 @@ export default function GeneratePanel({
                         key={tpl.id}
                         onClick={() => setSelectedTemplateId(tpl.id)}
                         style={{
-                          padding: "12px",
+                          padding: "14px 12px",
                           borderRadius: "var(--radius-sm)",
                           border: isSelected ? "1.5px solid var(--accent)" : "1px solid var(--border)",
-                          background: isSelected ? "var(--accent-light)" : "var(--surface-sunken)",
+                          background: isSelected ? "var(--accent-light)" : "var(--surface)",
                           cursor: "pointer",
                           display: "flex",
                           flexDirection: "column",
                           justifyContent: "space-between",
                           transition: "all 0.15s ease",
+                          boxShadow: "var(--shadow-sm)",
+                          minHeight: 88,
                         }}
                       >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                          <span style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text)", lineHeight: 1.3 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                          <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)", lineHeight: 1.3 }}>
                             {tpl.name}
                           </span>
                           {isSelected && <Check size={16} color="var(--accent)" style={{ flexShrink: 0 }} />}
                         </div>
-                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: "auto" }}>
-                          <span className="chip-badge" style={{ fontSize: "10px", padding: "1px 6px" }}>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: "auto" }}>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 600,
+                              color: isSelected ? "var(--accent)" : "var(--text-2)",
+                              background: isSelected ? "rgba(234, 88, 12, 0.12)" : "var(--surface-2)",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              border: isSelected ? "1px solid var(--accent-mid)" : "1px solid var(--border)",
+                            }}
+                          >
                             {tpl.subject}
                           </span>
-                          <span className="chip-badge" style={{ fontSize: "10px", padding: "1px 6px" }}>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 600,
+                              color: isSelected ? "var(--accent)" : "var(--text-2)",
+                              background: isSelected ? "rgba(234, 88, 12, 0.12)" : "var(--surface-2)",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              border: isSelected ? "1px solid var(--accent-mid)" : "1px solid var(--border)",
+                            }}
+                          >
                             {tpl.grade}
                           </span>
                         </div>
@@ -601,7 +625,7 @@ export default function GeneratePanel({
               style={{
                 padding: "26px",
                 border: "1.5px solid var(--border)",
-                background: "linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%)",
+                background: "var(--surface)",
                 boxShadow: "var(--shadow)",
               }}
             >
@@ -624,35 +648,35 @@ export default function GeneratePanel({
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
                   gap: 10,
-                  marginBottom: 18,
+                  marginBottom: 16,
                 }}
               >
-                <div style={{ padding: "10px", background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
-                  <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700 }}>
+                <div style={{ padding: "12px", background: "var(--surface-2)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.04em" }}>
                     Subject & Class
                   </div>
-                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text)", marginTop: 2 }}>
+                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text)", marginTop: 4 }}>
                     {selectedTemplateDetail?.subject || "Subject"} • {selectedTemplateDetail?.grade || "Grade"}
                   </div>
                 </div>
 
-                <div style={{ padding: "10px", background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
-                  <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700 }}>
+                <div style={{ padding: "12px", background: "var(--surface-2)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.04em" }}>
                     Total Marks & Time
                   </div>
-                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--gold-border)", marginTop: 2 }}>
+                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--gold-border)", marginTop: 4 }}>
                     {selectedTemplateDetail?.total_marks ? `${selectedTemplateDetail.total_marks} Marks` : "Marks"} • {selectedTemplateDetail?.duration_minutes ? `${selectedTemplateDetail.duration_minutes}m` : "Time"}
                   </div>
                 </div>
               </div>
 
               {/* Source Document Tag */}
-              <div style={{ marginBottom: 18, padding: "10px 12px", background: "var(--surface-sunken)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
-                <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700, marginBottom: 3 }}>
+              <div style={{ marginBottom: 18, padding: "12px", background: "var(--surface-2)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700, marginBottom: 4, letterSpacing: "0.04em" }}>
                   Syllabus Document Source
                 </div>
-                <div style={{ fontSize: "12.5px", color: "var(--text)", display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
-                  <FileText size={14} color="var(--forest)" />
+                <div style={{ fontSize: "13px", color: "var(--text)", display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
+                  <FileText size={15} color="var(--forest)" />
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {selectedDoc ? selectedDoc.filename : "Curriculum Standard Knowledge (No PDF)"}
                   </span>
@@ -662,7 +686,7 @@ export default function GeneratePanel({
               {/* Section breakdown */}
               {selectedTemplateDetail?.sections && selectedTemplateDetail.sections.length > 0 && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", fontWeight: 700, marginBottom: 8, letterSpacing: "0.04em" }}>
                     Sections Planned ({selectedTemplateDetail.sections.length})
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -673,17 +697,27 @@ export default function GeneratePanel({
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
-                          fontSize: "12px",
-                          padding: "5px 8px",
-                          borderRadius: 6,
-                          background: "var(--surface)",
+                          fontSize: "12.5px",
+                          padding: "8px 10px",
+                          borderRadius: "var(--radius-sm)",
+                          background: "var(--surface-2)",
                           border: "1px solid var(--border)",
                         }}
                       >
                         <span style={{ fontWeight: 600, color: "var(--text)" }}>
                           {sec.title || `Section ${String.fromCharCode(65 + i)}`}
                         </span>
-                        <span className="chip-badge" style={{ fontSize: "10px", padding: "1px 6px" }}>
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            color: "var(--text-2)",
+                            background: "var(--surface)",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                            border: "1px solid var(--border)",
+                          }}
+                        >
                           {sec.num_questions} Qs • {sec.marks_per_question * sec.num_questions}M
                         </span>
                       </div>
