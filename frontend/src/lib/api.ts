@@ -24,9 +24,9 @@ export function getApiBaseUrl(): string {
   }
   if (typeof window !== "undefined") {
     const host = window.location.hostname || "localhost";
-    return `http://${host}:8000`;
+    return `http://${host}:8001`;
   }
-  return "http://localhost:8000";
+  return "http://localhost:8001";
 }
 
 export function getApiUrl(): string {

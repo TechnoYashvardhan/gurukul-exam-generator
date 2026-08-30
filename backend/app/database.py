@@ -1,4 +1,5 @@
 import logging
+import ssl
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -21,10 +22,24 @@ class Base(DeclarativeBase):
 def _create_engine_and_session(url: str):
     kwargs = {"echo": settings.debug}
     if not url.startswith("sqlite"):
+        # Configure SSL context for Supabase / PostgreSQL cloud connections
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        connect_args = {
+            "ssl": ctx,
+            "statement_cache_size": 0,
+            "prepared_statement_cache_size": 0,
+            "timeout": 10,
+            "command_timeout": 15,
+        }
         kwargs.update({
             "pool_pre_ping": True,
             "pool_recycle": 300,
-            "connect_args": {"timeout": 3, "command_timeout": 6},
+            "pool_size": 10,
+            "max_overflow": 5,
+            "connect_args": connect_args,
         })
     eng = create_async_engine(url, **kwargs)
     sm = async_sessionmaker(
@@ -44,7 +59,7 @@ engine, AsyncSessionLocal = _create_engine_and_session(settings.database_url)
 def fallback_to_local_sqlite():
     """Fallback cleanly to local SQLite if remote PostgreSQL is unreachable."""
     global engine, AsyncSessionLocal
-    logger.warning("[DATABASE] Remote DB unreachable on this network. Switched to local SQLite: sqlite+aiosqlite:///./examgen.db")
+    logger.warning("[DATABASE] Remote DB unreachable. Switched to local SQLite: sqlite+aiosqlite:///./examgen.db")
     engine, AsyncSessionLocal = _create_engine_and_session("sqlite+aiosqlite:///./examgen.db")
 
 

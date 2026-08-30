@@ -8,7 +8,7 @@ import { generationApi, adminApi } from "@/lib/api";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
 import { ClassSummary } from "@/types/auth";
-import { downloadExamAsJson } from "@/lib/exportUtils";
+import { downloadExamAsJson, getCleanExamTitle } from "@/lib/exportUtils";
 
 interface ExamHistoryProps {
   entries: ExamHistoryEntry[];
@@ -347,7 +347,7 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                 onClose={() => setShowPublishModal(false)}
                 onConfirm={handleConfirmPublish}
                 classes={classes}
-                examTitle={selectedEntry.exam.heading_details || selectedEntry.title}
+                examTitle={getCleanExamTitle(selectedEntry.exam.heading_details, selectedEntry.title)}
                 subject={selectedEntry.exam.subject}
               />
 

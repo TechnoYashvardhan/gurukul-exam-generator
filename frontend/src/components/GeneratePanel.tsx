@@ -33,7 +33,7 @@ import MathText from "./MathText";
 import { useAuth } from "./AuthProvider";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
-import { downloadExamAsJson } from "@/lib/exportUtils";
+import { downloadExamAsJson, getCleanExamTitle } from "@/lib/exportUtils";
 import type { View } from "./Sidebar";
 
 interface GeneratePanelProps {
@@ -833,7 +833,7 @@ export default function GeneratePanel({
                   Exam Paper Generated & Saved to Itihas
                 </h3>
                 <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0 }}>
-                  {result.heading_details || `${result.subject} Examination`} • {result.total_marks} Marks • {result.questions?.length || 0} Questions
+                  {getCleanExamTitle(result.heading_details, result.subject, result.grade)} • {result.total_marks} Marks • {result.questions?.length || 0} Questions
                 </p>
               </div>
             </div>
@@ -979,7 +979,7 @@ export default function GeneratePanel({
             isOpen={showPublishModal}
             onClose={() => setShowPublishModal(false)}
             onConfirm={handleConfirmPublish}
-            examTitle={result.heading_details || `${result.subject} Examination`}
+            examTitle={getCleanExamTitle(result.heading_details, result.subject, result.grade)}
             classes={classes}
           />
         </div>

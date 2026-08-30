@@ -21,7 +21,7 @@ import MathText from "./MathText";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
 import { generationApi, adminApi } from "@/lib/api";
-import { SAMPLE_EXAM_JSON, downloadExamAsJson, downloadSampleTemplateJson } from "@/lib/exportUtils";
+import { SAMPLE_EXAM_JSON, downloadExamAsJson, downloadSampleTemplateJson, getCleanExamTitle } from "@/lib/exportUtils";
 
 interface JsonExamImporterProps {
   onExamSaved: (exam: GeneratedExam) => void;
@@ -615,7 +615,7 @@ export default function JsonExamImporter({ onExamSaved, role = "teacher" }: Json
             onClose={() => setShowPublishModal(false)}
             onConfirm={handleConfirmPublish}
             classes={classes}
-            examTitle={renderedExam.heading_details || renderedExam.subject || "Imported Quiz"}
+            examTitle={getCleanExamTitle(renderedExam.heading_details, renderedExam.subject, renderedExam.grade)}
             subject={renderedExam.subject}
           />
 

@@ -139,3 +139,41 @@ export function downloadExamAsJson(exam: GeneratedExam, customFilename?: string)
 export function downloadSampleTemplateJson() {
   downloadExamAsJson(SAMPLE_EXAM_JSON, "gurukul-question-paper-template.json");
 }
+
+/**
+ * Strips HTML tags and decodes common HTML entities into clean readable plaintext
+ */
+export function stripHtml(html?: string | null): string {
+  if (!html) return "";
+  return html
+    .replace(/<br\s*[\/]?>/gi, " ")
+    .replace(/<\/p>/gi, " ")
+    .replace(/<[^>]*>?/gm, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Returns a human-friendly clean title for an exam (stripping any raw HTML from rich-text headers)
+ */
+export function getCleanExamTitle(
+  headingDetails?: string | null,
+  subject?: string | null,
+  grade?: string | null,
+  maxLen: number = 75
+): string {
+  const cleanHeader = stripHtml(headingDetails);
+  if (cleanHeader) {
+    return cleanHeader.length > maxLen ? cleanHeader.slice(0, maxLen - 3) + "..." : cleanHeader;
+  }
+  if (subject) {
+    return `${subject}${grade ? ` (${grade})` : ""} Exam`;
+  }
+  return "Question Paper";
+}
