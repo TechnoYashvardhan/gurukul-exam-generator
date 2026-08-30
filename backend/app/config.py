@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     gemini_model: str = "models/gemini-3.5-flash-lite"
 
     openrouter_api_key: str = ""
-    openrouter_model: str = "meta-llama/llama-3.3-70b-instruct:free"
+    openrouter_model: str = "openrouter/free"
 
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
