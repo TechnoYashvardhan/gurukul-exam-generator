@@ -33,51 +33,86 @@ export default function GurukulLogo({
         width={size}
         height={size}
         fill="none"
-        style={{ flexShrink: 0, borderRadius: "24%" }}
+        style={{ flexShrink: 0, borderRadius: "22%" }}
       >
         <defs>
-          {/* Background Radiant Gradient */}
-          <linearGradient id="gkLogoBgComp" x1="0%" y1="0%" x2="100%" y2="100%">
+          {/* Vedic Saffron-Gold Radiant Gradient */}
+          <linearGradient id="gkLogoBgVedic" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#ea580c" />
-            <stop offset="50%" stopColor="#d97706" />
+            <stop offset="60%" stopColor="#d97706" />
             <stop offset="100%" stopColor="#b45309" />
           </linearGradient>
 
-          {/* Gold Flame Gradient */}
-          <linearGradient id="gkLogoFlameComp" x1="0%" y1="100%" x2="0%" y2="0%">
+          {/* Glowing Sacred Flame Gradient */}
+          <linearGradient id="gkVedicFlame" x1="0%" y1="100%" x2="0%" y2="0%">
             <stop offset="0%" stopColor="#ea580c" />
-            <stop offset="60%" stopColor="#fbbf24" />
+            <stop offset="45%" stopColor="#f59e0b" />
+            <stop offset="85%" stopColor="#fef08a" />
+            <stop offset="100%" stopColor="#ffffff" />
+          </linearGradient>
+
+          {/* Inner Core Flame */}
+          <linearGradient id="gkInnerFlame" x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor="#f97316" />
             <stop offset="100%" stopColor="#ffffff" />
           </linearGradient>
         </defs>
 
-        {/* Squircle Container Badge */}
-        <rect width="100" height="100" rx="24" fill="url(#gkLogoBgComp)" />
+        {/* Squircle Badge with Golden Inner Rim */}
+        <rect width="100" height="100" rx="22" fill="url(#gkLogoBgVedic)" />
+        <rect
+          x="2"
+          y="2"
+          width="96"
+          height="96"
+          rx="20"
+          stroke="#fef3c7"
+          strokeWidth="1.2"
+          strokeOpacity="0.35"
+        />
 
-        {/* Open Granth Pages (Vedic Manuscript Base) */}
+        {/* Surya Mandala Rays (Sun of Knowledge Aura) */}
+        <g stroke="#fef3c7" strokeWidth="1.5" strokeLinecap="round" opacity="0.4">
+          <line x1="50" y1="8" x2="50" y2="14" />
+          <line x1="50" y1="86" x2="50" y2="92" />
+          <line x1="8" y1="50" x2="14" y2="50" />
+          <line x1="86" y1="50" x2="92" y2="50" />
+          <line x1="20" y1="20" x2="25" y2="25" />
+          <line x1="80" y1="20" x2="75" y2="25" />
+          <line x1="20" y1="80" x2="25" y2="75" />
+          <line x1="80" y1="80" x2="75" y2="75" />
+        </g>
+
+        {/* Open Granth Pages (Layered Palm Leaf Manuscript) */}
         <path
-          d="M50 78 C35 72 20 74 15 78 C15 54 34 50 50 55 C66 50 85 54 85 78 C80 74 65 72 50 78 Z"
+          d="M50 78 C34 72 20 74 15 78 C15 56 32 52 50 57 C68 52 85 56 85 78 C80 74 66 72 50 78 Z"
           fill="#ffffff"
-          fillOpacity="0.95"
         />
-        <path d="M50 78 V55" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round" />
+        {/* Spine Line & Sacred Bookmark Ribbon */}
+        <path d="M50 78 V57" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M50 78 L53 84 L50 82 L47 84 Z" fill="#fef3c7" />
 
-        {/* Outer Flame / Sacred Lotus Petals */}
+        {/* Multi-tiered Vedic Flame (ज्ञान दीप) */}
         <path
-          d="M50 16 C38 32 32 45 42 54 C46 51 48 46 50 42 C52 46 54 51 58 54 C68 45 62 32 50 16 Z"
-          fill="url(#gkLogoFlameComp)"
+          d="M50 15 C34 32 30 46 41 55 C46 52 48 47 50 43 C52 47 54 52 59 55 C70 46 66 32 50 15 Z"
+          fill="url(#gkVedicFlame)"
         />
 
-        {/* Center AI Star / Core Sparkle */}
+        {/* Inner Heart Flame */}
         <path
-          d="M50 32 Q50 39 57 39 Q50 39 50 46 Q50 39 43 39 Q50 39 50 32 Z"
+          d="M50 25 C42 36 42 46 50 51 C58 46 58 36 50 25 Z"
+          fill="url(#gkInnerFlame)"
+          opacity="0.9"
+        />
+
+        {/* AI Diamond Sparkle (प्रज्ञा) */}
+        <path
+          d="M50 34 Q50 40 56 40 Q50 40 50 46 Q50 40 44 40 Q50 40 50 34 Z"
           fill="#ffffff"
         />
 
-        {/* Subtle Vedic Halo Dots */}
-        <circle cx="50" cy="12" r="2.5" fill="#fef3c7" />
-        <circle cx="38" cy="18" r="1.5" fill="#fef3c7" opacity="0.8" />
-        <circle cx="62" cy="18" r="1.5" fill="#fef3c7" opacity="0.8" />
+        {/* Sacred Bindi / Tilak Top Dot */}
+        <circle cx="50" cy="11" r="2" fill="#fffbeb" />
       </svg>
 
       {showText && (

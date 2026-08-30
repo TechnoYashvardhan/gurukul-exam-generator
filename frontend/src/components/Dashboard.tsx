@@ -396,26 +396,56 @@ export default function Dashboard({ onNavigate, historyEntries = [] }: Dashboard
             </button>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "14px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: "16px" }}>
             {recentExams.map((entry) => (
               <div
                 key={entry.id}
                 className="lens-card"
                 onClick={() => onNavigate("history")}
                 style={{
-                  padding: "16px",
+                  padding: "18px 16px",
                   cursor: "pointer",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
+                  boxShadow: "var(--shadow-sm)",
                 }}
               >
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                    <span className="chip-badge chip-badge--accent">
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "10px",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    <span
+                      className="chip-badge chip-badge--accent"
+                      style={{
+                        maxWidth: "175px",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        display: "inline-block",
+                      }}
+                      title={entry.subject || "General"}
+                    >
                       {entry.subject || "General"}
                     </span>
-                    <span style={{ fontSize: "11px", color: "var(--text-3)", display: "flex", alignItems: "center", gap: "4px", fontFamily: "var(--font-mono)" }}>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--text-3)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        fontFamily: "var(--font-mono)",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                      }}
+                    >
                       <Clock size={11} />
                       {new Date(entry.created_at).toLocaleDateString()}
                     </span>

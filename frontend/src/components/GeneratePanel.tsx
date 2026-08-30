@@ -372,8 +372,8 @@ export default function GeneratePanel({
                     <Library size={17} />
                   </div>
                   <div>
-                    <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
-                      1. Syllabus Source (Granth <span className="shloka" style={{ fontWeight: 600, color: "var(--forest)", fontSize: "13.5px" }}>ग्रन्थ</span>)
+                    <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "15.5px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
+                      1. Syllabus Source (Granth)
                     </h3>
                     <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: 0 }}>
                       Select the textbook or notes to extract questions from
@@ -500,8 +500,8 @@ export default function GeneratePanel({
                     <BookOpen size={17} />
                   </div>
                   <div>
-                    <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
-                      2. Exam Blueprint (Vidya <span className="shloka" style={{ fontWeight: 600, color: "var(--gold-border)", fontSize: "13.5px" }}>विद्या</span>)
+                    <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "15.5px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
+                      2. Exam Blueprint (Vidya)
                     </h3>
                     <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: 0 }}>
                       Choose your layout, marks, and question formats
@@ -603,8 +603,8 @@ export default function GeneratePanel({
             <div className="lens-card" style={{ padding: "20px 22px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
                 <Sliders size={16} color="var(--accent)" />
-                <h4 style={{ fontFamily: "var(--font-heading)", fontSize: "14.5px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
-                  3. Custom Focus &amp; Instructions (Nirdesh <span className="shloka" style={{ fontWeight: 600, color: "var(--accent)", fontSize: "13px" }}>निर्देश</span>)
+                <h4 style={{ fontFamily: "var(--font-heading)", fontSize: "14px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
+                  Custom Focus & Instructions (Optional)
                 </h4>
               </div>
               <input
@@ -633,8 +633,8 @@ export default function GeneratePanel({
                 <span className="chip-badge chip-badge--accent">
                   <Sparkles size={11} /> SYNTHESIS HUB
                 </span>
-                <span className="shloka" style={{ fontSize: "12.5px", color: "var(--accent)", fontWeight: 600 }}>
-                  सङ्कलन केन्द्र
+                <span style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}>
+                  Ready to compile
                 </span>
               </div>
 
