@@ -20,6 +20,7 @@ import {
 import MathText from "./MathText";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
+import MatchQuestionView from "./MatchQuestionView";
 import { generationApi, adminApi } from "@/lib/api";
 import { SAMPLE_EXAM_JSON, downloadExamAsJson, downloadSampleTemplateJson, getCleanExamTitle } from "@/lib/exportUtils";
 
@@ -279,22 +280,36 @@ export default function JsonExamImporter({ onExamSaved, role = "teacher" }: Json
                     </div>
                   </div>
 
-                  <div className="exam-question-text">
-                    <MathText content={q.text} />
-                  </div>
-
-                  {/* MCQ Options */}
-                  {q.type === "mcq" && q.options && (
-                    <div className="exam-options-grid">
-                      {q.options.map((opt) => (
-                        <div key={opt.key} className="exam-option-card">
-                          <span className="exam-option-key">{opt.key}</span>
-                          <span className="exam-option-val">
-                            <MathText content={opt.text} />
-                          </span>
-                        </div>
-                      ))}
+                  {q.type === "match_the_following" ? (
+                    <div style={{ marginTop: 8 }}>
+                      <MatchQuestionView
+                        questionText={q.text}
+                        options={q.options}
+                        correctAnswer={String(q.answer)}
+                        isAnswerKeyMode={activeViewMode === "key"}
+                        isInteractive={false}
+                      />
                     </div>
+                  ) : (
+                    <>
+                      <div className="exam-question-text">
+                        <MathText content={q.text} />
+                      </div>
+
+                      {/* MCQ Options */}
+                      {q.type === "mcq" && q.options && (
+                        <div className="exam-options-grid">
+                          {q.options.map((opt) => (
+                            <div key={opt.key} className="exam-option-card">
+                              <span className="exam-option-key">{opt.key}</span>
+                              <span className="exam-option-val">
+                                <MathText content={opt.text} />
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Answer Key Details */}

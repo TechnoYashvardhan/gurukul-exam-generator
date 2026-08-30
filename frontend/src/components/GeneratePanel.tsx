@@ -33,6 +33,7 @@ import MathText from "./MathText";
 import { useAuth } from "./AuthProvider";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
+import MatchQuestionView from "./MatchQuestionView";
 import { downloadExamAsJson, getCleanExamTitle } from "@/lib/exportUtils";
 import type { View } from "./Sidebar";
 
@@ -239,9 +240,21 @@ export default function GeneratePanel({
               <span className="question-card__num" style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>
                 [ Q{q.question_no} ]
               </span>
-              <div className="question-card__text" style={{ fontSize: "14px", lineHeight: 1.6 }}>
-                <MathText content={q.text} />
-              </div>
+              {q.type === "match_the_following" ? (
+                <div style={{ flex: 1 }}>
+                  <MatchQuestionView
+                    questionText={q.text}
+                    options={q.options}
+                    correctAnswer={q.answer}
+                    isAnswerKeyMode={activeViewMode === "key"}
+                    isInteractive={false}
+                  />
+                </div>
+              ) : (
+                <div className="question-card__text" style={{ fontSize: "14px", lineHeight: 1.6 }}>
+                  <MathText content={q.text} />
+                </div>
+              )}
               <span className="chip-badge chip-badge--gold question-card__marks">
                 {q.marks} {q.marks === 1 ? "Mark" : "Marks"}
               </span>
@@ -250,7 +263,7 @@ export default function GeneratePanel({
               </span>
             </div>
 
-            {q.options && q.options.length > 0 && (
+            {q.type !== "match_the_following" && q.options && q.options.length > 0 && (
               <div className="mcq-options" style={{ marginTop: 12 }}>
                 {q.options.map((opt: any) => (
                   <div

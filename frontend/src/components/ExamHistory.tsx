@@ -7,6 +7,7 @@ import MathText from "./MathText";
 import { generationApi, adminApi } from "@/lib/api";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
+import MatchQuestionView from "./MatchQuestionView";
 import { ClassSummary } from "@/types/auth";
 import { downloadExamAsJson, getCleanExamTitle } from "@/lib/exportUtils";
 
@@ -143,14 +144,26 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
           <div className="question-card">
             <div className="question-card__header">
               <span className="question-card__num">Q.{q.question_no}</span>
-              <div className="question-card__text">
-                <MathText content={q.text} />
-              </div>
+              {q.type === "match_the_following" ? (
+                <div style={{ flex: 1 }}>
+                  <MatchQuestionView
+                    questionText={q.text}
+                    options={q.options}
+                    correctAnswer={q.answer}
+                    isAnswerKeyMode={activeViewMode === "key"}
+                    isInteractive={false}
+                  />
+                </div>
+              ) : (
+                <div className="question-card__text">
+                  <MathText content={q.text} />
+                </div>
+              )}
               <span className="question-card__marks">{q.marks}</span>
               <span className="question-card__type">{q.type.replace("_", " ")}</span>
             </div>
 
-            {q.options && q.options.length > 0 && (
+            {q.type !== "match_the_following" && q.options && q.options.length > 0 && (
               <div className="mcq-options">
                 {q.options.map((opt: any) => (
                   <div

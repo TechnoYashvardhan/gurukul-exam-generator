@@ -20,6 +20,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import Toast, { ToastVariant } from "./Toast";
+import MatchQuestionView from "./MatchQuestionView";
 
 interface QuizPlayerProps {
   quizId?: string;
@@ -644,13 +645,26 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
             )}
           </div>
 
-          {/* Question Text with KaTeX */}
-          <div style={{ fontSize: 17, lineHeight: 1.6, color: "var(--text-1)", marginBottom: 28 }}>
-            <MathText content={currentQ.text} />
-          </div>
+          {/* Question Text with KaTeX (hidden for match_the_following since MatchQuestionView renders its own structured header) */}
+          {currentQ.type !== "match_the_following" && (
+            <div style={{ fontSize: 17, lineHeight: 1.6, color: "var(--text-1)", marginBottom: 28 }}>
+              <MathText content={currentQ.text} />
+            </div>
+          )}
 
           {/* Interactive Answer Input Section */}
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: currentQ.type === "match_the_following" ? 0 : 20 }}>
+            {/* Match the Following Interactive Component */}
+            {currentQ.type === "match_the_following" && (
+              <MatchQuestionView
+                questionText={currentQ.text}
+                options={currentQ.options}
+                userAnswer={currentAnswer}
+                onSelectAnswer={(key) => handleSelectAnswer(key)}
+                isInteractive={true}
+              />
+            )}
+
             {/* MCQ Options */}
             {currentQ.type === "mcq" && currentQ.options && (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -761,65 +775,6 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                   style={{ fontSize: 16, padding: "12px 16px" }}
                   autoFocus
                 />
-              </div>
-            )}
-
-            {/* Match the Following / Options code */}
-            {currentQ.type === "match_the_following" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {currentQ.options ? (
-                  currentQ.options.map((opt) => {
-                    const isSelected = currentAnswer.toUpperCase() === opt.key.toUpperCase();
-                    return (
-                      <button
-                        key={opt.key}
-                        onClick={() => handleSelectAnswer(opt.key)}
-                        style={{
-                          padding: "14px 18px",
-                          borderRadius: "var(--radius-lg)",
-                          border: `2px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
-                          background: isSelected ? "var(--accent-light)" : "var(--surface)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 14,
-                          textAlign: "left",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: "50%",
-                            background: isSelected ? "var(--accent)" : "var(--surface-sunken)",
-                            color: isSelected ? "var(--surface)" : "var(--text-2)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 13,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {opt.key}
-                        </div>
-                        <div style={{ fontSize: 14, color: "var(--text-1)", flex: 1 }}>
-                          <MathText content={opt.text} />
-                        </div>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="gk-field">
-                    <label className="gk-label">Matching Code</label>
-                    <input
-                      type="text"
-                      className="gk-input"
-                      placeholder="e.g. 1-B, 2-A, 3-D, 4-C"
-                      value={currentAnswer}
-                      onChange={(e) => handleSelectAnswer(e.target.value)}
-                    />
-                  </div>
-                )}
               </div>
             )}
 

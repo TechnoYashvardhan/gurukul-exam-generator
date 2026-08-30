@@ -425,7 +425,30 @@ SECTION RULES:
 6. IF type is "true_false": provide 2 options: [{{"key": "A", "text": "True"}}, {{"key": "B", "text": "False"}}] and set "answer" to "A" (if True) or "B" (if False). Balance answers roughly 50% True and 50% False.
 7. IF type is "fill_in_the_blanks": use "_____" for the blank in "text", set "options" to null, and set "answer" to the single word/short term that fills the blank.
 8. IF type is "one_word": write a direct question in "text", set "options" to null, and set "answer" to the single word or short phrase answer.
-9. IF type is "match_the_following": format "text" with items to match (e.g. Column I: 1. A, 2. B vs Column II: p. X, q. Y), provide 4 matching code options in "options" (e.g. A: "1-p, 2-q", B: "1-q, 2-p", etc.), and set "answer" to the correct option key ("A", "B", "C", or "D").
+9. IF type is "match_the_following":
+   Format "text" with a clear introductory premise and two structured columns (Column I with numbers 1, 2, 3, 4 and Column II with letters p, q, r, s or a, b, c, d), exactly like this:
+   "Match the items in Column I with the correct concepts in Column II:
+
+   Column I:
+   1. [First concept]
+   2. [Second concept]
+   3. [Third concept]
+   4. [Fourth concept]
+
+   Column II:
+   (p) [Matching description for one item]
+   (q) [Matching description for another item]
+   (r) [Matching description for another item]
+   (s) [Matching description for another item]"
+
+   In "options", provide exactly 4 distinct matching code combinations:
+   [
+     {"key": "A", "text": "1-(q), 2-(s), 3-(r), 4-(p)"},
+     {"key": "B", "text": "1-(p), 2-(q), 3-(s), 4-(r)"},
+     {"key": "C", "text": "1-(s), 2-(q), 3-(r), 4-(p)"},
+     {"key": "D", "text": "1-(q), 2-(r), 3-(s), 4-(p)"}
+   ]
+   and set "answer" to the single correct option key ("A", "B", "C", or "D").
 10. IF type is "short_answer", "long_answer", or "case_study": set "options" to null and set "answer" to a complete model answer.
 11. Keep question text concise and clear.
 
