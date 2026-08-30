@@ -153,7 +153,7 @@ async def upload_document(
         source="upload",
     )
     db.add(doc)
-    await db.flush()      # get doc into DB before background task
+    await db.commit()      # commit doc into DB before background task
 
     logger.info(
         "Document created | id=%s | file=%s | sha256=%s",
@@ -339,7 +339,7 @@ async def web_fetch_document(
         source="web_fetch",
     )
     db.add(doc)
-    await db.flush()
+    await db.commit()
 
     background_tasks.add_task(
         _run_web_ingestion, str(doc_id), body.subject, body.grade, body.extra_keywords, body.url

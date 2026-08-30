@@ -31,14 +31,14 @@ def _create_engine_and_session(url: str):
             "ssl": ctx,
             "statement_cache_size": 0,
             "prepared_statement_cache_size": 0,
-            "timeout": 10,
-            "command_timeout": 15,
+            "timeout": 2,
+            "command_timeout": 4,
         }
         kwargs.update({
             "pool_pre_ping": True,
             "pool_recycle": 300,
-            "pool_size": 10,
-            "max_overflow": 5,
+            "pool_size": 5,
+            "max_overflow": 2,
             "connect_args": connect_args,
         })
     eng = create_async_engine(url, **kwargs)

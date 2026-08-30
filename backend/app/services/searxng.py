@@ -217,18 +217,26 @@ async def fetch_syllabus_from_web(
 
     logger.info("Searching web for syllabus | query=%s", query)
 
-    # ── 3. Search and Scrape ──────────────────────────────────────────────────
-    urls = await _search_duckduckgo(query, max_results=MAX_URLS_TO_SCRAPE)
-    wiki_text = await _search_wikipedia(f"{subject} {extra_keywords}".strip())
+    # ── 3. Fast Parallel Search and Scrape ────────────────────────────────────
+    urls: list[str] = []
+    wiki_text = ""
+    try:
+        urls, wiki_text = await asyncio.gather(
+            asyncio.wait_for(_search_duckduckgo(query, max_results=3), timeout=3.5),
+            asyncio.wait_for(_search_wikipedia(f"{subject} {extra_keywords}".strip()), timeout=3.5),
+            return_exceptions=False,
+        )
+    except Exception as e:
+        logger.debug("Fast search partial/timeout: %s", e)
 
     scraped_parts: list[str] = []
     if urls:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, headers=BROWSER_HEADERS) as client:
-            tasks = [_scrape_url(client, url) for url in urls]
+        async with httpx.AsyncClient(timeout=4.0, headers=BROWSER_HEADERS) as client:
+            tasks = [_scrape_url(client, url) for url in urls[:3]]
             results = await asyncio.gather(*tasks, return_exceptions=True)
-            for i, (url, res) in enumerate(zip(urls, results)):
+            for i, res in enumerate(results):
                 if isinstance(res, str) and len(res.strip()) > 80:
-                    scraped_parts.append(f"\n\n--- Source {i + 1}: {url} ---\n{res}")
+                    scraped_parts.append(f"\n\n--- Web Reference {i + 1} ---\n{res}")
 
     combined = "".join(scraped_parts)
     if wiki_text:
@@ -236,7 +244,7 @@ async def fetch_syllabus_from_web(
 
     # ── 4. If web scraping was blocked / returned sparse text, use AI Synthesizer
     if len(combined.strip()) < 200:
-        logger.info("Web scraping returned sparse text (%d chars). Generating curriculum via Gemini...", len(combined.strip()))
+        logger.info("Web search returned sparse text (%d chars). Synthesizing curriculum via Gemini...", len(combined.strip()))
         synthetic = await _generate_synthetic_curriculum(subject, grade, extra_keywords)
         combined = synthetic + ("\n\n" + combined if combined.strip() else "")
 
