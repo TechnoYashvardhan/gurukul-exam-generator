@@ -183,6 +183,85 @@ async def lifespan(app: FastAPI):
                 student_user.hashed_pw = student_pw_hash
                 student_user.class_id = _class_1_id
 
+            # Seed Default Templates (Vidya Blueprints)
+            from app.models.db import Template
+            _tpl_1_id = uuid.UUID("20000000-0000-0000-0000-000000000001")
+            _tpl_2_id = uuid.UUID("20000000-0000-0000-0000-000000000002")
+            _tpl_3_id = uuid.UUID("20000000-0000-0000-0000-000000000003")
+
+            t1 = await session.get(Template, _tpl_1_id)
+            if not t1:
+                session.add(Template(
+                    id=_tpl_1_id,
+                    user_id=_default_uid,
+                    name="BCA - Computer Hardware & Components",
+                    subject="Computer Hardware & Components",
+                    grade="BCA",
+                    config={
+                        "subject": "Computer Hardware & Components",
+                        "grade": "BCA",
+                        "difficulty": "medium",
+                        "total_marks": 40,
+                        "duration_minutes": 180,
+                        "heading_details": "Dev Sanskriti Vishwavidyalaya<br>Practice Quiz<br>Course: BCA",
+                        "instructions": "All questions are compulsory.\nRead all the questions carefully.",
+                        "sections": [
+                            {"id": "sec-a", "title": "Multiple Choice Questions", "type": "mcq", "num_questions": 5, "marks_per_question": 2},
+                            {"id": "sec-b", "title": "Short Answer Questions", "type": "short_answer", "num_questions": 4, "marks_per_question": 5},
+                            {"id": "sec-c", "title": "Match The Following", "type": "match_the_following", "num_questions": 2, "marks_per_question": 5},
+                        ]
+                    }
+                ))
+
+            t2 = await session.get(Template, _tpl_2_id)
+            if not t2:
+                session.add(Template(
+                    id=_tpl_2_id,
+                    user_id=_default_uid,
+                    name="Physics - Class 11 Mechanics & Optics",
+                    subject="Physics",
+                    grade="Class 11",
+                    config={
+                        "subject": "Physics",
+                        "grade": "Class 11",
+                        "difficulty": "medium",
+                        "total_marks": 50,
+                        "duration_minutes": 180,
+                        "heading_details": "Gurukul Examination Board<br>Annual Physics Assessment",
+                        "instructions": "Answer all questions. Show complete steps for numerical problems.",
+                        "sections": [
+                            {"id": "sec-1", "title": "Section A — Conceptual MCQs", "type": "mcq", "num_questions": 10, "marks_per_question": 1},
+                            {"id": "sec-2", "title": "Section B — Short Answer Problems", "type": "short_answer", "num_questions": 5, "marks_per_question": 4},
+                            {"id": "sec-3", "title": "Section C — Comparative Analysis", "type": "match_the_following", "num_questions": 2, "marks_per_question": 5},
+                            {"id": "sec-4", "title": "Section D — Long Derivations", "type": "long_answer", "num_questions": 2, "marks_per_question": 5},
+                        ]
+                    }
+                ))
+
+            t3 = await session.get(Template, _tpl_3_id)
+            if not t3:
+                session.add(Template(
+                    id=_tpl_3_id,
+                    user_id=_default_uid,
+                    name="Mathematics - Class 10 Board Blueprint",
+                    subject="Mathematics",
+                    grade="Class 10",
+                    config={
+                        "subject": "Mathematics",
+                        "grade": "Class 10",
+                        "difficulty": "medium",
+                        "total_marks": 40,
+                        "duration_minutes": 120,
+                        "heading_details": "Central Board Examination<br>Mathematics Standard",
+                        "instructions": "All questions are compulsory. Use of calculators is not permitted.",
+                        "sections": [
+                            {"id": "sec-m1", "title": "Section A — Multiple Choice", "type": "mcq", "num_questions": 10, "marks_per_question": 1},
+                            {"id": "sec-m2", "title": "Section B — Short Answer", "type": "short_answer", "num_questions": 4, "marks_per_question": 3},
+                            {"id": "sec-m3", "title": "Section C — Long Answer", "type": "long_answer", "num_questions": 3, "marks_per_question": 6},
+                        ]
+                    }
+                ))
+
             await session.commit()
     except Exception as e:
         logger.warning("Database startup init warning: %s", e)

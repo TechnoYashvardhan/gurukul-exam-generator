@@ -110,20 +110,15 @@ async def list_templates(
     db: AsyncSession = Depends(get_db),
 ) -> list[TemplateSummary]:
     """Return all templates belonging to the requested role or current user."""
+    stmt = select(TemplateORM).order_by(TemplateORM.created_at.desc())
     if role == "admin":
-        target_uid = _ADMIN_UID
+        stmt = stmt.where(TemplateORM.user_id == _ADMIN_UID)
     elif role == "teacher":
-        target_uid = _TEACHER_UID
+        stmt = stmt.where(TemplateORM.user_id == _TEACHER_UID)
     elif current_user:
-        target_uid = current_user.id
-    else:
-        target_uid = _TEACHER_UID
+        stmt = stmt.where(TemplateORM.user_id.in_([current_user.id, _TEACHER_UID, _ADMIN_UID]))
 
-    result = await db.execute(
-        select(TemplateORM)
-        .where(TemplateORM.user_id == target_uid)
-        .order_by(TemplateORM.created_at.desc())
-    )
+    result = await db.execute(stmt)
     rows = result.scalars().all()
     return [_to_summary(r) for r in rows]
 

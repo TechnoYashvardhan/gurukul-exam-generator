@@ -14,10 +14,10 @@ from app.llm.base import LLMClient, LLMProviderError
 logger = logging.getLogger(__name__)
 
 FALLBACK_MODELS = [
-    "models/gemini-3.6-flash",
-    "models/gemini-flash-latest",
-    "models/gemini-2.5-flash",
+    "models/gemini-2.0-flash",
     "models/gemini-1.5-flash",
+    "models/gemini-flash-latest",
+    "models/gemini-3.6-flash",
 ]
 
 
@@ -29,7 +29,7 @@ class GeminiClient(LLMClient):
                 "GEMINI_API_KEY is not set. Get a free key at https://aistudio.google.com",
             )
         genai.configure(api_key=settings.gemini_api_key)
-        self._model_name = settings.gemini_model or "models/gemini-3.6-flash"
+        self._model_name = settings.gemini_model or "models/gemini-2.0-flash"
 
     @property
     def provider_name(self) -> str:
@@ -74,12 +74,8 @@ class GeminiClient(LLMClient):
                 return content
 
             except ResourceExhausted as exc:
-                logger.warning("Gemini quota exhausted on %s: %s", candidate_model, exc)
-                raise LLMProviderError(
-                    "gemini",
-                    "Gemini API quota exhausted. Please check rate limits.",
-                    original=exc,
-                )
+                logger.warning("Gemini quota exhausted on %s: %s. Trying next candidate model...", candidate_model, exc)
+                last_error = exc
             except DeadlineExceeded as exc:
                 logger.error("Gemini request timed out on %s: %s", candidate_model, exc)
                 last_error = exc
@@ -89,5 +85,15 @@ class GeminiClient(LLMClient):
             except Exception as exc:
                 logger.warning("Gemini error on %s: %s", candidate_model, exc)
                 last_error = exc
+
+        # Automatic fallback to OpenRouter when Gemini quota is exhausted
+        if settings.openrouter_api_key:
+            logger.info("[FALLBACK] All Gemini models exhausted. Seamlessly routing to OpenRouter (Llama 3.3 70B)...")
+            try:
+                from app.llm.openrouter_client import OpenRouterClient
+                openrouter = OpenRouterClient()
+                return await openrouter.generate(system_prompt, user_message, temperature, max_tokens)
+            except Exception as router_err:
+                logger.error("OpenRouter fallback also failed: %s", router_err)
 
         raise LLMProviderError("gemini", f"All Gemini model candidates failed. Last error: {last_error}", original=last_error)
