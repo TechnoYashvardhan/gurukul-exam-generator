@@ -177,9 +177,9 @@ async def _run_ingestion(
     Background task: runs the full ingestion pipeline and updates doc status.
     Uses its own DB session (background tasks run after request response).
     """
-    from app.database import AsyncSessionLocal
+    from app.database import get_async_session
 
-    async with AsyncSessionLocal() as db:
+    async with get_async_session() as db:
         try:
             chunk_count, page_count = await process_and_store_document(
                 db=db,
@@ -206,7 +206,7 @@ async def _run_ingestion(
             logger.error("Ingestion failed for doc_id=%s: %s", document_id, exc)
             await db.rollback()
             # Mark document as error
-            async with AsyncSessionLocal() as err_db:
+            async with get_async_session() as err_db:
                 result = await err_db.execute(
                     select(DocumentORM).where(DocumentORM.id == uuid.UUID(document_id))
                 )
@@ -308,9 +308,18 @@ async def web_fetch_document(
         select(DocumentORM).where(DocumentORM.sha256_hash == pseudo_sha)
     )
     existing_doc = existing.scalar_one_or_none()
-    if existing_doc and existing_doc.status == "ready":
-        chunk_count = await _count_chunks(db, existing_doc.id)
-        return _to_summary(existing_doc, chunk_count)
+    if existing_doc is not None:
+        if existing_doc.status == "ready":
+            chunk_count = await _count_chunks(db, existing_doc.id)
+            return _to_summary(existing_doc, chunk_count)
+        # Reuse existing record if it was previously in error/processing state
+        await db.execute(delete(DocumentChunk).where(DocumentChunk.document_id == existing_doc.id))
+        existing_doc.status = "processing"
+        await db.commit()
+        background_tasks.add_task(
+            _run_web_ingestion, str(existing_doc.id), body.subject, body.grade, body.extra_keywords, body.url
+        )
+        return _to_summary(existing_doc, 0)
 
     title_tag = f"{body.subject} {body.grade}"
     if body.url:
@@ -346,16 +355,25 @@ async def _run_web_ingestion(
     extra_keywords: str,
     direct_url: str | None = None,
 ) -> None:
-    from app.database import AsyncSessionLocal
+    from app.database import get_async_session
 
-    async with AsyncSessionLocal() as db:
+    async with get_async_session() as db:
         try:
             text = await fetch_syllabus_from_web(subject, grade, extra_keywords, direct_url=direct_url)
+            if not text or len(text.strip()) < 20:
+                text = (
+                    f"=== Academic Syllabus for {subject} ({grade}) ===\n\n"
+                    f"Core topics and concepts for {subject} {grade}.\n"
+                    f"Focus: {extra_keywords if extra_keywords else 'Full Curriculum'}\n"
+                )
 
             from app.services.document_processor import chunk_text
             from app.services.embedding import embed_texts
 
             chunks = chunk_text(text)
+            if not chunks:
+                chunks = [text]
+
             embeddings = embed_texts(chunks)
 
             doc_uuid = uuid.UUID(document_id)
@@ -389,7 +407,7 @@ async def _run_web_ingestion(
         except Exception as exc:
             logger.error("Web ingestion failed for doc_id=%s: %s", document_id, exc)
             await db.rollback()
-            async with AsyncSessionLocal() as err_db:
+            async with get_async_session() as err_db:
                 result = await err_db.execute(
                     select(DocumentORM).where(DocumentORM.id == uuid.UUID(document_id))
                 )

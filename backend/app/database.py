@@ -63,6 +63,12 @@ def fallback_to_local_sqlite():
     engine, AsyncSessionLocal = _create_engine_and_session("sqlite+aiosqlite:///./examgen.db")
 
 
+def get_async_session() -> AsyncSession:
+    """Return an async session from the currently active session factory."""
+    global AsyncSessionLocal
+    return AsyncSessionLocal()
+
+
 # ── FastAPI dependency ────────────────────────────────────────────────────────
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """

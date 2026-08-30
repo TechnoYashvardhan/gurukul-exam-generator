@@ -222,34 +222,6 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def universal_cors_middleware(request, call_next):
-    origin = request.headers.get("origin") or "*"
-    if request.method == "OPTIONS":
-        from fastapi.responses import Response
-        res = Response(status_code=204)
-        res.headers["Access-Control-Allow-Origin"] = origin
-        res.headers["Access-Control-Allow-Credentials"] = "true"
-        res.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        res.headers["Access-Control-Allow-Headers"] = "*"
-        return res
-
-    try:
-        response = await call_next(request)
-    except Exception as exc:
-        from fastapi.responses import JSONResponse
-        logger.exception("Unhandled error processing request: %s", exc)
-        response = JSONResponse(
-            status_code=500,
-            content={"detail": "Internal server error occurred."},
-        )
-
-    response.headers["Access-Control-Allow-Origin"] = origin
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    return response
-
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
