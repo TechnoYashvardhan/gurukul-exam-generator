@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Database,
   ScrollText,
+  FileCode2,
 } from "lucide-react";
 import { documentsApi, templatesApi } from "@/lib/api";
 import { View } from "./Sidebar";
@@ -108,13 +109,17 @@ export default function Dashboard({ onNavigate, historyEntries = [] }: Dashboard
               marginBottom: "24px",
             }}
           >
-            Upload your Granth textbooks or syllabus notes, configure your Vidya blueprint, and synthesize comprehensive examination papers with model solutions.
+            Upload your Granth textbooks or syllabus notes, configure your Vidya blueprint, import pre-built JSON papers, and synthesize comprehensive examination papers with model solutions.
           </p>
 
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button className="gk-btn gk-btn--primary" onClick={() => onNavigate("generate")}>
               <Sparkles size={16} />
               Rachna (Create Exam)
+            </button>
+            <button className="gk-btn gk-btn--secondary" onClick={() => onNavigate("import_json")}>
+              <FileCode2 size={16} />
+              Aayat (JSON Import)
             </button>
             <button className="gk-btn gk-btn--secondary" onClick={() => onNavigate("builder")}>
               <BookOpen size={16} />
@@ -256,6 +261,47 @@ export default function Dashboard({ onNavigate, historyEntries = [] }: Dashboard
           </div>
           <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
             Synthesize question papers and marking schemes from your selected syllabus source.
+          </p>
+        </div>
+
+        {/* Aayat / JSON Import */}
+        <div
+          className="lens-card"
+          onClick={() => onNavigate("import_json")}
+          style={{ padding: "20px", cursor: "pointer" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "10px",
+                background: "rgba(217, 119, 6, 0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--accent)",
+                border: "1px solid rgba(217, 119, 6, 0.3)",
+              }}
+            >
+              <FileCode2 size={20} />
+            </div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                  Aayat
+                </h3>
+                <span className="shloka" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
+                  आयात
+                </span>
+              </div>
+              <p style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)", margin: 0 }}>
+                JSON Paper Generator
+              </p>
+            </div>
+          </div>
+          <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
+            Import question sets via JSON, validate schema live, download standard templates, and render papers.
           </p>
         </div>
 
