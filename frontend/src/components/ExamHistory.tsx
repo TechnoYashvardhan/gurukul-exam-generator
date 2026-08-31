@@ -151,7 +151,7 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                     options={q.options}
                     correctAnswer={q.answer}
                     isAnswerKeyMode={activeViewMode === "key"}
-                    isInteractive={false}
+                    isInteractive={true}
                   />
                 </div>
               ) : (

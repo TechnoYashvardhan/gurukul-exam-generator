@@ -247,7 +247,7 @@ export default function GeneratePanel({
                     options={q.options}
                     correctAnswer={q.answer}
                     isAnswerKeyMode={activeViewMode === "key"}
-                    isInteractive={false}
+                    isInteractive={true}
                   />
                 </div>
               ) : (

@@ -287,7 +287,7 @@ export default function JsonExamImporter({ onExamSaved, role = "teacher" }: Json
                         options={q.options}
                         correctAnswer={String(q.answer)}
                         isAnswerKeyMode={activeViewMode === "key"}
-                        isInteractive={false}
+                        isInteractive={true}
                       />
                     </div>
                   ) : (
