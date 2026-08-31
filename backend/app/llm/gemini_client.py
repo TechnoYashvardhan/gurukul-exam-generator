@@ -14,10 +14,12 @@ from app.llm.base import LLMClient, LLMProviderError
 logger = logging.getLogger(__name__)
 
 FALLBACK_MODELS = [
-    "models/gemini-2.0-flash",
-    "models/gemini-1.5-flash",
-    "models/gemini-flash-latest",
+    "models/gemini-3.5-flash",
+    "models/gemini-3.5-flash-lite",
     "models/gemini-3.6-flash",
+    "models/gemini-3.7-flash",
+    "models/gemini-flash-latest",
+    "models/gemini-flash-lite-latest",
 ]
 
 
@@ -74,8 +76,16 @@ class GeminiClient(LLMClient):
                 return content
 
             except ResourceExhausted as exc:
-                logger.warning("Gemini quota exhausted on %s: %s. Trying next candidate model...", candidate_model, exc)
+                logger.warning("Gemini quota exhausted on %s: %s. Fast-routing to OpenRouter fallback...", candidate_model, exc)
                 last_error = exc
+                if settings.openrouter_api_key:
+                    try:
+                        from app.llm.openrouter_client import OpenRouterClient
+                        openrouter = OpenRouterClient()
+                        return await openrouter.generate(system_prompt, user_message, temperature, max_tokens)
+                    except Exception as router_err:
+                        logger.error("OpenRouter fallback failed: %s", router_err)
+                break
             except DeadlineExceeded as exc:
                 logger.error("Gemini request timed out on %s: %s", candidate_model, exc)
                 last_error = exc

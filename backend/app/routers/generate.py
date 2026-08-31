@@ -105,10 +105,12 @@ async def generate_exam_endpoint(
                     await db.commit()
                     
                     res = ExamGenerationResponse(exam=exam)
-                    yield json.dumps(res.model_dump()) + "\n"
+                    yield json.dumps(res.model_dump(mode="json"), default=str) + "\n"
         except LLMProviderError as exc:
+            logger.error("LLMProviderError in generation stream: %s", exc)
             yield json.dumps({"error": f"LLM error: {str(exc)}"}) + "\n"
         except Exception as exc:
+            logger.error("Exception in generation stream: %s", exc, exc_info=True)
             yield json.dumps({"error": str(exc)}) + "\n"
 
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
