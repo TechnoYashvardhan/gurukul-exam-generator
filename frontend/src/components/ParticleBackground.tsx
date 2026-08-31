@@ -40,7 +40,12 @@ export default function ParticleBackground() {
     function draw() {
       ctx!.clearRect(0, 0, width, height);
 
-      for (const p of particles) {
+      const isDark = document.documentElement.classList.contains("dark");
+      const saturation = isDark ? "70%" : "65%";
+      const lightness = isDark ? "62%" : "52%";
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
         // Gentle flicker
         p.opacity += (Math.random() - 0.5) * 0.015;
         p.opacity = Math.max(0.04, Math.min(0.42, p.opacity));
@@ -52,10 +57,6 @@ export default function ParticleBackground() {
         if (p.y < -5) p.y = height + 5;
         if (p.x < -5) p.x = width + 5;
         if (p.x > width + 5) p.x = -5;
-
-        const isDark = document.documentElement.classList.contains("dark");
-        const saturation = isDark ? "70%" : "65%";
-        const lightness = isDark ? "62%" : "52%";
 
         ctx!.beginPath();
         ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);

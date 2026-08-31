@@ -234,10 +234,10 @@ export function formatMathText(raw: string): string {
   return res;
 }
 
-export default function MathText({ content, className = "" }: MathTextProps) {
+function MathTextComponent({ content, className = "" }: MathTextProps) {
   if (!content) return null;
 
-  const formatted = formatMathText(content);
+  const formatted = React.useMemo(() => formatMathText(content), [content]);
 
   return (
     <div className={`math-content prose-sm inline-block ${className}`}>
@@ -250,3 +250,5 @@ export default function MathText({ content, className = "" }: MathTextProps) {
     </div>
   );
 }
+
+export default React.memo(MathTextComponent);
