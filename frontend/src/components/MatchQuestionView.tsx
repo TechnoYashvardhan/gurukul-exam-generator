@@ -72,7 +72,7 @@ export function parseMatchText(rawText: string): ParsedMatchData {
 
 function parseTokenItems(str: string, defaultPrefixType: "numeric" | "alpha" = "numeric"): ColumnItem[] {
   // Matches strict identifiers like 1., (1), [1], 1), (p), p., p), [p], (iv), iv. followed by space & word
-  const pattern = /(?:^|[\n,;\s]+)(?:(?:\((?<id1>[a-zA-Z0-9]{1,4})\))|(?:\[(?<id2>[a-zA-Z0-9]{1,4})\])|(?<id3>[0-9]{1,3}|[a-zA-Z]{1,2}|[ivxIVX]{1,4})[\.\)\:\-])(?=\s+[A-Za-z0-9\$\\\(])/g;
+  const pattern = /(?:^|[\n,;\s]+)(?:(?:\((?<id1>[0-9]{1,3}|[ivxIVX]{1,4}|[a-zA-Z])\))|(?:\[(?<id2>[0-9]{1,3}|[ivxIVX]{1,4}|[a-zA-Z])\])|(?<id3>[0-9]{1,3}|[ivxIVX]{1,4}|[a-zA-Z])[\.\)\:\-])(?=\s+[A-Za-z0-9\$\\\(])/g;
   const rawMatches = Array.from(str.matchAll(pattern));
 
   // Filter out common English parenthetical words like (non), (approx), etc.
@@ -84,11 +84,14 @@ function parseTokenItems(str: string, defaultPrefixType: "numeric" | "alpha" = "
   if (matches.length < 2) {
     const lines = str.split("\n").map((l) => l.trim()).filter(Boolean);
     const items: ColumnItem[] = [];
+    const bulletRegex = /^[\(\[]?(?:([0-9]{1,3})|([ivxIVX]{1,4})|([a-zA-Z]))[\)\]\.\:\-]\s*(.+)$/;
+
     for (let idx = 0; idx < lines.length; idx++) {
       const line = lines[idx];
-      const m = line.match(/^[\(\[]?([0-9a-zA-ZivxIVX]{1,4})[\)\]\.\:\-]\s*(.+)$/);
-      if (m && !IGNORED_PAREN_WORDS.has(m[1].toLowerCase())) {
-        items.push({ id: m[1].trim(), text: m[2].trim() });
+      const m = line.match(bulletRegex);
+      const matchId = m ? (m[1] || m[2] || m[3]) : null;
+      if (matchId && !IGNORED_PAREN_WORDS.has(matchId.toLowerCase())) {
+        items.push({ id: matchId.trim(), text: m![4].trim() });
       } else {
         const fallbackId = defaultPrefixType === "numeric" ? `${idx + 1}` : String.fromCharCode(112 + idx); // p, q, r...
         items.push({ id: fallbackId, text: line });
