@@ -71,7 +71,7 @@ export function parseMatchText(rawText: string): ParsedMatchData {
 
 function parseTokenItems(str: string): ColumnItem[] {
   // Tokenize by item markers like 1., (1), [1], 1), (a), (p), p., p), [p]
-  const pattern = /(?:^|[\n,;\s]+)(?:(?:\((?P<id1>[0-9a-zA-ZivxIVX]+)\))|(?:\[(?P<id2>[0-9a-zA-ZivxIVX]+)\])|(?P<id3>[0-9a-zA-ZivxIVX]+)[\.\)\:\-])\s*/g;
+  const pattern = /(?:^|[\n,;\s]+)(?:(?:\((?<id1>[0-9a-zA-ZivxIVX]+)\))|(?:\[(?<id2>[0-9a-zA-ZivxIVX]+)\])|(?<id3>[0-9a-zA-ZivxIVX]+)[\.\)\:\-])\s*/g;
   const matches = Array.from(str.matchAll(pattern));
 
   if (matches.length < 2) {
