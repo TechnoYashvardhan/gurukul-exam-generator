@@ -76,8 +76,15 @@ class GeminiClient(LLMClient):
                 return content
 
             except ResourceExhausted as exc:
-                logger.warning("Gemini quota exhausted on %s: %s. Fast-routing to OpenRouter fallback...", candidate_model, exc)
+                logger.warning("Gemini quota exhausted on %s: %s. Fast-routing to ultra-fast Groq/OpenRouter fallback...", candidate_model, exc)
                 last_error = exc
+                if settings.groq_api_key:
+                    try:
+                        from app.llm.groq_client import GroqClient
+                        groq = GroqClient()
+                        return await groq.generate(system_prompt, user_message, temperature, max_tokens)
+                    except Exception as groq_err:
+                        logger.error("Groq fallback failed: %s", groq_err)
                 if settings.openrouter_api_key:
                     try:
                         from app.llm.openrouter_client import OpenRouterClient
