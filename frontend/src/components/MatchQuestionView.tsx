@@ -379,7 +379,7 @@ export default function MatchQuestionView({
       style={{ display: "flex", flexDirection: "column", gap: 14, width: "100%", userSelect: isDragging ? "none" : "auto" }}
     >
       {/* Premise Statement */}
-      {parsed.premise && (
+      {parsed.hasColumns && parsed.premise && (
         <div
           className="match-premise"
           style={{

@@ -2912,7 +2912,11 @@ body {
   .no-print,
   button,
   .page-header__breadcrumb,
-  .theme-toggle {
+  .theme-toggle,
+  .modal-overlay,
+  .modal-backdrop,
+  [role="dialog"],
+  .dialog-overlay {
     display: none !important;
   }
 
