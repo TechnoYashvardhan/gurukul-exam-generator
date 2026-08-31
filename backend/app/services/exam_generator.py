@@ -131,7 +131,7 @@ def _sanitize_exam_text(text: str) -> str:
     # 8. Clean up multiple spaces
     s = re.sub(r'[ \t]+', ' ', s)
 
-    # 9. Format Match the Following questions if squished on one line
+    # 9. Format Match the Following questions if squished on one line or missing item indices
     if ("Column I" in s or "स्तम्भ I" in s or "स्तम्भ 1" in s) and ("Column II" in s or "स्तम्भ II" in s or "स्तम्भ 2" in s):
         col1_m = list(re.finditer(r'(?:(?:^|[\n\.\:\;])\s*)(?:Column\s*[-–—:]?\s*(?:I|1|A)|स्तम्भ\s*[-–—:]?\s*(?:1|I))\s*[:\-\n\s]*', s, re.IGNORECASE))
         col2_m = list(re.finditer(r'(?:(?:^|[\n\.\:\;])\s*)(?:Column\s*[-–—:]?\s*(?:II|2|B)|स्तम्भ\s*[-–—:]?\s*(?:2|II))\s*[:\-\n\s]*', s, re.IGNORECASE))
@@ -143,9 +143,22 @@ def _sanitize_exam_text(text: str) -> str:
                 premise = s[:col1.start()].strip()
                 col1_raw = s[col1.end():col2.start()].strip()
                 col2_raw = s[col2.end():].strip()
-                col1_lines = re.sub(r'([,\.\;]?\s+)([0-9ivxIVX]+[\.\)\:\-])', r'\n\2', col1_raw)
-                col2_lines = re.sub(r'([,\.\;]?\s+)(\(?[a-zA-Z0-9]+[\.\)\:\-])', r'\n\2', col2_raw)
-                s = f"{premise}\n\nColumn I:\n{col1_lines}\n\nColumn II:\n{col2_lines}".strip()
+
+                # Format col1 items with 1., 2., 3...
+                col1_split = re.sub(r'([,\.\;]?\s+)([0-9ivxIVX]+[\.\)\:\-])', r'\n\2', col1_raw)
+                raw_lines1 = [l.strip() for l in col1_split.split('\n') if l.strip()]
+                col1_lines = []
+                for idx, l in enumerate(raw_lines1):
+                    if not re.match(r'^[\(\[]?[0-9ivxIVX]+[\)\]\.\:\-]', l):
+                        col1_lines.append(f"{idx+1}. {l}")
+                    else:
+                        col1_lines.append(l)
+                col1_str = '\n'.join(col1_lines)
+
+                # Format col2 items with (p), (q), (r)...
+                col2_str = re.sub(r'([,\.\;]?\s+)(\(?[a-zA-Z0-9]{1,3}[\.\)\:\-])(?=\s+[A-Za-z0-9])', r'\n\2', col2_raw)
+
+                s = f"{premise}\n\nColumn I:\n{col1_str}\n\nColumn II:\n{col2_str}".strip()
 
     return s.strip()
 

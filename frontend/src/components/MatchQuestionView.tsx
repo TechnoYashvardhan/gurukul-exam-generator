@@ -51,8 +51,8 @@ export function parseMatchText(rawText: string): ParsedMatchData {
       const col1Raw = text.slice(col1Idx + col1M[0].length, col2Idx).trim();
       const col2Raw = text.slice(col2Idx + col2M[0].length).trim();
 
-      const aItems = parseTokenItems(col1Raw);
-      const bItems = parseTokenItems(col2Raw);
+      const aItems = parseTokenItems(col1Raw, "numeric");
+      const bItems = parseTokenItems(col2Raw, "alpha");
 
       if (aItems.length >= 2 && bItems.length >= 2) {
         return { premise, columnA: aItems, columnB: bItems, hasColumns: true };
@@ -70,7 +70,7 @@ export function parseMatchText(rawText: string): ParsedMatchData {
   return parseLooseItems(text);
 }
 
-function parseTokenItems(str: string): ColumnItem[] {
+function parseTokenItems(str: string, defaultPrefixType: "numeric" | "alpha" = "numeric"): ColumnItem[] {
   // Matches strict identifiers like 1., (1), [1], 1), (p), p., p), [p], (iv), iv. followed by space & word
   const pattern = /(?:^|[\n,;\s]+)(?:(?:\((?<id1>[a-zA-Z0-9]{1,4})\))|(?:\[(?<id2>[a-zA-Z0-9]{1,4})\])|(?<id3>[0-9]{1,3}|[a-zA-Z]{1,2}|[ivxIVX]{1,4})[\.\)\:\-])(?=\s+[A-Za-z0-9\$\\\(])/g;
   const rawMatches = Array.from(str.matchAll(pattern));
@@ -84,15 +84,17 @@ function parseTokenItems(str: string): ColumnItem[] {
   if (matches.length < 2) {
     const lines = str.split("\n").map((l) => l.trim()).filter(Boolean);
     const items: ColumnItem[] = [];
-    for (const line of lines) {
+    for (let idx = 0; idx < lines.length; idx++) {
+      const line = lines[idx];
       const m = line.match(/^[\(\[]?([0-9a-zA-ZivxIVX]{1,4})[\)\]\.\:\-]\s*(.+)$/);
       if (m && !IGNORED_PAREN_WORDS.has(m[1].toLowerCase())) {
         items.push({ id: m[1].trim(), text: m[2].trim() });
-      } else if (items.length > 0) {
-        items[items.length - 1].text += " " + line;
+      } else {
+        const fallbackId = defaultPrefixType === "numeric" ? `${idx + 1}` : String.fromCharCode(112 + idx); // p, q, r...
+        items.push({ id: fallbackId, text: line });
       }
     }
-    return items;
+    if (items.length >= 2) return items;
   }
 
   const items: ColumnItem[] = [];
@@ -368,7 +370,7 @@ export default function MatchQuestionView({
 
   return (
     <div
-      className="match-workbench-root"
+      className="match-workbench-root match-workbench"
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       style={{ display: "flex", flexDirection: "column", gap: 14, width: "100%", userSelect: isDragging ? "none" : "auto" }}
@@ -392,7 +394,7 @@ export default function MatchQuestionView({
       {parsed.hasColumns ? (
         <div
           ref={containerRef}
-          className="match-canvas-container"
+          className="match-canvas-container match-grid-container"
           style={{
             position: "relative",
             background: "var(--surface)",
