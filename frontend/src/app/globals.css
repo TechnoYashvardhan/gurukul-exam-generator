@@ -2926,9 +2926,98 @@ body {
 
   .section-card,
   .question-item,
-  .quiz-breakdown-card {
+  .quiz-breakdown-card,
+  .match-workbench,
+  .match-grid-container {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+
+  /* ── Match the Following Print Table Format ── */
+  .match-workbench {
+    color: #000000 !important;
+    margin: 6px 0 10px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .match-premise {
+    color: #000000 !important;
+    font-size: 10.5pt !important;
+    margin-bottom: 4px !important;
+  }
+
+  .match-grid-container {
+    background: transparent !important;
+    border: 1.5px solid #000000 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 4px 0 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .match-grid-header {
+    background: #f3f4f6 !important;
+    border-bottom: 1.5px solid #000000 !important;
+    padding: 4px 10px !important;
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    color: #000000 !important;
+  }
+
+  .match-grid-header span {
+    color: #000000 !important;
+  }
+
+  .match-grid-body {
+    background: #ffffff !important;
+    padding: 8px 10px !important;
+    gap: 16px !important;
+  }
+
+  .match-item-card {
+    border: none !important;
+    background: transparent !important;
+    padding: 2px 0 !important;
+    box-shadow: none !important;
+    color: #000000 !important;
+  }
+
+  .match-item-card span {
+    color: #000000 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    font-size: 10pt !important;
+  }
+
+  .match-options-wrap {
+    margin-top: 4px !important;
+  }
+
+  .match-options-wrap > div:first-child {
+    font-size: 9.5pt !important;
+    font-weight: bold !important;
+    color: #000000 !important;
+  }
+
+  .match-option-pill {
+    border: none !important;
+    background: transparent !important;
+    padding: 1px 0 !important;
+    box-shadow: none !important;
+  }
+
+  .match-option-pill span {
+    color: #000000 !important;
+    font-size: 10pt !important;
+  }
+
+  .print-exam-only .match-option--correct {
+    background: transparent !important;
+    font-weight: normal !important;
+  }
 }
+
 

@@ -130,6 +130,23 @@ def _sanitize_exam_text(text: str) -> str:
 
     # 8. Clean up multiple spaces
     s = re.sub(r'[ \t]+', ' ', s)
+
+    # 9. Format Match the Following questions if squished on one line
+    if ("Column I" in s or "स्तम्भ I" in s or "स्तम्भ 1" in s) and ("Column II" in s or "स्तम्भ II" in s or "स्तम्भ 2" in s):
+        col1_m = list(re.finditer(r'(?:(?:^|[\n\.\:\;])\s*)(?:Column\s*[-–—:]?\s*(?:I|1|A)|स्तम्भ\s*[-–—:]?\s*(?:1|I))\s*[:\-\n\s]*', s, re.IGNORECASE))
+        col2_m = list(re.finditer(r'(?:(?:^|[\n\.\:\;])\s*)(?:Column\s*[-–—:]?\s*(?:II|2|B)|स्तम्भ\s*[-–—:]?\s*(?:2|II))\s*[:\-\n\s]*', s, re.IGNORECASE))
+        if col1_m and col2_m:
+            col2 = col2_m[-1]
+            valid1 = [m for m in col1_m if m.start() < col2.start()]
+            if valid1:
+                col1 = valid1[-1]
+                premise = s[:col1.start()].strip()
+                col1_raw = s[col1.end():col2.start()].strip()
+                col2_raw = s[col2.end():].strip()
+                col1_lines = re.sub(r'([,\.\;]?\s+)([0-9ivxIVX]+[\.\)\:\-])', r'\n\2', col1_raw)
+                col2_lines = re.sub(r'([,\.\;]?\s+)(\(?[a-zA-Z0-9]+[\.\)\:\-])', r'\n\2', col2_raw)
+                s = f"{premise}\n\nColumn I:\n{col1_lines}\n\nColumn II:\n{col2_lines}".strip()
+
     return s.strip()
 
 try:
