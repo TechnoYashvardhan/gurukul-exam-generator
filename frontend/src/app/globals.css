@@ -3020,4 +3020,39 @@ body {
   }
 }
 
+/* ── Interactive Node Canvas Animations ────────────────────────────── */
+@keyframes flowWire {
+  from {
+    stroke-dashoffset: 28;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.node-card {
+  user-select: none;
+}
+
+.node-card:hover {
+  transform: translateY(-1px);
+}
+
+.node-port {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.node-port:hover {
+  transform: scale(1.35);
+}
+
+.node-card--left .node-port {
+  margin-right: -20px;
+}
+
+.node-card--right .node-port {
+  margin-left: -20px;
+}
+
+
 
