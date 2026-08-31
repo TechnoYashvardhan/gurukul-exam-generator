@@ -14,42 +14,15 @@ from app.config import settings
 from app.routers import generate, templates, documents, auth, student, admin
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
-class SafeStreamHandler(logging.StreamHandler):
-    """StreamHandler that gracefully falls back to ASCII replacement on Windows charmap errors."""
-    def emit(self, record):
-        try:
-            msg = self.format(record)
-            stream = self.stream
-            try:
-                stream.write(msg + self.terminator)
-            except (UnicodeEncodeError, UnicodeError):
-                safe_msg = msg.encode("ascii", errors="replace").decode("ascii")
-                stream.write(safe_msg + self.terminator)
-            self.flush()
-        except Exception:
-            self.handleError(record)
-
-_fmt = logging.Formatter(
-    fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-_handler = SafeStreamHandler(sys.stdout)
-_handler.setFormatter(_fmt)
 
-logging.root.handlers = []
-logging.root.addHandler(_handler)
-logging.root.setLevel(logging.INFO)
-
-# App logger — verbose in dev
 _app_logger = logging.getLogger("app")
 _app_logger.setLevel(logging.DEBUG if settings.debug else logging.INFO)
-_app_logger.propagate = True
-
-# SQLAlchemy
-logging.getLogger("sqlalchemy.engine").setLevel(
-    logging.INFO if settings.debug else logging.WARNING
-)
-
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
