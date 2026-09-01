@@ -29,7 +29,10 @@ export function parseMatchText(rawText: string): ParsedMatchData {
     return { premise: "", columnA: [], columnB: [], hasColumns: false };
   }
 
-  const text = rawText.trim();
+  // CRITICAL: Normalize literal "\n" (backslash + n, two chars) into real newline characters.
+  // LLM output often contains literal \n sequences stored as-is in the database.
+  // Without this, the Column I / Column II regex patterns never match.
+  const text = rawText.replace(/\\n/g, "\n").trim();
 
   // 1. Search for Column I / Column II header boundaries
   const col1Regex = /(?:(?:^|[\n\.\:\;])\s*)(?:Column\s*[-–—:]?\s*(?:I|1|A)|स्तम्भ\s*[-–—:]?\s*(?:1|I)|कॉलम\s*[-–—:]?\s*(?:1|I))\s*[:\-\n\s]+/gi;
