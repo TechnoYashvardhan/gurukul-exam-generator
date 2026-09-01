@@ -111,6 +111,20 @@ const DEFAULT_NAV_ITEMS: {
     icon: <Home size={17} />,
   },
   {
+    id: "shishyas",
+    sanskrit: "Students",
+    hindi: "शिष्य",
+    english: "Students & Cohorts",
+    icon: <GraduationCap size={17} />,
+  },
+  {
+    id: "publishes",
+    sanskrit: "Prakashan",
+    hindi: "प्रकाशन",
+    english: "Published Quizzes",
+    icon: <Send size={17} />,
+  },
+  {
     id: "builder",
     sanskrit: "Vidya",
     hindi: "विद्या",
