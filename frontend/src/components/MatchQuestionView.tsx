@@ -72,12 +72,12 @@ export function parseMatchText(rawText: string): ParsedMatchData {
 
 function parseTokenItems(str: string, defaultPrefixType: "numeric" | "alpha" = "numeric"): ColumnItem[] {
   // Matches strict identifiers like 1., (1), [1], 1), (p), p., p), [p], (iv), iv. followed by space & word
-  const pattern = /(?:^|[\n,;\s]+)(?:(?:\((?<id1>[0-9]{1,3}|[ivxIVX]{1,4}|[a-zA-Z])\))|(?:\[(?<id2>[0-9]{1,3}|[ivxIVX]{1,4}|[a-zA-Z])\])|(?<id3>[0-9]{1,3}|[ivxIVX]{1,4}|[a-zA-Z])[\.\)\:\-])(?=\s+[A-Za-z0-9\$\\\(])/g;
+  const pattern = /(?:^|[\n,;\s]+)(?:(?:\(([0-9]{1,3}|[ivxIVX]{1,4}|[a-zA-Z])\))|(?:\[([0-9]{1,3}|[ivxIVX]{1,4}|[a-zA-Z])\])|([0-9]{1,3}|[ivxIVX]{1,4}|[a-zA-Z])[\.\)\:\-])(?=\s+[A-Za-z0-9\$\\\(])/g;
   const rawMatches = Array.from(str.matchAll(pattern));
 
   // Filter out common English parenthetical words like (non), (approx), etc.
   const matches = rawMatches.filter((m) => {
-    const id = (m.groups?.id1 || m.groups?.id2 || m.groups?.id3 || "").toLowerCase().trim();
+    const id = (m[1] || m[2] || m[3] || "").toLowerCase().trim();
     return id && !IGNORED_PAREN_WORDS.has(id);
   });
 
@@ -103,7 +103,7 @@ function parseTokenItems(str: string, defaultPrefixType: "numeric" | "alpha" = "
   const items: ColumnItem[] = [];
   for (let i = 0; i < matches.length; i++) {
     const m = matches[i];
-    const itemId = (m.groups?.id1 || m.groups?.id2 || m.groups?.id3 || `${i + 1}`).trim();
+    const itemId = (m[1] || m[2] || m[3] || `${i + 1}`).trim();
     const startPos = (m.index ?? 0) + m[0].length;
     const endPos = i + 1 < matches.length ? (matches[i + 1].index ?? str.length) : str.length;
     let content = str.slice(startPos, endPos).trim();
@@ -619,8 +619,8 @@ export default function MatchQuestionView({
                         e.stopPropagation();
                         removePair(leftId);
                       }}
-                      title="Click to disconnect wire"
                     >
+                      <title>Click to disconnect wire</title>
                       <circle r={10} fill={palette.border} stroke="#ffffff" strokeWidth={1.5} />
                       <text
                         x={0}
