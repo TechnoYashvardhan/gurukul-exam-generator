@@ -344,87 +344,103 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                   </div>
                 </div>
 
-                {/* Question Text */}
-                <div style={{ fontSize: 14.5, color: "var(--text-1)", lineHeight: 1.6, marginBottom: 16 }}>
-                  <MathText content={fb.text} />
-                </div>
+                {/* Question Content */}
+                {fb.type === "match_the_following" ? (
+                  <div style={{ marginBottom: 16 }}>
+                    <MatchQuestionView
+                      questionText={fb.text}
+                      options={fb.options}
+                      correctAnswer={fb.correct_answer}
+                      userAnswer={fb.user_answer}
+                      isAnswerKeyMode={true}
+                      isInteractive={false}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    {/* Question Text */}
+                    <div style={{ fontSize: 14.5, color: "var(--text-1)", lineHeight: 1.6, marginBottom: 16 }}>
+                      <MathText content={fb.text} />
+                    </div>
 
-                {/* Options List (for MCQ / True-False / Options questions) */}
-                {fb.options && Array.isArray(fb.options) && fb.options.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                    {fb.options.map((opt: any) => {
-                      const isCorrectOpt = String(opt.key).trim().toUpperCase() === String(fb.correct_answer).trim().toUpperCase();
-                      const isUserOpt = String(opt.key).trim().toUpperCase() === String(fb.user_answer).trim().toUpperCase();
+                    {/* Options List (for MCQ / True-False / Options questions) */}
+                    {fb.options && Array.isArray(fb.options) && fb.options.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                        {fb.options.map((opt: any) => {
+                          const isCorrectOpt = String(opt.key).trim().toUpperCase() === String(fb.correct_answer).trim().toUpperCase();
+                          const isUserOpt = String(opt.key).trim().toUpperCase() === String(fb.user_answer).trim().toUpperCase();
 
-                      let borderStyle = "1px solid var(--border)";
-                      let bgStyle = "var(--surface-sunken)";
-                      if (isCorrectOpt) {
-                        borderStyle = "1.5px solid var(--forest)";
-                        bgStyle = "rgba(22, 101, 52, 0.08)";
-                      } else if (isUserOpt && !fb.is_correct) {
-                        borderStyle = "1.5px solid var(--terracotta)";
-                        bgStyle = "rgba(185, 28, 28, 0.08)";
-                      }
+                          let borderStyle = "1px solid var(--border)";
+                          let bgStyle = "var(--surface-sunken)";
+                          if (isCorrectOpt) {
+                            borderStyle = "1.5px solid var(--forest)";
+                            bgStyle = "rgba(22, 101, 52, 0.08)";
+                          } else if (isUserOpt && !fb.is_correct) {
+                            borderStyle = "1.5px solid var(--terracotta)";
+                            bgStyle = "rgba(185, 28, 28, 0.08)";
+                          }
 
-                      return (
-                        <div
-                          key={opt.key}
-                          style={{
-                            padding: "10px 14px",
-                            borderRadius: "var(--radius-md)",
-                            border: borderStyle,
-                            background: bgStyle,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 12,
-                            fontSize: 13.5,
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
-                            <span
+                          return (
+                            <div
+                              key={opt.key}
                               style={{
-                                width: 24,
-                                height: 24,
-                                borderRadius: "50%",
-                                background: isCorrectOpt ? "var(--forest)" : isUserOpt ? "var(--terracotta)" : "var(--border)",
-                                color: isCorrectOpt || isUserOpt ? "#fff" : "var(--text-2)",
-                                display: "inline-flex",
+                                padding: "10px 14px",
+                                borderRadius: "var(--radius-md)",
+                                border: borderStyle,
+                                background: bgStyle,
+                                display: "flex",
                                 alignItems: "center",
-                                justifyContent: "center",
-                                fontWeight: 700,
-                                fontSize: 12,
-                                flexShrink: 0,
+                                justifyContent: "space-between",
+                                gap: 12,
+                                fontSize: 13.5,
                               }}
                             >
-                              {opt.key}
-                            </span>
-                            <div style={{ flex: 1 }}>
-                              <MathText content={opt.text} />
-                            </div>
-                          </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+                                <span
+                                  style={{
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: "50%",
+                                    background: isCorrectOpt ? "var(--forest)" : isUserOpt ? "var(--terracotta)" : "var(--border)",
+                                    color: isCorrectOpt || isUserOpt ? "#fff" : "var(--text-2)",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontWeight: 700,
+                                    fontSize: 12,
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {opt.key}
+                                </span>
+                                <div style={{ flex: 1 }}>
+                                  <MathText content={opt.text} />
+                                </div>
+                              </div>
 
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                            {isCorrectOpt && (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--forest)", background: "rgba(22, 101, 52, 0.15)", padding: "2px 8px", borderRadius: 100 }}>
-                                ✓ Correct Answer
-                              </span>
-                            )}
-                            {isUserOpt && !isCorrectOpt && (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--terracotta)", background: "rgba(185, 28, 28, 0.15)", padding: "2px 8px", borderRadius: 100 }}>
-                                ✗ Your Choice
-                              </span>
-                            )}
-                            {isUserOpt && isCorrectOpt && (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--forest)", background: "rgba(22, 101, 52, 0.15)", padding: "2px 8px", borderRadius: 100 }}>
-                                ✓ Your Choice
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                                {isCorrectOpt && (
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--forest)", background: "rgba(22, 101, 52, 0.15)", padding: "2px 8px", borderRadius: 100 }}>
+                                    ✓ Correct Answer
+                                  </span>
+                                )}
+                                {isUserOpt && !isCorrectOpt && (
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--terracotta)", background: "rgba(185, 28, 28, 0.15)", padding: "2px 8px", borderRadius: 100 }}>
+                                    ✗ Your Choice
+                                  </span>
+                                )}
+                                {isUserOpt && isCorrectOpt && (
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--forest)", background: "rgba(22, 101, 52, 0.15)", padding: "2px 8px", borderRadius: 100 }}>
+                                    ✓ Your Choice
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Comparison Summary */}
