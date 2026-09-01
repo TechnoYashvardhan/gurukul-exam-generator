@@ -210,10 +210,12 @@ export default function MatchQuestionView({
   const [pairs, setPairs] = useState<Record<string, string>>({});
   const [hoveredWire, setHoveredWire] = useState<string | null>(null);
 
-  // Live Drag-and-Drop Wire State
+  // Live Drag-and-Drop & Magnetic Snapping State
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ id: string; x: number; y: number } | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [snappedRightId, setSnappedRightId] = useState<string | null>(null);
+  const [isAnimatingSolution, setIsAnimatingSolution] = useState(false);
 
   // DOM node references to measure precise anchor port coordinates for SVG Bezier lines
   const containerRef = useRef<HTMLDivElement>(null);
@@ -291,6 +293,7 @@ export default function MatchQuestionView({
     setSelectedLeft(null);
     setIsDragging(false);
     setDragStart(null);
+    setSnappedRightId(null);
 
     // Auto-match corresponding MCQ option code
     if (options && onSelectAnswer) {
@@ -323,6 +326,29 @@ export default function MatchQuestionView({
     setSelectedLeft(null);
     setIsDragging(false);
     setDragStart(null);
+    setSnappedRightId(null);
+  };
+
+  // Animated Solution Playback (Sequentially draw correct wires)
+  const handlePlaySolutionAnimation = () => {
+    if (!correctAnswer || !options) return;
+    const opt = options.find((o) => o.key.toUpperCase() === correctAnswer.toUpperCase());
+    if (!opt) return;
+
+    const matches = Array.from(opt.text.matchAll(/([0-9ivxIVX]+)\s*[\-\:\=]\s*\(?([a-zA-Z0-9]+)\)?/gi));
+    if (matches.length === 0) return;
+
+    setIsAnimatingSolution(true);
+    setPairs({});
+
+    matches.forEach((m, index) => {
+      setTimeout(() => {
+        setPairs((prev) => ({ ...prev, [m[1]]: m[2] }));
+        if (index === matches.length - 1) {
+          setIsAnimatingSolution(false);
+        }
+      }, (index + 1) * 260);
+    });
   };
 
   // Click Left Node
@@ -341,35 +367,70 @@ export default function MatchQuestionView({
     connectPair(selectedLeft, rightId);
   };
 
-  // Drag Wire Start
+  // Drag Wire Start with Pointer Capture
   const handleDragStart = (id: string, e: React.PointerEvent) => {
     if (!isInteractive || !containerRef.current) return;
     e.preventDefault();
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (_) {}
+
     const containerRect = containerRef.current.getBoundingClientRect();
     const pin = pinCoords.left[id] || { x: 0, y: 0 };
     setIsDragging(true);
     setDragStart({ id, x: pin.x, y: pin.y });
     setDragPos({ x: e.clientX - containerRect.left, y: e.clientY - containerRect.top });
     setSelectedLeft(id);
+    setSnappedRightId(null);
   };
 
-  // Drag Wire Move
+  // Drag Wire Move with Magnetic Pin Snapping
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging || !containerRef.current) return;
     const containerRect = containerRef.current.getBoundingClientRect();
-    setDragPos({
-      x: e.clientX - containerRect.left,
-      y: e.clientY - containerRect.top,
-    });
+    const currentX = e.clientX - containerRect.left;
+    const currentY = e.clientY - containerRect.top;
+
+    // Magnetic Snapping: Check if within 50px radius of any Column II pin
+    let closestId: string | null = null;
+    let closestDist = Infinity;
+    let snapPos = { x: currentX, y: currentY };
+
+    for (const [id, pin] of Object.entries(pinCoords.right)) {
+      if (pin) {
+        const dist = Math.hypot(currentX - pin.x, currentY - pin.y);
+        if (dist < 50 && dist < closestDist) {
+          closestDist = dist;
+          closestId = id;
+          snapPos = { x: pin.x, y: pin.y };
+        }
+      }
+    }
+
+    setSnappedRightId(closestId);
+    setDragPos(snapPos);
   };
 
   // Drag Wire End / Drop
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
     if (isDragging) {
-      setIsDragging(false);
-      setDragStart(null);
+      try {
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch (_) {}
+
+      if (dragStart && snappedRightId) {
+        connectPair(dragStart.id, snappedRightId);
+      } else {
+        setIsDragging(false);
+        setDragStart(null);
+        setSnappedRightId(null);
+      }
     }
   };
+
+  const totalItemsCount = parsed.columnA.length;
+  const connectedCount = Object.keys(pairs).length;
+  const isAllConnected = totalItemsCount > 0 && connectedCount >= totalItemsCount;
 
   return (
     <div
@@ -407,21 +468,73 @@ export default function MatchQuestionView({
             boxShadow: "var(--shadow-sm)",
           }}
         >
-          {/* Header Row */}
+          {/* Header Row with Live Progress Tracker */}
           <div
             className="match-grid-header"
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              background: "var(--surface-sunken)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: isAllConnected ? "rgba(16, 185, 129, 0.08)" : "var(--surface-sunken)",
               borderBottom: "1.5px solid var(--border)",
-              padding: "10px 18px",
+              padding: "8px 18px",
+              transition: "background 0.3s ease",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "13px", color: "var(--accent)" }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)" }} />
               <span>स्तम्भ I (Column I)</span>
             </div>
+
+            {/* Live Progress Pill */}
+            {isInteractive && totalItemsCount > 0 && (
+              <div
+                className="no-print"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "3px 10px",
+                  borderRadius: "20px",
+                  background: isAllConnected ? "var(--forest-light)" : "var(--surface)",
+                  border: `1px solid ${isAllConnected ? "var(--forest)" : "var(--border)"}`,
+                  boxShadow: "var(--shadow-sm)",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "11.5px",
+                    fontWeight: 800,
+                    color: isAllConnected ? "var(--forest)" : "var(--text-2)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  {isAllConnected ? <Sparkles size={12} /> : null}
+                  {connectedCount}/{totalItemsCount} Pairs Linked
+                </span>
+                <div
+                  style={{
+                    width: 44,
+                    height: 5,
+                    borderRadius: 3,
+                    background: "var(--surface-sunken)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${(connectedCount / totalItemsCount) * 100}%`,
+                      background: isAllConnected ? "var(--forest)" : "var(--accent)",
+                      transition: "width 0.25s ease",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "13px", color: "var(--forest)" }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--forest)" }} />
               <span>स्तम्भ II (Column II)</span>
@@ -479,22 +592,13 @@ export default function MatchQuestionView({
                     style={{ transition: "stroke-width 0.15s ease" }}
                   />
 
-                  {/* Main Wire Spline */}
+                  {/* Core Bezier Wire with Flowing Animation */}
                   <path
                     d={pathD}
                     fill="none"
                     stroke={palette.border}
-                    strokeWidth={isHovered ? 3 : 2.5}
-                    strokeLinecap="round"
-                  />
-
-                  {/* Animated Flow Pulse */}
-                  <path
-                    d={pathD}
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth={2}
-                    strokeDasharray="6 8"
+                    strokeWidth={2.8}
+                    strokeDasharray="6 3"
                     strokeLinecap="round"
                     style={{
                       animation: "flowWire 1.5s linear infinite",
@@ -515,6 +619,7 @@ export default function MatchQuestionView({
                         e.stopPropagation();
                         removePair(leftId);
                       }}
+                      title="Click to disconnect wire"
                     >
                       <circle r={10} fill={palette.border} stroke="#ffffff" strokeWidth={1.5} />
                       <text
@@ -534,18 +639,25 @@ export default function MatchQuestionView({
               );
             })}
 
-            {/* Live Dragging Rubberband Wire */}
+            {/* Live Dragging Rubberband Wire with Magnetic Snapping Visual */}
             {isDragging && dragStart && (
               <g>
                 <path
                   d={`M ${dragStart.x} ${dragStart.y} C ${dragStart.x + Math.max((dragPos.x - dragStart.x) * 0.5, 30)} ${dragStart.y}, ${dragPos.x - 30} ${dragPos.y}, ${dragPos.x} ${dragPos.y}`}
                   fill="none"
-                  stroke="var(--accent)"
-                  strokeWidth={3}
+                  stroke={snappedRightId ? "var(--forest)" : "var(--accent)"}
+                  strokeWidth={snappedRightId ? 3.5 : 2.5}
                   strokeDasharray="5 5"
                   strokeLinecap="round"
                 />
-                <circle cx={dragPos.x} cy={dragPos.y} r={6} fill="var(--accent)" stroke="#ffffff" strokeWidth={2} />
+                <circle
+                  cx={dragPos.x}
+                  cy={dragPos.y}
+                  r={snappedRightId ? 7 : 5.5}
+                  fill={snappedRightId ? "var(--forest)" : "var(--accent)"}
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                />
               </g>
             )}
           </svg>
@@ -655,28 +767,37 @@ export default function MatchQuestionView({
                 const pairedLeftKey = Object.keys(pairs).find((k) => pairs[k]?.toLowerCase() === item.id.toLowerCase());
                 const leftIdx = pairedLeftKey ? parsed.columnA.findIndex((a) => a.id === pairedLeftKey) : -1;
                 const palette = leftIdx >= 0 ? PAIR_PALETTES[leftIdx % PAIR_PALETTES.length] : null;
+                const isMagneticTarget = isDragging && snappedRightId === item.id;
 
                 return (
                   <div
                     key={item.id}
                     onClick={() => handleRightClick(item.id)}
-                    className={`node-card node-card--right ${pairedLeftKey ? "node-card--paired" : ""}`}
+                    className={`node-card node-card--right ${pairedLeftKey ? "node-card--paired" : ""} ${isMagneticTarget ? "node-card--magnetic-target" : ""}`}
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: 12,
                       padding: "10px 14px",
                       borderRadius: "var(--radius-sm)",
-                      border: pairedLeftKey
+                      border: isMagneticTarget
+                        ? "2px solid var(--forest)"
+                        : pairedLeftKey
                         ? `1.5px solid ${palette?.border}`
                         : selectedLeft
                         ? "1.5px dashed var(--accent)"
                         : "1.5px solid var(--border)",
-                      background: pairedLeftKey ? palette?.bg : "var(--surface)",
+                      background: isMagneticTarget
+                        ? "var(--forest-light)"
+                        : pairedLeftKey
+                        ? palette?.bg
+                        : "var(--surface)",
                       cursor: isInteractive && selectedLeft ? "pointer" : "default",
                       transition: "all 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
                       position: "relative",
-                      boxShadow: "var(--shadow-sm)",
+                      boxShadow: isMagneticTarget
+                        ? "0 0 0 4px rgba(16, 185, 129, 0.25)"
+                        : "var(--shadow-sm)",
                     }}
                   >
                     {/* Anchor Input Pin Port (Left Edge) */}
@@ -690,9 +811,19 @@ export default function MatchQuestionView({
                         width: 16,
                         height: 16,
                         borderRadius: "50%",
-                        background: pairedLeftKey ? palette?.border : selectedLeft ? "var(--accent)" : "var(--surface-sunken)",
+                        background: isMagneticTarget
+                          ? "var(--forest)"
+                          : pairedLeftKey
+                          ? palette?.border
+                          : selectedLeft
+                          ? "var(--accent)"
+                          : "var(--surface-sunken)",
                         border: "2px solid #ffffff",
-                        boxShadow: selectedLeft ? "0 0 0 3px rgba(234, 88, 12, 0.35)" : "0 1px 3px rgba(0,0,0,0.15)",
+                        boxShadow: isMagneticTarget
+                          ? "0 0 0 4px rgba(16, 185, 129, 0.4)"
+                          : selectedLeft
+                          ? "0 0 0 3px rgba(234, 88, 12, 0.35)"
+                          : "0 1px 3px rgba(0,0,0,0.15)",
                         cursor: isInteractive ? "crosshair" : "default",
                         flexShrink: 0,
                         display: "flex",
@@ -749,60 +880,87 @@ export default function MatchQuestionView({
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-2)" }}>
                 {selectedLeft ? (
                   <span style={{ color: "var(--accent)", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                    <Zap size={14} /> Selected [ Node {selectedLeft} ] — Click its matching pin in Column II to connect wire!
+                    <Zap size={14} /> Selected [ Node {selectedLeft} ] — Drag to or click its match in Column II!
+                  </span>
+                ) : isAllConnected ? (
+                  <span style={{ color: "var(--forest)", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Check size={14} strokeWidth={3} /> All pairs connected! Matching code auto-selected below.
                   </span>
                 ) : (
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <HelpCircle size={14} /> Drag from a node pin $\bullet$ or click two items to draw a connecting wire.
+                    <HelpCircle size={14} /> Drag from a node pin or click two items to draw a connecting wire.
                   </span>
                 )}
               </div>
 
-              {Object.keys(pairs).length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {Object.entries(pairs).map(([l, r], idx) => {
-                      const pal = PAIR_PALETTES[idx % PAIR_PALETTES.length];
-                      return (
-                        <span
-                          key={l}
-                          style={{
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            padding: "3px 8px",
-                            borderRadius: "5px",
-                            background: pal.badgeBg,
-                            color: pal.badgeText,
-                            border: `1px solid ${pal.border}`,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                        >
-                          {l} ⇄ ({r})
-                        </span>
-                      );
-                    })}
-                  </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                {/* Solution Animation Button (Active in Key Mode or Answer review) */}
+                {(isAnswerKeyMode || correctAnswer) && (
                   <button
                     type="button"
-                    onClick={handleResetPairs}
+                    onClick={handlePlaySolutionAnimation}
+                    disabled={isAnimatingSolution}
+                    className="gk-btn gk-btn--secondary"
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 4,
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--terracotta)",
-                      cursor: "pointer",
+                      gap: 5,
                       fontSize: "11.5px",
-                      fontWeight: 600,
+                      padding: "4px 10px",
+                      color: "var(--forest)",
+                      borderColor: "var(--forest-border, #10b981)",
                     }}
                   >
-                    <RefreshCw size={12} /> Clear Wires
+                    <Sparkles size={13} /> {isAnimatingSolution ? "Connecting..." : "Animate Solution"}
                   </button>
-                </div>
-              )}
+                )}
+
+                {Object.keys(pairs).length > 0 && (
+                  <>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {Object.entries(pairs).map(([l, r], idx) => {
+                        const pal = PAIR_PALETTES[idx % PAIR_PALETTES.length];
+                        return (
+                          <span
+                            key={l}
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              padding: "3px 8px",
+                              borderRadius: "5px",
+                              background: pal.badgeBg,
+                              color: pal.badgeText,
+                              border: `1px solid ${pal.border}`,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            {l} ⇄ ({r})
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResetPairs}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--terracotta)",
+                        cursor: "pointer",
+                        fontSize: "11.5px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <RefreshCw size={12} /> Clear Wires
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
