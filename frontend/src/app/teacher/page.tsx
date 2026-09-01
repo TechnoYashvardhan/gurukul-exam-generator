@@ -10,8 +10,6 @@ import LibraryUpload from "@/components/LibraryUpload";
 import DocumentCard from "@/components/DocumentCard";
 import GeneratePanel from "@/components/GeneratePanel";
 import ExamHistory from "@/components/ExamHistory";
-import AdminShishyaManager from "@/components/AdminShishyaManager";
-import AdminPublishedManager from "@/components/AdminPublishedManager";
 import JsonExamImporter from "@/components/JsonExamImporter";
 import { useExamHistory } from "@/hooks/useExamHistory";
 import { documentsApi } from "@/lib/api";
@@ -204,20 +202,6 @@ export default function TeacherPage() {
           {activeView === "import_json" && (
             <div className="gurukul-page" key="import_json">
               <JsonExamImporter onExamSaved={saveToHistory} role="teacher" />
-            </div>
-          )}
-
-          {/* Shishya (Students & Cohorts) Manager View */}
-          {activeView === "shishyas" && (
-            <div className="gurukul-page" key="shishyas">
-              <AdminShishyaManager />
-            </div>
-          )}
-
-          {/* Published Quizzes Management View */}
-          {activeView === "publishes" && (
-            <div className="gurukul-page" key="publishes">
-              <AdminPublishedManager />
             </div>
           )}
 

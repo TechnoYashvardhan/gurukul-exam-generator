@@ -443,10 +443,10 @@ export default function GeneratePanel({
                       <Globe size={16} color={currentDocId === null ? "var(--accent)" : "var(--text-2)"} />
                       <div>
                         <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text)" }}>
-                          Curriculum Subject Knowledge (No Document)
+                          Direct AI Synthesis (Standard Course Syllabus)
                         </div>
                         <div style={{ fontSize: "11.5px", color: "var(--text-2)", marginTop: 2 }}>
-                          Generates standard textbook questions based on subject & grade
+                          Synthesizes questions from standard academic textbook curriculum (No PDF required)
                         </div>
                       </div>
                     </div>
