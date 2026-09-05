@@ -1,8 +1,18 @@
 import logging
 import uuid
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
+
+def to_utc_iso(dt: Optional[datetime]) -> Optional[str]:
+    """Ensure datetime is serialized as standard ISO 8601 with explicit Z UTC indicator."""
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -10,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_db, AsyncSessionLocal
 from app.llm.base import LLMProviderError
 from app.models.db import GeneratedExam as GeneratedExamORM
 from app.models.db import User, Document as DocumentORM
@@ -101,8 +111,9 @@ async def generate_exam_endpoint(
                         is_published=False,
                         retries_used=retries_used,
                     )
-                    db.add(db_record)
-                    await db.commit()
+                    async with AsyncSessionLocal() as session:
+                        session.add(db_record)
+                        await session.commit()
                     
                     res = ExamGenerationResponse(exam=exam)
                     yield json.dumps(res.model_dump(mode="json"), default=str) + "\n"
@@ -183,8 +194,8 @@ async def publish_exam_endpoint(
         "exam_id": str(record.id),
         "is_published": record.is_published,
         "target_class_id": str(record.target_class_id) if record.target_class_id else None,
-        "schedule_start_at": record.schedule_start_at.isoformat() if record.schedule_start_at else None,
-        "schedule_end_at": record.schedule_end_at.isoformat() if record.schedule_end_at else None,
+        "schedule_start_at": to_utc_iso(record.schedule_start_at),
+        "schedule_end_at": to_utc_iso(record.schedule_end_at),
         "message": "Quiz published to Student Arena" if eff_publish else "Quiz unpublished",
     }
 

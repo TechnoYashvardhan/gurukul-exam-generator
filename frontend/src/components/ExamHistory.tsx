@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { History, Printer, X, Edit2, Check, Trash2, FileText, CheckCircle, CheckCircle2, Send, Download } from "lucide-react";
+import { History, Printer, X, Edit2, Check, Trash2, FileText, CheckCircle, CheckCircle2, Send, Download, FileCode2 } from "lucide-react";
 import { type ExamHistoryEntry } from "@/hooks/useExamHistory";
 import MathText from "./MathText";
 import { generationApi, adminApi } from "@/lib/api";
@@ -9,7 +9,7 @@ import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
 import MatchQuestionView from "./MatchQuestionView";
 import { ClassSummary } from "@/types/auth";
-import { downloadExamAsJson, getCleanExamTitle } from "@/lib/exportUtils";
+import { downloadExamAsJson, downloadExamAsDocx, downloadExamAsMarkdown, getCleanExamTitle } from "@/lib/exportUtils";
 
 interface ExamHistoryProps {
   entries: ExamHistoryEntry[];
@@ -335,6 +335,26 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                   >
                     <Download size={14} />
                     Export JSON (.json)
+                  </button>
+                  <button
+                    type="button"
+                    className="gk-btn gk-btn--secondary"
+                    onClick={() => downloadExamAsDocx(selectedEntry.exam, activeViewMode === "key")}
+                    style={{ gap: 5 }}
+                    title="Export formatted Word document (.docx)"
+                  >
+                    <FileText size={14} />
+                    Word (.docx)
+                  </button>
+                  <button
+                    type="button"
+                    className="gk-btn gk-btn--secondary"
+                    onClick={() => downloadExamAsMarkdown(selectedEntry.exam, activeViewMode === "key")}
+                    style={{ gap: 5 }}
+                    title="Export Markdown document (.md)"
+                  >
+                    <FileCode2 size={14} />
+                    Markdown (.md)
                   </button>
                   <button
                     type="button"

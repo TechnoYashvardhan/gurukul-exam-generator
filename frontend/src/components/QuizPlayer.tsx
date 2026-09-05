@@ -474,7 +474,7 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                   </div>
                 </div>
 
-                {/* AI Evaluation Rationale */}
+                {/* Evaluation Rationale */}
                 {fb.explanation && (
                   <div
                     style={{
@@ -493,7 +493,7 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                   >
                     <Sparkles size={14} style={{ color: fb.is_correct ? "var(--forest)" : "var(--terracotta)", flexShrink: 0, marginTop: 2 }} />
                     <div>
-                      <strong style={{ color: fb.is_correct ? "var(--forest)" : "var(--terracotta)" }}>AI Evaluation: </strong>
+                      <strong style={{ color: fb.is_correct ? "var(--forest)" : "var(--terracotta)" }}>Evaluation: </strong>
                       {fb.explanation}
                     </div>
                   </div>

@@ -103,7 +103,7 @@ def _sanitize_exam_text(text: str) -> str:
 
     # 4. Clean up common engineering and physical units inside stray math delimiters:
     # e.g. $8.33 ms$, $7200 RPM$, $2 GT/s$, $100 W$, $250 W$, $32 bits$, $8 GB/s$, $16 GB/s$
-    units_pattern = r'\$([0-9.,]+)\s*([a-zA-Z/°%^]+(?:\s*[a-zA-Z/°%^]+)*)\$'
+    units_pattern = r'\$([0-9.,]+)\s+([a-zA-Z/°%]{1,10}(?:\s+[a-zA-Z/°%]{1,10})?)\$'
     s = re.sub(units_pattern, r'\1 \2', s)
 
     # 5. Fix spaces between common squished words inside broken math mode
@@ -576,15 +576,48 @@ REQUIRED JSON FORMAT
                         {"key": "C", "text": f"Independent of the initial conditions"},
                         {"key": "D", "text": f"Zero under steady-state equilibrium"}
                     ]
+                    fallback_text = f"Analyze {concept_clean} in the context of {bp_ref.subtopic}. Which statement best characterizes its behavior?"
+                    fallback_ans = "A"
+                elif sec.type == "true_false":
+                    opts = [
+                        {"key": "A", "text": "True"},
+                        {"key": "B", "text": "False"}
+                    ]
+                    fallback_text = f"In {bp_ref.subtopic}, the primary governing behavior of {concept_clean} remains constant under standard state conditions."
+                    fallback_ans = "A"
+                elif sec.type == "match_the_following":
+                    opts = [
+                        {"key": "A", "text": "1-(p), 2-(q), 3-(r), 4-(s)"},
+                        {"key": "B", "text": "1-(q), 2-(p), 3-(s), 4-(r)"},
+                        {"key": "C", "text": "1-(r), 2-(s), 3-(p), 4-(q)"},
+                        {"key": "D", "text": "1-(s), 2-(r), 3-(q), 4-(p)"},
+                    ]
+                    fallback_text = (
+                        f"Match the concepts related to {concept_clean} in Column I with their corresponding characteristics in Column II:\n\n"
+                        f"Column I:\n1. {concept_clean} Principle\n2. Operational Scope\n3. Governing Variable\n4. Application Domain\n\n"
+                        f"Column II:\n(p) Foundational theoretical framework\n(q) Defines parameter boundaries\n(r) Quantitative measure of effect\n(s) Practical implementation system"
+                    )
+                    fallback_ans = "A"
+                elif sec.type == "fill_in_the_blanks":
+                    opts = None
+                    fallback_text = f"The primary parameter governing {concept_clean} in {bp_ref.subtopic} is defined as ______."
+                    fallback_ans = concept_clean
+                elif sec.type == "one_word":
+                    opts = None
+                    fallback_text = f"What single scientific term or principle describes {concept_clean} in {bp_ref.subtopic}?"
+                    fallback_ans = concept_clean
                 else:
                     opts = None
+                    fallback_text = f"Analyze {concept_clean} in the context of {bp_ref.subtopic}. State the governing principles and mathematical relations."
+                    fallback_ans = f"Comprehensive derivation and governing equations for {concept_clean}."
+
                 fallback_q = Question(
                     section_id=sec.section_id,
                     question_no=missing_idx + 1,
                     type=sec.type,
-                    text=f"Analyze {concept_clean} in the context of {bp_ref.subtopic}. State the governing principles and mathematical relations.",
+                    text=fallback_text,
                     options=opts,
-                    answer="A" if sec.type == "mcq" else f"Comprehensive derivation and governing equations for {concept_clean}.",
+                    answer=fallback_ans,
                     marks=marks_per_q,
                     bloom_level=bp_ref.bloom_level,
                     difficulty=bp_ref.difficulty

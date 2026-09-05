@@ -3095,3 +3095,42 @@ body {
 .node-card--magnetic-target .node-port {
   transform: scale(1.4) !important;
 }
+
+/* ── Global Modal Backdrop & Card ─────────────────────────── */
+.gk-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: gkModalFadeIn 0.18s ease-out;
+  padding: 24px;
+}
+
+.gk-modal-card {
+  position: relative;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 28px 24px;
+  animation: gkModalScaleIn 0.22s ease-out;
+}
+
+@keyframes gkModalFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes gkModalScaleIn {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}

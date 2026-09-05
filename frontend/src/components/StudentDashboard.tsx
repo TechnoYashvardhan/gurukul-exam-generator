@@ -15,10 +15,12 @@ import {
   ArrowRight,
   RefreshCw,
   Flame,
-  KeyRound,
+  Calendar,
+  Hourglass,
+  AlertCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import ChangePasswordModal from "./ChangePasswordModal";
+import QuizCountdown from "./QuizCountdown";
 
 interface StudentDashboardProps {
   onNavigateToQuiz: (quizId?: string) => void;
@@ -28,8 +30,8 @@ interface StudentDashboardProps {
 export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt }: StudentDashboardProps) {
   const [stats, setStats] = useState<StudentStats | null>(null);
   const [quizzes, setQuizzes] = useState<QuizListItem[]>([]);
+  const [unlockedQuizIds, setUnlockedQuizIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -56,22 +58,30 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
     }
   }
 
-  const unattemptedQuizzes = quizzes.filter((q) => !q.attempted);
+  const handleQuizUnlocked = (quizId: string) => {
+    setUnlockedQuizIds((prev) => new Set(prev).add(quizId));
+  };
+
+  const isScheduled = (q: QuizListItem) => {
+    if (unlockedQuizIds.has(q.id)) return false;
+    if (!q.schedule_start_at) return false;
+    return new Date(q.schedule_start_at).getTime() > Date.now();
+  };
+
+  const isExpired = (q: QuizListItem) => {
+    if (!q.schedule_end_at) return false;
+    return new Date(q.schedule_end_at).getTime() <= Date.now();
+  };
+
+  // Show all upcoming scheduled quizzes in Ashram tab
+  const scheduledQuizzes = quizzes.filter((q) => isScheduled(q));
+  // Live quizzes include unattempted quizzes OR dynamically unlocked scheduled quizzes
+  const liveQuizzes = quizzes.filter((q) => !isScheduled(q) && !isExpired(q) && (!q.attempted || unlockedQuizIds.has(q.id)));
 
   return (
     <div className="gurukul-page">
       {/* ── Page Header ──────────────────────────────────────── */}
-      <div className="page-header" style={{ position: "relative" }}>
-        <div style={{ position: "absolute", right: 0, top: 0 }}>
-          <button
-            type="button"
-            onClick={() => setShowPasswordModal(true)}
-            className="gk-btn gk-btn--secondary"
-            style={{ fontSize: 12, height: 32, padding: "0 12px", gap: 6 }}
-          >
-            <KeyRound size={14} /> Change Password
-          </button>
-        </div>
+      <div className="page-header">
         <div className="page-header__breadcrumb">Student Portal / Dashboard</div>
         <h1 className="page-header__title">Welcome back!</h1>
         <p className="page-header__subtitle">
@@ -225,6 +235,101 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
         </div>
       </div>
 
+      {/* ── Upcoming Scheduled Quizzes ────────────────────────── */}
+      {scheduledQuizzes.length > 0 && (
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div className="flex items-center gap-2" style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: "16px", color: "#2563eb" }}>
+              <Calendar size={16} /> Upcoming Scheduled Quizzes
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {scheduledQuizzes.map((quiz) => (
+              <div
+                key={quiz.id}
+                className="lens-card"
+                style={{
+                  padding: 20,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  border: "1.5px solid rgba(59, 130, 246, 0.3)",
+                  background: "linear-gradient(to bottom right, var(--surface), rgba(59, 130, 246, 0.03))",
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <span
+                      style={{
+                        padding: "2px 8px",
+                        borderRadius: 100,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: "rgba(59, 130, 246, 0.12)",
+                        color: "#2563eb",
+                        border: "1px solid rgba(59, 130, 246, 0.3)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <Calendar size={11} /> Scheduled
+                    </span>
+                    <span style={{ fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-mono)" }}>
+                      <Clock size={12} /> {quiz.duration_minutes}m
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
+                    {quiz.subject} ({quiz.grade})
+                  </h3>
+                  <p style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 12 }}>
+                    {quiz.num_questions} Questions · {quiz.total_marks} Marks
+                  </p>
+
+                  <div
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: "var(--radius-sm)",
+                      background: "rgba(59, 130, 246, 0.08)",
+                      border: "1px solid rgba(59, 130, 246, 0.2)",
+                      fontSize: 11.5,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <div style={{ color: "var(--text-2)", marginBottom: 4 }}>
+                      <strong>Opens:</strong> {new Date(quiz.schedule_start_at!).toLocaleString()}
+                    </div>
+                    <div style={{ color: "#2563eb", fontWeight: 700 }}>
+                      <QuizCountdown
+                        targetDate={quiz.schedule_start_at!}
+                        prefix="Starts in: "
+                        onComplete={() => handleQuizUnlocked(quiz.id)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  disabled
+                  className="gk-btn gk-btn--secondary gk-btn--sm"
+                  style={{ width: "100%", justifyContent: "center", opacity: 0.8, cursor: "not-allowed", color: "#2563eb" }}
+                >
+                  <Clock size={14} /> Opens Soon
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Recommended Quizzes ──────────────────────────────── */}
       <div style={{ marginBottom: 36 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -239,12 +344,14 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
           </button>
         </div>
 
-        {unattemptedQuizzes.length === 0 ? (
+        {liveQuizzes.length === 0 ? (
           <div className="lens-card empty-state" style={{ padding: "28px 20px" }}>
             <span className="empty-state__icon"><CheckCircle2 size={36} color="var(--forest)" /></span>
             <p className="empty-state__title">You're All Caught Up!</p>
             <p className="empty-state__sub">
-              You've attempted all available quizzes. Great discipline, scholar!
+              {scheduledQuizzes.length > 0
+                ? "You have upcoming scheduled quizzes above that will unlock soon!"
+                : "You've attempted all available quizzes. Great discipline, scholar!"}
             </p>
           </div>
         ) : (
@@ -255,7 +362,7 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
               gap: 16,
             }}
           >
-            {unattemptedQuizzes.slice(0, 3).map((quiz) => (
+            {liveQuizzes.slice(0, 3).map((quiz) => (
               <div
                 key={quiz.id}
                 className="lens-card"
@@ -278,9 +385,31 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
                     {quiz.subject}
                   </h3>
-                  <p style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 16 }}>
+                  <p style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 12 }}>
                     {quiz.num_questions} Questions · {quiz.total_marks} Marks
                   </p>
+
+                  {/* Deadline Notice if scheduled end date exists */}
+                  {quiz.schedule_end_at && (
+                    <div
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "rgba(239, 68, 68, 0.08)",
+                        border: "1px solid rgba(239, 68, 68, 0.2)",
+                        color: "#dc2626",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        marginBottom: 14,
+                      }}
+                    >
+                      <Hourglass size={12} />
+                      <span>Deadline: {new Date(quiz.schedule_end_at).toLocaleString()}</span>
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -288,7 +417,7 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
                   className="gk-btn gk-btn--primary gk-btn--sm"
                   style={{ width: "100%", justifyContent: "center" }}
                 >
-                  <Play size={14} /> Start Quiz Now
+                  <Play size={14} /> {quiz.attempted ? "Retake Quiz" : "Start Quiz Now"}
                 </button>
               </div>
             ))}
@@ -407,11 +536,6 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
           Success comes from hard work and practice, not just wishing.
         </p>
       </div>
-
-      <ChangePasswordModal
-        isOpen={showPasswordModal}
-        onClose={() => setShowPasswordModal(false)}
-      />
     </div>
   );
 }

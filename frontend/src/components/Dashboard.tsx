@@ -18,36 +18,53 @@ import {
   Database,
   ScrollText,
   FileCode2,
+  Users,
+  Send,
 } from "lucide-react";
-import { documentsApi, templatesApi } from "@/lib/api";
+import { documentsApi, templatesApi, adminApi } from "@/lib/api";
 import { View } from "./Sidebar";
 import type { ExamHistoryEntry } from "@/hooks/useExamHistory";
 
 interface DashboardProps {
   onNavigate: (view: View) => void;
   historyEntries?: ExamHistoryEntry[];
+  role?: "admin" | "teacher";
 }
 
-export default function Dashboard({ onNavigate, historyEntries = [] }: DashboardProps) {
+export default function Dashboard({ onNavigate, historyEntries = [], role = "teacher" }: DashboardProps) {
   const [stats, setStats] = useState({
     templates: 0,
     documents: 0,
     generated: 0,
+    classes: 0,
+    published: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadStats() {
       try {
-        const [temps, docs] = await Promise.all([
+        const promises: Promise<any>[] = [
           templatesApi.list().catch(() => []),
           documentsApi.list().catch(() => []),
-        ]);
+        ];
+        if (role === "admin") {
+          promises.push(adminApi.listClasses().catch(() => []));
+          promises.push(adminApi.listPublishedQuizzes().catch(() => []));
+        }
+
+        const results = await Promise.all(promises);
+        const temps = results[0] || [];
+        const docs = results[1] || [];
+        const cls = results[2] || [];
+        const pubs = results[3] || [];
 
         setStats({
           templates: temps.length,
           documents: docs.length,
           generated: historyEntries.length,
+          classes: cls.length,
+          published: pubs.length,
         });
       } catch (err) {
         console.error("Failed to load dashboard stats", err);
@@ -56,7 +73,7 @@ export default function Dashboard({ onNavigate, historyEntries = [] }: Dashboard
       }
     }
     loadStats();
-  }, [historyEntries.length]);
+  }, [historyEntries.length, role]);
 
   const recentExams = historyEntries.slice(0, 4);
 
@@ -222,6 +239,93 @@ export default function Dashboard({ onNavigate, historyEntries = [] }: Dashboard
             Upload textbooks, syllabus guides, chapter PDFs, or web links for question extraction.
           </p>
         </div>
+
+        {/* ── Admin Action Cards: Shishyas & Prakashan ── */}
+        {role === "admin" && (
+          <>
+            {/* Shishyas / Students & Cohorts */}
+            <div
+              className="lens-card"
+              onClick={() => onNavigate("shishyas")}
+              style={{ padding: "20px", cursor: "pointer", border: "1.5px solid var(--accent-mid)" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "10px",
+                    background: "rgba(234, 88, 12, 0.12)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--accent)",
+                    border: "1px solid var(--accent-mid)",
+                  }}
+                >
+                  <Users size={20} />
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                      Shishyas
+                    </h3>
+                    <span className="shloka" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
+                      शिष्य
+                    </span>
+                  </div>
+                  <p style={{ fontSize: "12px", color: "var(--accent)", fontFamily: "var(--font-mono)", margin: 0, fontWeight: 700 }}>
+                    {stats.classes} Cohorts Active
+                  </p>
+                </div>
+              </div>
+              <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
+                Manage student cohorts, 7-digit scholar IDs, enrollments, and view individual student scorecards.
+              </p>
+            </div>
+
+            {/* Prakashan / Published Quizzes Hub */}
+            <div
+              className="lens-card"
+              onClick={() => onNavigate("publishes")}
+              style={{ padding: "20px", cursor: "pointer", border: "1.5px solid var(--forest)" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "10px",
+                    background: "var(--forest-light)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--forest)",
+                    border: "1px solid var(--forest)",
+                  }}
+                >
+                  <Send size={20} />
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                      Prakashan
+                    </h3>
+                    <span className="shloka" style={{ fontSize: "12px", color: "var(--forest)", fontWeight: 600 }}>
+                      प्रकाशन
+                    </span>
+                  </div>
+                  <p style={{ fontSize: "12px", color: "var(--forest)", fontFamily: "var(--font-mono)", margin: 0, fontWeight: 700 }}>
+                    {stats.published} Published Quizzes
+                  </p>
+                </div>
+              </div>
+              <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
+                Monitor live delivery windows, student attempt percentages, time spent, and performance analytics.
+              </p>
+            </div>
+          </>
+        )}
 
         {/* Rachna / Generate */}
         <div

@@ -28,13 +28,22 @@ import {
   Library,
   Sliders,
   Check,
+  Edit3,
+  Trash2,
+  X,
+  FileCode2,
 } from "lucide-react";
 import MathText from "./MathText";
 import { useAuth } from "./AuthProvider";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
 import MatchQuestionView from "./MatchQuestionView";
-import { downloadExamAsJson, getCleanExamTitle } from "@/lib/exportUtils";
+import {
+  downloadExamAsJson,
+  downloadExamAsDocx,
+  downloadExamAsMarkdown,
+  getCleanExamTitle,
+} from "@/lib/exportUtils";
 import type { View } from "./Sidebar";
 
 interface GeneratePanelProps {
@@ -132,6 +141,71 @@ export default function GeneratePanel({
       .then((detail) => setSelectedTemplateDetail(detail.config))
       .catch(() => setSelectedTemplateDetail(null));
   }, [selectedTemplateId]);
+
+  // ── Inline Question Editing State & Handlers ──────────────────────────────
+  const [editingQNum, setEditingQNum] = useState<number | null>(null);
+  const [editQText, setEditQText] = useState("");
+  const [editQMarks, setEditQMarks] = useState(1);
+  const [editQAnswer, setEditQAnswer] = useState("");
+  const [editQOptions, setEditQOptions] = useState<{ key: string; text: string }[]>([]);
+
+  function handleStartEdit(q: any) {
+    setEditingQNum(q.question_no);
+    setEditQText(q.text || "");
+    setEditQMarks(q.marks || 1);
+    setEditQAnswer(q.answer || "");
+    setEditQOptions(q.options ? JSON.parse(JSON.stringify(q.options)) : []);
+  }
+
+  function handleCancelEdit() {
+    setEditingQNum(null);
+  }
+
+  function handleSaveEdit(qNum: number) {
+    if (!result) return;
+    const updatedQs = (result.questions || []).map((q: any) => {
+      if (q.question_no === qNum) {
+        return {
+          ...q,
+          text: editQText.trim(),
+          marks: editQMarks,
+          answer: editQAnswer.trim(),
+          options: editQOptions.length > 0 ? editQOptions : q.options,
+        };
+      }
+      return q;
+    });
+
+    const newTotal = updatedQs.reduce((sum: number, q: any) => sum + (q.marks || 0), 0);
+    const updatedExam: GeneratedExam = {
+      ...result,
+      questions: updatedQs,
+      total_marks: newTotal,
+    };
+    setResult(updatedExam);
+    onExamSaved(updatedExam);
+    setEditingQNum(null);
+    setToast({ message: `Question Q${qNum} updated successfully!`, variant: "success" });
+  }
+
+  function handleDeleteQuestion(qNum: number) {
+    if (!result) return;
+    if (!window.confirm(`Are you sure you want to delete Question Q${qNum}?`)) return;
+    const filtered = (result.questions || []).filter((q: any) => q.question_no !== qNum);
+    const renumbered = filtered.map((q: any, i: number) => ({ ...q, question_no: i + 1 }));
+    const newTotal = renumbered.reduce((sum: number, q: any) => sum + (q.marks || 0), 0);
+    const updatedExam: GeneratedExam = {
+      ...result,
+      questions: renumbered,
+      total_marks: newTotal,
+    };
+    setResult(updatedExam);
+    onExamSaved(updatedExam);
+    if (editingQNum === qNum) {
+      setEditingQNum(null);
+    }
+    setToast({ message: `Question Q${qNum} deleted. Examination paper renumbered.`, variant: "info" });
+  }
 
   async function handleGenerate() {
     const tpl = templates.find((t) => t.id === selectedTemplateId);
@@ -235,33 +309,214 @@ export default function GeneratePanel({
             </div>
           )}
 
-          <div className="question-card">
-            <div className="question-card__header">
-              <span className="question-card__num" style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>
-                [ Q{q.question_no} ]
-              </span>
-              {q.type === "match_the_following" ? (
-                <div style={{ flex: 1 }}>
-                  <MatchQuestionView
-                    questionText={q.text}
-                    options={q.options}
-                    correctAnswer={q.answer}
-                    isAnswerKeyMode={activeViewMode === "key"}
-                    isInteractive={true}
+          {editingQNum === q.question_no ? (
+            <div
+              className="question-card no-print"
+              style={{
+                border: "2px solid var(--accent)",
+                background: "var(--surface)",
+                padding: "20px",
+                borderRadius: "var(--radius-md)",
+                boxShadow: "0 4px 14px rgba(234, 88, 12, 0.15)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <span style={{ fontWeight: 800, color: "var(--accent)", display: "flex", alignItems: "center", gap: 6, fontSize: "14px" }}>
+                  <Edit3 size={16} /> Editing Question [ Q{q.question_no} ] — {q.type.replace("_", " ").toUpperCase()}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="gk-btn gk-btn--ghost gk-btn--sm"
+                  style={{ padding: "3px 8px" }}
+                >
+                  <X size={15} /> Cancel
+                </button>
+              </div>
+
+              {/* Question Textarea */}
+              <div className="gk-field" style={{ marginBottom: 12 }}>
+                <label className="gk-label" style={{ fontSize: "12px", fontWeight: 700 }}>
+                  Question Text:
+                </label>
+                <textarea
+                  className="gk-input"
+                  rows={3}
+                  value={editQText}
+                  onChange={(e) => setEditQText(e.target.value)}
+                  style={{ width: "100%", fontSize: "13.5px", resize: "vertical" }}
+                />
+              </div>
+
+              {/* Marks & Answer Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12, marginBottom: 12 }}>
+                <div className="gk-field">
+                  <label className="gk-label" style={{ fontSize: "12px", fontWeight: 700 }}>
+                    Marks:
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    className="gk-input"
+                    value={editQMarks}
+                    onChange={(e) => setEditQMarks(Math.max(1, parseInt(e.target.value) || 1))}
+                    style={{ fontSize: "13px" }}
                   />
                 </div>
-              ) : (
-                <div className="question-card__text" style={{ fontSize: "14px", lineHeight: 1.6 }}>
-                  <MathText content={q.text} />
+                <div className="gk-field">
+                  <label className="gk-label" style={{ fontSize: "12px", fontWeight: 700 }}>
+                    Correct Answer / Key:
+                  </label>
+                  <input
+                    type="text"
+                    className="gk-input"
+                    value={editQAnswer}
+                    onChange={(e) => setEditQAnswer(e.target.value)}
+                    placeholder="e.g. A, True, or model solution"
+                    style={{ fontSize: "13px" }}
+                  />
+                </div>
+              </div>
+
+              {/* Options Editor (for MCQ or options-based questions) */}
+              {editQOptions.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <label className="gk-label" style={{ fontSize: "12px", fontWeight: 700, marginBottom: 6 }}>
+                    Answer Options:
+                  </label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {editQOptions.map((opt, optIdx) => (
+                      <div key={optIdx} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input
+                          type="text"
+                          className="gk-input"
+                          value={opt.key}
+                          onChange={(e) => {
+                            const next = [...editQOptions];
+                            next[optIdx].key = e.target.value;
+                            setEditQOptions(next);
+                          }}
+                          style={{ width: 44, textAlign: "center", fontWeight: 700, fontFamily: "var(--font-mono)" }}
+                        />
+                        <input
+                          type="text"
+                          className="gk-input"
+                          value={opt.text}
+                          onChange={(e) => {
+                            const next = [...editQOptions];
+                            next[optIdx].text = e.target.value;
+                            setEditQOptions(next);
+                          }}
+                          style={{ flex: 1, fontSize: "13px" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditQOptions(editQOptions.filter((_, i) => i !== optIdx));
+                          }}
+                          className="gk-btn gk-btn--ghost gk-btn--sm"
+                          style={{ padding: "4px 8px", color: "var(--terracotta)" }}
+                          title="Remove option"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextLetter = String.fromCharCode(65 + editQOptions.length);
+                        setEditQOptions([...editQOptions, { key: nextLetter, text: `Option ${nextLetter}` }]);
+                      }}
+                      className="gk-btn gk-btn--secondary gk-btn--sm"
+                      style={{ alignSelf: "flex-start", fontSize: "11px", marginTop: 4 }}
+                    >
+                      <Plus size={12} /> Add Option
+                    </button>
+                  </div>
                 </div>
               )}
-              <span className="chip-badge chip-badge--gold question-card__marks">
-                {q.marks} {q.marks === 1 ? "Mark" : "Marks"}
-              </span>
-              <span className="chip-badge question-card__type no-print">
-                {q.type.replace("_", " ")}
-              </span>
+
+              {/* Save / Cancel / Delete Actions */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteQuestion(q.question_no)}
+                  className="gk-btn gk-btn--ghost"
+                  style={{ color: "var(--terracotta)", fontSize: "12px", gap: 5 }}
+                >
+                  <Trash2 size={14} /> Delete Question
+                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="gk-btn gk-btn--secondary"
+                    style={{ fontSize: "12px", padding: "6px 12px" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveEdit(q.question_no)}
+                    className="gk-btn gk-btn--primary"
+                    style={{ fontSize: "12px", padding: "6px 14px", gap: 6 }}
+                  >
+                    <Check size={14} /> Save Changes
+                  </button>
+                </div>
+              </div>
             </div>
+          ) : (
+            <div className="question-card">
+              <div className="question-card__header">
+                <span className="question-card__num" style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                  [ Q{q.question_no} ]
+                </span>
+                {q.type === "match_the_following" ? (
+                  <div style={{ flex: 1 }}>
+                    <MatchQuestionView
+                      questionText={q.text}
+                      options={q.options}
+                      correctAnswer={q.answer}
+                      isAnswerKeyMode={activeViewMode === "key"}
+                      isInteractive={true}
+                    />
+                  </div>
+                ) : (
+                  <div className="question-card__text" style={{ fontSize: "14px", lineHeight: 1.6 }}>
+                    <MathText content={q.text} />
+                  </div>
+                )}
+                <span className="chip-badge chip-badge--gold question-card__marks">
+                  {q.marks} {q.marks === 1 ? "Mark" : "Marks"}
+                </span>
+                <span className="chip-badge question-card__type no-print">
+                  {q.type.replace("_", " ")}
+                </span>
+                {/* Inline Question Controls */}
+                <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
+                  <button
+                    type="button"
+                    onClick={() => handleStartEdit(q)}
+                    className="gk-btn gk-btn--secondary"
+                    style={{ fontSize: "11px", padding: "3px 8px", gap: 4, height: 26 }}
+                    title="Edit question text, answer, or marks"
+                  >
+                    <Edit3 size={11} /> Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteQuestion(q.question_no)}
+                    className="gk-btn gk-btn--ghost"
+                    style={{ fontSize: "11px", padding: "3px 6px", height: 26, color: "var(--terracotta)" }}
+                    title="Delete question"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
 
             {q.type !== "match_the_following" && q.options && q.options.length > 0 && (
               <div className="mcq-options" style={{ marginTop: 12 }}>
@@ -326,10 +581,11 @@ export default function GeneratePanel({
               </div>
             )}
           </div>
-        </div>
-      );
-    });
-  };
+        )}
+      </div>
+    );
+  });
+};
 
   return (
     <div className="gurukul-page">
@@ -909,8 +1165,29 @@ export default function GeneratePanel({
                 className="gk-btn gk-btn--secondary"
                 onClick={() => downloadExamAsJson(result)}
                 style={{ fontSize: "12px", padding: "6px 12px", gap: 6 }}
+                title="Download JSON export"
               >
                 <Download size={14} /> JSON
+              </button>
+
+              {/* Word Export */}
+              <button
+                className="gk-btn gk-btn--secondary"
+                onClick={() => downloadExamAsDocx(result, activeViewMode === "key")}
+                style={{ fontSize: "12px", padding: "6px 12px", gap: 6 }}
+                title="Download formatted Word document (.docx)"
+              >
+                <FileText size={14} /> Word (.docx)
+              </button>
+
+              {/* Markdown Export */}
+              <button
+                className="gk-btn gk-btn--secondary"
+                onClick={() => downloadExamAsMarkdown(result, activeViewMode === "key")}
+                style={{ fontSize: "12px", padding: "6px 12px", gap: 6 }}
+                title="Download Markdown document (.md)"
+              >
+                <FileCode2 size={14} /> Markdown (.md)
               </button>
 
               {/* Publish to Students */}

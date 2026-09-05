@@ -3,9 +3,10 @@ Admin Router — Class Management, Shishya Roster Provisioning, and Performance 
 """
 
 import logging
+import re
 import uuid
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -19,6 +20,17 @@ from app.services.auth import require_current_user, require_role, get_password_h
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def to_utc_iso(dt: Optional[datetime]) -> Optional[str]:
+    """Ensure datetime is serialized as standard ISO 8601 with explicit Z UTC indicator."""
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -474,8 +486,14 @@ async def list_published_quizzes(
     for exam in exams:
         exam_json = dict(exam.exam_json) if exam.exam_json else {}
         subject = exam_json.get("subject", "General Subject")
-        grade = exam_json.get("grade", "All Grades")
-        title = exam_json.get("heading_details") or f"{subject} Pariksha ({grade})"
+        grade = exam_json.get("grade") or "All Grades"
+        heading = exam_json.get("heading_details")
+        if heading:
+            clean_title = re.sub(r"<[^>]+>", " ", heading).strip()
+            clean_title = re.sub(r"\s+", " ", clean_title)
+            title = (clean_title[:85] + "...") if len(clean_title) > 85 else (clean_title or f"{subject} Pariksha ({grade})")
+        else:
+            title = f"{subject} Pariksha ({grade})"
         total_marks = int(exam_json.get("total_marks", 100))
         duration_minutes = int(exam_json.get("duration_minutes", 60))
         questions = exam_json.get("questions", [])
@@ -494,7 +512,7 @@ async def list_published_quizzes(
             start_tz = exam.schedule_start_at if exam.schedule_start_at.tzinfo else exam.schedule_start_at.replace(tzinfo=timezone.utc)
             if now < start_tz:
                 is_active_window = False
-                status_label = f"Scheduled: Starts {start_tz.strftime('%b %d, %I:%M %p')}"
+                status_label = "Scheduled"
 
         if exam.schedule_end_at:
             end_tz = exam.schedule_end_at if exam.schedule_end_at.tzinfo else exam.schedule_end_at.replace(tzinfo=timezone.utc)
@@ -502,7 +520,7 @@ async def list_published_quizzes(
                 is_active_window = False
                 status_label = "Closed / Expired"
             elif is_active_window:
-                status_label = f"Live (Ends {end_tz.strftime('%b %d, %I:%M %p')})"
+                status_label = "Live Now"
 
         # Query all attempts for this exam
         att_res = await db.execute(
@@ -533,14 +551,14 @@ async def list_published_quizzes(
                 target_class_id=str(exam.target_class_id) if exam.target_class_id else None,
                 target_class_name=target_class_name,
                 target_course=target_course,
-                schedule_start_at=exam.schedule_start_at.isoformat() if exam.schedule_start_at else None,
-                schedule_end_at=exam.schedule_end_at.isoformat() if exam.schedule_end_at else None,
+                schedule_start_at=to_utc_iso(exam.schedule_start_at),
+                schedule_end_at=to_utc_iso(exam.schedule_end_at),
                 is_active_window=is_active_window,
                 status_label=status_label,
                 total_marks=total_marks,
                 duration_minutes=duration_minutes,
                 num_questions=num_questions,
-                created_at=exam.created_at.isoformat() if exam.created_at else "",
+                created_at=to_utc_iso(exam.created_at) or "",
                 total_attempts=total_attempts,
                 unique_students_count=unique_students,
                 avg_score_percentage=avg_score_pct,
@@ -597,7 +615,7 @@ async def get_published_quiz_detail(
         start_tz = exam.schedule_start_at if exam.schedule_start_at.tzinfo else exam.schedule_start_at.replace(tzinfo=timezone.utc)
         if now < start_tz:
             is_active_window = False
-            status_label = f"Scheduled: Starts {start_tz.strftime('%b %d, %I:%M %p')}"
+            status_label = "Scheduled"
 
     if exam.schedule_end_at:
         end_tz = exam.schedule_end_at if exam.schedule_end_at.tzinfo else exam.schedule_end_at.replace(tzinfo=timezone.utc)
@@ -605,7 +623,7 @@ async def get_published_quiz_detail(
             is_active_window = False
             status_label = "Closed / Expired"
         elif is_active_window:
-            status_label = f"Live (Ends {end_tz.strftime('%b %d, %I:%M %p')})"
+            status_label = "Live Now"
 
     # Fetch attempts with student users eager loaded
     att_res = await db.execute(
@@ -636,14 +654,14 @@ async def get_published_quiz_detail(
         target_class_id=str(exam.target_class_id) if exam.target_class_id else None,
         target_class_name=target_class_name,
         target_course=target_course,
-        schedule_start_at=exam.schedule_start_at.isoformat() if exam.schedule_start_at else None,
-        schedule_end_at=exam.schedule_end_at.isoformat() if exam.schedule_end_at else None,
+        schedule_start_at=to_utc_iso(exam.schedule_start_at),
+        schedule_end_at=to_utc_iso(exam.schedule_end_at),
         is_active_window=is_active_window,
         status_label=status_label,
         total_marks=total_marks,
         duration_minutes=duration_minutes,
         num_questions=num_questions,
-        created_at=exam.created_at.isoformat() if exam.created_at else "",
+        created_at=to_utc_iso(exam.created_at) or "",
         total_attempts=total_attempts,
         unique_students_count=unique_students,
         avg_score_percentage=avg_score_pct,
@@ -700,7 +718,7 @@ async def get_published_quiz_detail(
                 total_marks=att.total_marks,
                 percentage=att.percentage,
                 time_spent_seconds=att.time_spent_seconds,
-                submitted_at=att.created_at.isoformat() if att.created_at else "",
+                submitted_at=to_utc_iso(att.created_at) or "",
                 questions_feedback=questions_feedback,
             )
         )

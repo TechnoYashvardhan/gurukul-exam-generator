@@ -192,11 +192,11 @@ interface MatchQuestionViewProps {
 }
 
 const PAIR_PALETTES = [
-  { border: "#ea580c", text: "#c2410c", bg: "rgba(234, 88, 12, 0.08)", badgeBg: "#ffedd5", badgeText: "#9a3412", glow: "rgba(234, 88, 12, 0.35)" }, // Saffron / Amber
-  { border: "#10b981", text: "#047857", bg: "rgba(16, 185, 129, 0.08)", badgeBg: "#d1fae5", badgeText: "#065f46", glow: "rgba(16, 185, 129, 0.35)" }, // Emerald
-  { border: "#6366f1", text: "#4338ca", bg: "rgba(99, 102, 241, 0.08)", badgeBg: "#e0e7ff", badgeText: "#3730a3", glow: "rgba(99, 102, 241, 0.35)" }, // Indigo
-  { border: "#ec4899", text: "#be185d", bg: "rgba(236, 72, 153, 0.08)", badgeBg: "#fce7f3", badgeText: "#9d174d", glow: "rgba(236, 72, 153, 0.35)" }, // Magenta
-  { border: "#0ea5e9", text: "#0369a1", bg: "rgba(14, 165, 233, 0.08)", badgeBg: "#e0f2fe", badgeText: "#075985", glow: "rgba(14, 165, 233, 0.35)" }, // Sky
+  { border: "#2962ff", text: "#1a47b5", bg: "rgba(41, 98, 255, 0.08)", badgeBg: "#dbeafe", badgeText: "#1e3a8a", glow: "rgba(41, 98, 255, 0.35)" },   // Blue
+  { border: "#ff8800", text: "#b45f00", bg: "rgba(255, 136, 0, 0.08)", badgeBg: "#fff3e0", badgeText: "#7d3a03", glow: "rgba(255, 136, 0, 0.35)" },    // Orange
+  { border: "#e100ff", text: "#a000b5", bg: "rgba(225, 0, 255, 0.08)", badgeBg: "#f6e0ff", badgeText: "#790853", glow: "rgba(225, 0, 255, 0.35)" },    // Magenta
+  { border: "#52078f", text: "#3d0569", bg: "rgba(82, 7, 143, 0.08)", badgeBg: "#e3c9fd", badgeText: "#2d0450", glow: "rgba(82, 7, 143, 0.35)" },      // Deep Purple
+  { border: "#000000", text: "#1a1a1a", bg: "rgba(0, 0, 0, 0.06)", badgeBg: "#e8e8e8", badgeText: "#0f0f0f", glow: "rgba(0, 0, 0, 0.25)" },            // Black
 ];
 
 export default function MatchQuestionView({
@@ -376,7 +376,7 @@ export default function MatchQuestionView({
     e.preventDefault();
     try {
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    } catch (_) {}
+    } catch (_) { }
 
     const containerRect = containerRef.current.getBoundingClientRect();
     const pin = pinCoords.left[id] || { x: 0, y: 0 };
@@ -419,7 +419,7 @@ export default function MatchQuestionView({
     if (isDragging) {
       try {
         (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch (_) {}
+      } catch (_) { }
 
       if (dragStart && snappedRightId) {
         connectPair(dragStart.id, snappedRightId);
@@ -671,15 +671,15 @@ export default function MatchQuestionView({
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              gap: 28,
-              padding: "18px 20px",
+              gap: 56,
+              padding: "22px 22px",
               background: "var(--surface)",
               position: "relative",
               zIndex: 1,
             }}
           >
             {/* Left Column (Column I Nodes) */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 20, minHeight: "100%" }}>
               {parsed.columnA.map((item, idx) => {
                 const isSelected = selectedLeft === item.id;
                 const pairedRight = pairs[item.id];
@@ -694,18 +694,19 @@ export default function MatchQuestionView({
                       display: "flex",
                       alignItems: "center",
                       gap: 12,
-                      padding: "10px 14px",
+                      padding: "13px 16px",
+                      minHeight: 56,
                       borderRadius: "var(--radius-sm)",
                       border: isSelected
                         ? "2px solid var(--accent)"
                         : pairedRight
-                        ? `1.5px solid ${palette.border}`
-                        : "1.5px solid var(--border)",
+                          ? `1.5px solid ${palette.border}`
+                          : "1.5px solid var(--border)",
                       background: isSelected
                         ? "var(--accent-light)"
                         : pairedRight
-                        ? palette.bg
-                        : "var(--surface)",
+                          ? palette.bg
+                          : "var(--surface)",
                       cursor: isInteractive ? "pointer" : "default",
                       transition: "all 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
                       position: "relative",
@@ -765,7 +766,7 @@ export default function MatchQuestionView({
             </div>
 
             {/* Right Column (Column II Nodes) */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {parsed.columnB.map((item) => {
                 const pairedLeftKey = Object.keys(pairs).find((k) => pairs[k]?.toLowerCase() === item.id.toLowerCase());
                 const leftIdx = pairedLeftKey ? parsed.columnA.findIndex((a) => a.id === pairedLeftKey) : -1;
@@ -781,20 +782,21 @@ export default function MatchQuestionView({
                       display: "flex",
                       alignItems: "center",
                       gap: 12,
-                      padding: "10px 14px",
+                      padding: "13px 16px",
+                      minHeight: 56,
                       borderRadius: "var(--radius-sm)",
                       border: isMagneticTarget
                         ? "2px solid var(--forest)"
                         : pairedLeftKey
-                        ? `1.5px solid ${palette?.border}`
-                        : selectedLeft
-                        ? "1.5px dashed var(--accent)"
-                        : "1.5px solid var(--border)",
+                          ? `1.5px solid ${palette?.border}`
+                          : selectedLeft
+                            ? "1.5px dashed var(--accent)"
+                            : "1.5px solid var(--border)",
                       background: isMagneticTarget
                         ? "var(--forest-light)"
                         : pairedLeftKey
-                        ? palette?.bg
-                        : "var(--surface)",
+                          ? palette?.bg
+                          : "var(--surface)",
                       cursor: isInteractive && selectedLeft ? "pointer" : "default",
                       transition: "all 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
                       position: "relative",
@@ -817,16 +819,16 @@ export default function MatchQuestionView({
                         background: isMagneticTarget
                           ? "var(--forest)"
                           : pairedLeftKey
-                          ? palette?.border
-                          : selectedLeft
-                          ? "var(--accent)"
-                          : "var(--surface-sunken)",
+                            ? palette?.border
+                            : selectedLeft
+                              ? "var(--accent)"
+                              : "var(--surface-sunken)",
                         border: "2px solid #ffffff",
                         boxShadow: isMagneticTarget
                           ? "0 0 0 4px rgba(16, 185, 129, 0.4)"
                           : selectedLeft
-                          ? "0 0 0 3px rgba(234, 88, 12, 0.35)"
-                          : "0 1px 3px rgba(0,0,0,0.15)",
+                            ? "0 0 0 3px rgba(234, 88, 12, 0.35)"
+                            : "0 1px 3px rgba(0,0,0,0.15)",
                         cursor: isInteractive ? "crosshair" : "default",
                         flexShrink: 0,
                         display: "flex",
@@ -975,7 +977,7 @@ export default function MatchQuestionView({
 
       {/* ── Answer Options Grid (A, B, C, D) ── */}
       {options && options.length > 0 && (
-        <div className="match-options-wrap" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+        <div className="match-options-wrap" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
           <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Matching Codes (उत्तर विकल्प):
           </div>
@@ -983,7 +985,7 @@ export default function MatchQuestionView({
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: 10,
+              gap: 14,
             }}
           >
             {options.map((opt) => {
@@ -999,18 +1001,18 @@ export default function MatchQuestionView({
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
-                    padding: "10px 14px",
+                    padding: "12px 16px",
                     borderRadius: "var(--radius-md)",
                     border: isCorrect
                       ? "2px solid var(--forest)"
                       : isSelected
-                      ? "2px solid var(--accent)"
-                      : "1px solid var(--border)",
+                        ? "2px solid var(--accent)"
+                        : "1px solid var(--border)",
                     background: isCorrect
                       ? "var(--forest-light)"
                       : isSelected
-                      ? "var(--accent-light)"
-                      : "var(--surface)",
+                        ? "var(--accent-light)"
+                        : "var(--surface)",
                     cursor: onSelectAnswer ? "pointer" : "default",
                     transition: "all 0.15s ease",
                     boxShadow: isSelected ? "var(--shadow-sm)" : "none",
@@ -1026,8 +1028,8 @@ export default function MatchQuestionView({
                       background: isCorrect
                         ? "var(--forest)"
                         : isSelected
-                        ? "var(--accent)"
-                        : "var(--surface-sunken)",
+                          ? "var(--accent)"
+                          : "var(--surface-sunken)",
                       color: isCorrect || isSelected ? "#ffffff" : "var(--text-2)",
                       display: "flex",
                       alignItems: "center",

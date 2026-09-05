@@ -209,7 +209,7 @@ export default function Sidebar({ activeView, onViewChange, role: propRole }: Si
           textDecoration: "none",
         }}
       >
-        <GurukulLogo size={38} showText={true} subtitle="Exam Generator" />
+        <GurukulLogo size={38} showText={true} subtitle={activeRole === "student" ? "Quiz Arena" : "Exam Generator"} />
       </a>
 
       {/* Role Pill */}

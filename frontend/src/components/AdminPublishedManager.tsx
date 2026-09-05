@@ -35,6 +35,7 @@ import {
   ClassSummary
 } from "@/types/auth";
 import Toast, { ToastVariant } from "./Toast";
+import QuizCountdown from "./QuizCountdown";
 import MathText from "./MathText";
 
 export default function AdminPublishedManager() {
@@ -54,6 +55,7 @@ export default function AdminPublishedManager() {
 
   // Unpublish / Delete states
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [unlockedQuizIds, setUnlockedQuizIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadData();
@@ -399,8 +401,14 @@ export default function AdminPublishedManager() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {filteredQuizzes.map((quiz) => {
-            const isLive = quiz.is_active_window && !quiz.status_label.includes("Closed");
-            const isScheduled = !quiz.is_active_window && quiz.status_label.includes("Scheduled");
+            const isScheduled =
+              !unlockedQuizIds.has(quiz.id) &&
+              quiz.schedule_start_at &&
+              new Date(quiz.schedule_start_at).getTime() > Date.now();
+            const isExpired =
+              quiz.schedule_end_at &&
+              new Date(quiz.schedule_end_at).getTime() <= Date.now();
+            const isLive = !isScheduled && !isExpired;
 
             return (
               <div
@@ -490,7 +498,21 @@ export default function AdminPublishedManager() {
                         border: `1px solid ${isLive ? "rgba(34, 197, 94, 0.3)" : isScheduled ? "rgba(59, 130, 246, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
                       }}
                     >
-                      {isLive ? "⚡ Live Now" : isScheduled ? `🗓️ ${quiz.status_label}` : "⚠️ Closed"}
+                      {isLive ? (
+                        "⚡ Live Now"
+                      ) : isScheduled ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span>🗓️ Scheduled</span>
+                          <span>•</span>
+                          <QuizCountdown
+                            targetDate={quiz.schedule_start_at!}
+                            prefix=""
+                            onComplete={() => setUnlockedQuizIds((prev) => new Set(prev).add(quiz.id))}
+                          />
+                        </span>
+                      ) : (
+                        "⚠️ Closed"
+                      )}
                     </span>
                   </div>
                 </div>

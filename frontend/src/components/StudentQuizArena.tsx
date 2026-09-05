@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { studentApi } from "@/lib/api";
 import type { QuizListItem } from "@/types/auth";
-import { Search, Sparkles, Clock, HelpCircle, CheckCircle2, Play, RefreshCw } from "lucide-react";
+import { Search, Sparkles, Clock, HelpCircle, CheckCircle2, Play, RefreshCw, Calendar, Hourglass } from "lucide-react";
+import QuizCountdown from "./QuizCountdown";
 
 interface StudentQuizArenaProps {
   onSelectQuiz: (quizId: string) => void;
@@ -11,6 +12,7 @@ interface StudentQuizArenaProps {
 
 export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps) {
   const [quizzes, setQuizzes] = useState<QuizListItem[]>([]);
+  const [unlockedQuizIds, setUnlockedQuizIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
@@ -205,36 +207,93 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
                   </p>
                 )}
 
-                {quiz.status_label && (
-                  <div
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: "var(--radius-sm)",
-                      fontSize: 11.5,
-                      fontWeight: 600,
-                      marginBottom: 14,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      background:
-                        quiz.is_active_window === false && quiz.status_label.includes("Scheduled")
-                          ? "rgba(59, 130, 246, 0.1)"
-                          : "rgba(239, 68, 68, 0.1)",
-                      color:
-                        quiz.is_active_window === false && quiz.status_label.includes("Scheduled")
-                          ? "#2563eb"
-                          : "#dc2626",
-                      border: `1px solid ${
-                        quiz.is_active_window === false && quiz.status_label.includes("Scheduled")
-                          ? "rgba(59, 130, 246, 0.2)"
-                          : "rgba(239, 68, 68, 0.2)"
-                      }`,
-                    }}
-                  >
-                    <Clock size={13} />
-                    <span>{quiz.status_label}</span>
-                  </div>
-                )}
+                {/* Schedule / Status Badges */}
+                {(() => {
+                  const isScheduled =
+                    !unlockedQuizIds.has(quiz.id) &&
+                    quiz.schedule_start_at &&
+                    new Date(quiz.schedule_start_at).getTime() > Date.now();
+                  const isExpired =
+                    quiz.schedule_end_at &&
+                    new Date(quiz.schedule_end_at).getTime() <= Date.now();
+
+                  if (isScheduled) {
+                    return (
+                      <div
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: "var(--radius-sm)",
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          marginBottom: 14,
+                          background: "rgba(59, 130, 246, 0.1)",
+                          color: "#2563eb",
+                          border: "1px solid rgba(59, 130, 246, 0.2)",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                          <Calendar size={13} />
+                          <span>Opens: {new Date(quiz.schedule_start_at!).toLocaleString()}</span>
+                        </div>
+                        <div style={{ color: "#2563eb", fontWeight: 700 }}>
+                          <QuizCountdown
+                            targetDate={quiz.schedule_start_at!}
+                            prefix="Starts in: "
+                            onComplete={() => setUnlockedQuizIds((prev) => new Set(prev).add(quiz.id))}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (isExpired) {
+                    return (
+                      <div
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: "var(--radius-sm)",
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          marginBottom: 14,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          background: "rgba(239, 68, 68, 0.1)",
+                          color: "#dc2626",
+                          border: "1px solid rgba(239, 68, 68, 0.2)",
+                        }}
+                      >
+                        <Clock size={13} />
+                        <span>Closed / Expired</span>
+                      </div>
+                    );
+                  }
+
+                  if (quiz.schedule_end_at) {
+                    return (
+                      <div
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: "var(--radius-sm)",
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          marginBottom: 14,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          background: "rgba(239, 68, 68, 0.08)",
+                          color: "#dc2626",
+                          border: "1px solid rgba(239, 68, 68, 0.2)",
+                        }}
+                      >
+                        <Hourglass size={13} />
+                        <span>Deadline: {new Date(quiz.schedule_end_at).toLocaleString()}</span>
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })()}
 
                 <div
                   style={{
@@ -259,29 +318,48 @@ export default function StudentQuizArena({ onSelectQuiz }: StudentQuizArenaProps
                 </div>
               </div>
 
-              <button
-                onClick={() => onSelectQuiz(quiz.id)}
-                disabled={quiz.is_active_window === false}
-                className={`gk-btn ${quiz.attempted ? "gk-btn--secondary" : "gk-btn--primary"}`}
-                style={{
-                  width: "100%",
-                  justifyContent: "center",
-                  opacity: quiz.is_active_window === false ? 0.6 : 1,
-                  cursor: quiz.is_active_window === false ? "not-allowed" : "pointer",
-                }}
-              >
-                {quiz.is_active_window === false ? (
-                  quiz.status_label?.includes("Closed") ? "Quiz Closed" : "Scheduled Quiz"
-                ) : quiz.attempted ? (
-                  <>
-                    <RefreshCw size={14} /> Retake Quiz
-                  </>
-                ) : (
-                  <>
-                    <Play size={14} /> Attempt Quiz
-                  </>
-                )}
-              </button>
+              {(() => {
+                const isScheduled = Boolean(
+                  !unlockedQuizIds.has(quiz.id) &&
+                  quiz.schedule_start_at &&
+                  new Date(quiz.schedule_start_at).getTime() > Date.now()
+                );
+                const isExpired = Boolean(
+                  quiz.schedule_end_at &&
+                  new Date(quiz.schedule_end_at).getTime() <= Date.now()
+                );
+                const isDisabled = isScheduled || isExpired;
+
+                return (
+                  <button
+                    onClick={() => onSelectQuiz(quiz.id)}
+                    disabled={isDisabled}
+                    className={`gk-btn ${quiz.attempted ? "gk-btn--secondary" : "gk-btn--primary"}`}
+                    style={{
+                      width: "100%",
+                      justifyContent: "center",
+                      opacity: isDisabled ? 0.65 : 1,
+                      cursor: isDisabled ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {isScheduled ? (
+                      <>
+                        <Clock size={14} /> Scheduled Quiz
+                      </>
+                    ) : isExpired ? (
+                      "Quiz Closed"
+                    ) : quiz.attempted ? (
+                      <>
+                        <RefreshCw size={14} /> Retake Quiz
+                      </>
+                    ) : (
+                      <>
+                        <Play size={14} /> Attempt Quiz
+                      </>
+                    )}
+                  </button>
+                );
+              })()}
             </div>
           ))}
         </div>

@@ -353,9 +353,29 @@ export default function TemplateBuilder({
 
             {/* Total Marks */}
             <div className="gk-field">
-              <label className="gk-label" htmlFor="tpl-marks">
-                Total Marks
-              </label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <label className="gk-label" htmlFor="tpl-marks" style={{ marginBottom: 0 }}>
+                  Total Marks
+                </label>
+                {computedMarks !== totalMarks && (
+                  <button
+                    type="button"
+                    onClick={() => setTotalMarks(computedMarks)}
+                    style={{
+                      fontSize: "11px",
+                      color: "var(--accent)",
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      fontWeight: 700,
+                      textDecoration: "underline",
+                      padding: 0,
+                    }}
+                  >
+                    Set to {computedMarks} (Sum of Sections)
+                  </button>
+                )}
+              </div>
               <input
                 id="tpl-marks"
                 className="gk-input"
@@ -366,6 +386,7 @@ export default function TemplateBuilder({
                 onChange={(e) =>
                   setTotalMarks(Math.max(1, parseInt(e.target.value) || 1))
                 }
+                style={{ marginTop: 6 }}
               />
             </div>
 
@@ -587,12 +608,33 @@ export default function TemplateBuilder({
                   computedMarks === totalMarks
                     ? "var(--forest)"
                     : "var(--terracotta)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
               }}
             >
               <strong style={{ fontFamily: "var(--font-mono)" }}>
                 {computedMarks}
               </strong>{" "}
               / {totalMarks} marks
+              {computedMarks !== totalMarks && (
+                <button
+                  type="button"
+                  onClick={() => setTotalMarks(computedMarks)}
+                  className="gk-btn gk-btn--secondary"
+                  style={{
+                    fontSize: "11px",
+                    padding: "2px 8px",
+                    height: "auto",
+                    lineHeight: 1.4,
+                    borderColor: "var(--accent)",
+                    color: "var(--accent)",
+                  }}
+                  title="Click to auto-sync Total Marks with Section Marks sum"
+                >
+                  Sync Total ({computedMarks})
+                </button>
+              )}
             </span>
             <span>
               <strong style={{ fontFamily: "var(--font-mono)" }}>
@@ -607,6 +649,11 @@ export default function TemplateBuilder({
             className="gk-btn gk-btn--gold"
             onClick={handleSave}
             disabled={saving || computedMarks !== totalMarks}
+            title={
+              computedMarks !== totalMarks
+                ? `Section marks (${computedMarks}) must match total marks (${totalMarks}). Click 'Sync Total' to match.`
+                : "Save blueprint template"
+            }
           >
             {saving ? (
               <span

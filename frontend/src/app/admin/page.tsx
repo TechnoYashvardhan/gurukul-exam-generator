@@ -114,6 +114,7 @@ export default function AdminPage() {
               <Dashboard 
                 onNavigate={handleViewChange} 
                 historyEntries={historyEntries}
+                role="admin"
               />
             </div>
           )}

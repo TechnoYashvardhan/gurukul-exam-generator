@@ -79,6 +79,17 @@ class StudentStatsResponse(BaseModel):
     recent_attempts: list[dict]
 
 
+def to_utc_iso(dt: Optional[datetime]) -> Optional[str]:
+    """Ensure datetime is serialized as standard ISO 8601 with explicit Z UTC indicator."""
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _normalize_text(text: str) -> str:
     """Normalize text for grading fill in blanks and one word answers."""
     return re.sub(r"[^a-zA-Z0-9]", "", text).lower().strip()
@@ -134,7 +145,7 @@ async def list_available_quizzes(
             start_tz = ex.schedule_start_at if ex.schedule_start_at.tzinfo else ex.schedule_start_at.replace(tzinfo=timezone.utc)
             if now < start_tz:
                 is_active_window = False
-                status_label = f"Scheduled: Starts {start_tz.strftime('%b %d, %I:%M %p')}"
+                status_label = "Scheduled"
         if ex.schedule_end_at:
             end_tz = ex.schedule_end_at if ex.schedule_end_at.tzinfo else ex.schedule_end_at.replace(tzinfo=timezone.utc)
             if now > end_tz:
@@ -149,13 +160,13 @@ async def list_available_quizzes(
                 total_marks=total_marks,
                 duration_minutes=duration_minutes,
                 num_questions=len(questions),
-                created_at=ex.created_at.isoformat() if ex.created_at else "",
+                created_at=to_utc_iso(ex.created_at) or "",
                 heading_details=exam_json.get("heading_details"),
                 instructions=exam_json.get("instructions"),
                 attempted=ex.id in user_attempts_map,
                 best_score=user_attempts_map.get(ex.id),
-                schedule_start_at=ex.schedule_start_at.isoformat() if ex.schedule_start_at else None,
-                schedule_end_at=ex.schedule_end_at.isoformat() if ex.schedule_end_at else None,
+                schedule_start_at=to_utc_iso(ex.schedule_start_at),
+                schedule_end_at=to_utc_iso(ex.schedule_end_at),
                 is_active_window=is_active_window,
                 status_label=status_label,
             )
@@ -186,7 +197,7 @@ async def get_quiz_for_taking(
         if now < start_tz:
             raise HTTPException(
                 status_code=403,
-                detail=f"This quiz is scheduled to open on {start_tz.strftime('%b %d, %Y at %I:%M %p')}."
+                detail=f"This quiz is scheduled to open on {start_tz.strftime('%b %d, %Y at %I:%M %p UTC')}."
             )
     if exam.schedule_end_at:
         end_tz = exam.schedule_end_at if exam.schedule_end_at.tzinfo else exam.schedule_end_at.replace(tzinfo=timezone.utc)
@@ -206,6 +217,8 @@ async def get_quiz_for_taking(
 
     exam_json["questions"] = questions
     exam_json["id"] = str(exam.id)
+    exam_json["schedule_start_at"] = to_utc_iso(exam.schedule_start_at)
+    exam_json["schedule_end_at"] = to_utc_iso(exam.schedule_end_at)
     return exam_json
 
 
@@ -241,18 +254,44 @@ async def submit_quiz_attempt(
         max_marks = float(q.get("marks", 1))
         correct_ans = str(q.get("answer", "")).strip()
 
-        # User's answer for this question
-        user_ans = body.answers.get(str(q_no)) or body.answers.get(str(idx)) or body.answers.get(f"q_{idx}") or ""
-        user_ans_str = str(user_ans).strip()
+        # Safely retrieve user's answer:
+        # Check explicit question_no string and f"q_{q_no}"
+        # NEVER use body.answers.get(str(idx)) blindly because str(idx) for question 2 is "1",
+        # which collides with question 1!
+        user_ans = None
+        if str(q_no) in body.answers:
+            user_ans = body.answers[str(q_no)]
+        elif f"q_{q_no}" in body.answers:
+            user_ans = body.answers[f"q_{q_no}"]
+        elif f"q_{idx}" in body.answers:
+            user_ans = body.answers[f"q_{idx}"]
+        elif "0" in body.answers and str(idx) in body.answers:
+            # Only if client used 0-based indexing
+            user_ans = body.answers[str(idx)]
+
+        # Extract and sanitize user_ans_str
+        user_ans_str = ""
+        if user_ans is not None:
+            if isinstance(user_ans, (dict, list)):
+                user_ans_str = ""
+            else:
+                raw_val = str(user_ans).strip()
+                if raw_val.lower() not in ["", "null", "undefined", "none", "{}", "[]"]:
+                    user_ans_str = raw_val
 
         is_correct = False
         marks_awarded = 0.0
         explanation: Optional[str] = None
 
         if not user_ans_str:
+            # Question was unattempted
             is_correct = False
             marks_awarded = 0.0
             explanation = "Unanswered"
+        elif not correct_ans:
+            is_correct = False
+            marks_awarded = 0.0
+            explanation = "No correct answer specified"
         elif q_type in ["mcq", "match_the_following"]:
             if user_ans_str.upper() == correct_ans.upper():
                 is_correct = True
@@ -266,17 +305,20 @@ async def submit_quiz_attempt(
                         explanation = "Correct option selected"
                         break
             if not is_correct:
+                marks_awarded = 0.0
                 explanation = "Incorrect option"
         elif q_type == "true_false":
             norm_user = user_ans_str.lower()
             norm_correct = correct_ans.lower()
             if (norm_user in ["a", "true"] and norm_correct in ["a", "true"]) or \
                (norm_user in ["b", "false"] and norm_correct in ["b", "false"]) or \
-               (norm_user == norm_correct):
+               (norm_user == norm_correct and norm_user in ["true", "false", "a", "b"]):
                 is_correct = True
                 marks_awarded = max_marks
                 explanation = "Correct answer"
             else:
+                is_correct = False
+                marks_awarded = 0.0
                 explanation = "Incorrect"
         else:
             # Non-MCQ: fill_in_the_blanks, one_word, short_answer, long_answer, case_study
@@ -314,7 +356,7 @@ async def submit_quiz_attempt(
             ev = ai_results.get(q_no)
             if ev:
                 eval_state[q_no]["is_correct"] = ev.is_correct
-                eval_state[q_no]["marks_awarded"] = round(eval_state[q_no]["max_marks"] * ev.score_ratio, 2)
+                eval_state[q_no]["marks_awarded"] = round(eval_state[q_no]["max_marks"] * ev.score_ratio, 2) if ev.is_correct else 0.0
                 eval_state[q_no]["explanation"] = ev.explanation or ("AI Evaluation: Matched" if ev.is_correct else "AI Evaluation: Incorrect")
 
     # Phase 3: Compile results and feedback
@@ -324,8 +366,8 @@ async def submit_quiz_attempt(
     for idx, q in enumerate(questions):
         q_no = q.get("question_no", idx + 1)
         ev_info = eval_state.get(q_no, {})
-        is_correct = ev_info.get("is_correct", False)
-        marks_awarded = ev_info.get("marks_awarded", 0.0)
+        is_correct = bool(ev_info.get("is_correct", False))
+        marks_awarded = float(ev_info.get("marks_awarded", 0.0)) if is_correct else 0.0
         total_score += marks_awarded
 
         feedback_list.append(
@@ -373,7 +415,7 @@ async def submit_quiz_attempt(
         percentage=percentage,
         time_spent_seconds=body.time_spent_seconds,
         questions_feedback=feedback_list,
-        completed_at=attempt.created_at.isoformat(),
+        completed_at=to_utc_iso(attempt.created_at) or "",
     )
 
 
@@ -412,7 +454,7 @@ async def get_quiz_attempt(
         percentage=attempt.percentage,
         time_spent_seconds=attempt.time_spent_seconds,
         questions_feedback=feedback_data,
-        completed_at=attempt.created_at.isoformat() if attempt.created_at else "",
+        completed_at=to_utc_iso(attempt.created_at) or "",
     )
 
 
@@ -448,7 +490,7 @@ async def get_student_stats(
             "total_marks": att.total_marks,
             "percentage": att.percentage,
             "time_spent_seconds": att.time_spent_seconds,
-            "created_at": att.created_at.isoformat() if att.created_at else "",
+            "created_at": to_utc_iso(att.created_at) or "",
         })
 
     return StudentStatsResponse(

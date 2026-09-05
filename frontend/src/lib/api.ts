@@ -24,9 +24,9 @@ export function getApiBaseUrl(): string {
   }
   if (typeof window !== "undefined") {
     const host = window.location.hostname || "localhost";
-    return `http://${host}:8000`;
+    return `http://${host}:8001`;
   }
-  return "http://localhost:8000";
+  return "http://localhost:8001";
 }
 
 export function getApiUrl(): string {
@@ -200,9 +200,15 @@ export const documentsApi = {
 
 export const generationApi = {
   generate: async (payload: GenerateWithSourceRequest, onProgress?: (msg: string) => void): Promise<GeneratedExam> => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("gk_token") : null;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${getApiUrl()}/generate/exam`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(payload)
     });
     
