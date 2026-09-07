@@ -215,7 +215,7 @@ async def import_exam_endpoint(
     and persist it to the database for publishing or history tracking.
     """
     user_role = current_user.role if current_user else "teacher"
-    author_id = current_user.id if current_user else (_ADMIN_UID if user_role == "admin" else _TEACHER_UID)
+    author_id = current_user.id if current_user else _ADMIN_UID
 
     exam_dict = payload.exam
     raw_id = exam_dict.get("exam_id")

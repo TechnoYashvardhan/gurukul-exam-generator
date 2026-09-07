@@ -2,7 +2,8 @@ import sqlite3
 import json
 import os
 
-conn = sqlite3.connect('examgen.db')
+db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'examgen.db')
+conn = sqlite3.connect(db_path)
 conn.row_factory = sqlite3.Row
 c = conn.cursor()
 
@@ -130,6 +131,23 @@ for r in users:
         f"INSERT INTO users (id, email, scholar_id, class_id, hashed_pw, full_name, role, is_active, created_at) "
         f"VALUES ({escape_str(r['id'])}, {escape_str(r['email'])}, {sid}, {cid}, {escape_str(r['hashed_pw'])}, {fn}, {escape_str(r['role'])}, {r['is_active']}, {escape_str(r['created_at'])}) "
         f"ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, scholar_id = EXCLUDED.scholar_id, class_id = EXCLUDED.class_id, hashed_pw = EXCLUDED.hashed_pw, full_name = EXCLUDED.full_name, role = EXCLUDED.role;"
+    )
+lines.append('')
+
+# 2b. Documents
+docs = c.execute('SELECT * FROM documents').fetchall()
+lines.append(f'-- 2b. Documents ({len(docs)} rows)')
+for r in docs:
+    uid = r['user_id']
+    if uid in ('00000000000000000000000000000001', '00000000-0000-0000-0000-000000000001'):
+        uid = '00000000-0000-0000-0000-000000000002'
+    subj = escape_str(r['subject'])
+    grd = escape_str(r['grade'])
+    pc = r['page_count'] if r['page_count'] is not None else 'NULL'
+    lines.append(
+        f"INSERT INTO documents (id, user_id, filename, subject, grade, sha256_hash, page_count, status, source, created_at) "
+        f"VALUES ({escape_str(r['id'])}, {escape_str(uid)}, {escape_str(r['filename'])}, {subj}, {grd}, {escape_str(r['sha256_hash'])}, {pc}, {escape_str(r['status'])}, {escape_str(r['source'])}, {escape_str(r['created_at'])}) "
+        f"ON CONFLICT (id) DO NOTHING;"
     )
 lines.append('')
 

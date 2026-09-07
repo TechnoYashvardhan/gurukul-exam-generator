@@ -88,6 +88,33 @@ async def _scrape_url(client: httpx.AsyncClient, url: str) -> str:
         return ""
 
 
+async def _search_searxng(query: str, max_results: int = 5) -> list[str]:
+    """Query self-hosted or remote SearXNG instance if configured and accessible."""
+    base_url = (getattr(settings, "searxng_base_url", "") or "").rstrip("/")
+    if not base_url:
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=4.0, headers=BROWSER_HEADERS) as client:
+            resp = await client.get(
+                f"{base_url}/search",
+                params={"q": query, "format": "json", "categories": "general"},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                results = data.get("results", [])
+                urls = [
+                    r["url"]
+                    for r in results
+                    if isinstance(r, dict) and r.get("url", "").startswith("http")
+                ]
+                if urls:
+                    logger.info("SearXNG returned %d URLs", len(urls[:max_results]))
+                    return urls[:max_results]
+    except Exception as e:
+        logger.debug("SearXNG search unavailable (%s), trying fallbacks", e)
+    return []
+
+
 async def _search_duckduckgo(query: str, max_results: int = 6) -> list[str]:
     """Search DuckDuckGo using python package or direct HTML parsing."""
     # 1. Try python package
@@ -106,7 +133,7 @@ async def _search_duckduckgo(query: str, max_results: int = 6) -> list[str]:
 
     # 2. Try DuckDuckGo HTML endpoint
     try:
-        async with httpx.AsyncClient(timeout=8.0, headers=BROWSER_HEADERS) as client:
+        async with httpx.AsyncClient(timeout=5.0, headers=BROWSER_HEADERS) as client:
             resp = await client.get(f"https://html.duckduckgo.com/html/?q={urllib.parse.quote_plus(query)}")
             if resp.status_code == 200:
                 soup = BeautifulSoup(resp.text, "html.parser")
@@ -127,7 +154,7 @@ async def _search_duckduckgo(query: str, max_results: int = 6) -> list[str]:
 async def _search_wikipedia(query: str) -> str:
     """Fetch academic concept definitions from Wikipedia Search API."""
     try:
-        async with httpx.AsyncClient(timeout=8.0, headers=BROWSER_HEADERS) as client:
+        async with httpx.AsyncClient(timeout=6.0, headers=BROWSER_HEADERS) as client:
             api_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={urllib.parse.quote_plus(query)}&utf8=&format=json"
             resp = await client.get(api_url)
             if resp.status_code == 200:
@@ -217,21 +244,50 @@ async def fetch_syllabus_from_web(
 
     logger.info("Searching web for syllabus | query=%s", query)
 
-    # ── 3. Fast Parallel Search and Scrape ────────────────────────────────────
+    # ── 3. Fast Parallel Multi-Source Search and Scrape ──────────────────────
+    async def _safe_searx() -> list[str]:
+        try:
+            return await _search_searxng(query, max_results=3)
+        except Exception:
+            return []
+
+    async def _safe_ddg() -> list[str]:
+        try:
+            return await _search_duckduckgo(query, max_results=3)
+        except Exception:
+            return []
+
+    async def _safe_wiki() -> str:
+        try:
+            return await _search_wikipedia(f"{subject} {extra_keywords}".strip())
+        except Exception:
+            return ""
+
+    searx_res, ddg_res, wiki_res = await asyncio.gather(
+        _safe_searx(),
+        _safe_ddg(),
+        _safe_wiki(),
+        return_exceptions=True,
+    )
+
+    candidate_urls: list[str] = []
+    if isinstance(searx_res, list):
+        candidate_urls.extend(searx_res)
+    if isinstance(ddg_res, list):
+        candidate_urls.extend(ddg_res)
+    # Deduplicate candidate URLs
+    seen_urls = set()
     urls: list[str] = []
-    wiki_text = ""
-    try:
-        urls, wiki_text = await asyncio.gather(
-            asyncio.wait_for(_search_duckduckgo(query, max_results=3), timeout=3.5),
-            asyncio.wait_for(_search_wikipedia(f"{subject} {extra_keywords}".strip()), timeout=3.5),
-            return_exceptions=False,
-        )
-    except Exception as e:
-        logger.debug("Fast search partial/timeout: %s", e)
+    for u in candidate_urls:
+        if u not in seen_urls:
+            seen_urls.add(u)
+            urls.append(u)
+
+    wiki_text = wiki_res if isinstance(wiki_res, str) else ""
 
     scraped_parts: list[str] = []
     if urls:
-        async with httpx.AsyncClient(timeout=4.0, headers=BROWSER_HEADERS) as client:
+        async with httpx.AsyncClient(timeout=5.0, headers=BROWSER_HEADERS) as client:
             tasks = [_scrape_url(client, url) for url in urls[:3]]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             for i, res in enumerate(results):

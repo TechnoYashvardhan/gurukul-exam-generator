@@ -100,6 +100,7 @@ export const documentsApi = {
 
     const res = await fetch(`${getApiUrl()}/documents/upload`, {
       method: "POST",
+      headers: { ...getAuthHeader() },
       body: formData,
     });
     if (!res.ok) {
@@ -122,7 +123,10 @@ export const documentsApi = {
   },
 
   delete: async (id: string): Promise<void> => {
-    const res = await fetch(`${getApiUrl()}/documents/${id}`, { method: "DELETE" });
+    const res = await fetch(`${getApiUrl()}/documents/${id}`, {
+      method: "DELETE",
+      headers: { ...getAuthHeader() },
+    });
     if (!res.ok) {
       let errText = await res.text();
       try {
@@ -136,7 +140,7 @@ export const documentsApi = {
   webFetch: async (payload: { subject: string; grade: string; extra_keywords?: string; url?: string }): Promise<DocumentSummary> => {
     const res = await fetch(`${getApiUrl()}/documents/web-fetch`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...getAuthHeader() },
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
@@ -158,7 +162,7 @@ export const documentsApi = {
   }): Promise<DocumentSummary> => {
     const res = await fetch(`${getApiUrl()}/documents/custom-topic`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...getAuthHeader() },
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
@@ -182,8 +186,10 @@ export const documentsApi = {
   }> => {
     const formData = new FormData();
     formData.append("file", file);
+
     const res = await fetch(`${getApiUrl()}/documents/extract-topics-pdf`, {
       method: "POST",
+      headers: { ...getAuthHeader() },
       body: formData,
     });
     if (!res.ok) {

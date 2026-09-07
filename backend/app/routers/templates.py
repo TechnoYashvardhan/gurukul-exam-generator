@@ -64,14 +64,12 @@ async def create_template(
     db: AsyncSession = Depends(get_db),
 ) -> TemplateDetail:
     """Persist an exam template for future reuse."""
-    if role == "admin":
-        user_id = _ADMIN_UID
-    elif role == "teacher":
-        user_id = _TEACHER_UID
-    elif current_user:
+    if current_user and current_user.id:
         user_id = current_user.id
+    elif role == "admin":
+        user_id = _ADMIN_UID
     else:
-        user_id = _TEACHER_UID
+        user_id = _ADMIN_UID
 
     template_id = uuid.uuid4()
     record = TemplateORM(

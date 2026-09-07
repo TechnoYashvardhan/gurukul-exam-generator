@@ -44,7 +44,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models.db import Document as DocumentORM, DocumentChunk
+from app.models.db import User, Document as DocumentORM, DocumentChunk
+from app.services.auth import get_current_user
 from app.services.document_processor import compute_sha256, process_and_store_document
 from app.services.redis_client import redis_delete
 from app.services.searxng import fetch_syllabus_from_web
@@ -52,7 +53,22 @@ from app.services.searxng import fetch_syllabus_from_web
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["documents"])
 
-_PLACEHOLDER_USER = uuid.UUID("00000000-0000-0000-0000-000000000001")
+_ADMIN_UID = uuid.UUID("00000000-0000-0000-0000-000000000002")
+
+async def _resolve_document_user_id(db: AsyncSession, current_user: User | None = None) -> uuid.UUID:
+    """Safely resolve user ID so foreign key constraint in Postgres/Supabase is never violated."""
+    if current_user and current_user.id:
+        return current_user.id
+    admin = await db.execute(select(User).where(User.role.in_(["admin", "teacher"])).limit(1))
+    admin_user = admin.scalar_one_or_none()
+    if admin_user:
+        return admin_user.id
+    any_u = await db.execute(select(User).limit(1))
+    found = any_u.scalar_one_or_none()
+    if found:
+        return found.id
+    return _ADMIN_UID
+
 MAX_UPLOAD_MB = 50
 
 
@@ -97,6 +113,7 @@ async def upload_document(
     file: UploadFile = File(..., description="PDF file to upload"),
     subject: str = Form("", description="Subject name tag"),
     grade: str = Form("", description="Grade/level tag"),
+    current_user: User | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentSummary:
     # ── Validate ──────────────────────────────────────────────────────────────
@@ -142,9 +159,10 @@ async def upload_document(
 
     # ── Create Document row ───────────────────────────────────────────────────
     doc_id = uuid.uuid4()
+    author_id = await _resolve_document_user_id(db, current_user)
     doc = DocumentORM(
         id=doc_id,
-        user_id=_PLACEHOLDER_USER,
+        user_id=author_id,
         filename=file.filename,
         subject=subject.strip() or None,
         grade=grade.strip() or None,
@@ -226,6 +244,7 @@ async def _run_ingestion(
 )
 async def create_custom_topic_document(
     body: CustomTopicRequest,
+    current_user: User | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentSummary:
     """
@@ -251,9 +270,10 @@ async def create_custom_topic_document(
         return _to_summary(existing_doc, chunk_count)
 
     doc_id = uuid.uuid4()
+    author_id = await _resolve_document_user_id(db, current_user)
     doc = DocumentORM(
         id=doc_id,
-        user_id=_PLACEHOLDER_USER,
+        user_id=author_id,
         filename=f"{body.title} ({body.subject})",
         subject=body.subject,
         grade=grade_label,
@@ -293,6 +313,7 @@ async def create_custom_topic_document(
 async def web_fetch_document(
     body: WebFetchRequest,
     background_tasks: BackgroundTasks,
+    current_user: User | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentSummary:
     """
@@ -328,9 +349,10 @@ async def web_fetch_document(
         title_tag = f"{body.subject} - {body.extra_keywords[:25]}"
 
     doc_id = uuid.uuid4()
+    author_id = await _resolve_document_user_id(db, current_user)
     doc = DocumentORM(
         id=doc_id,
-        user_id=_PLACEHOLDER_USER,
+        user_id=author_id,
         filename=f"{title_tag} (web)",
         subject=body.subject,
         grade=body.grade,
@@ -430,12 +452,11 @@ async def _run_web_ingestion(
     summary="List all documents in the library",
 )
 async def list_documents(
+    current_user: User | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[DocumentSummary]:
     result = await db.execute(
-        select(DocumentORM)
-        .where(DocumentORM.user_id == _PLACEHOLDER_USER)
-        .order_by(DocumentORM.created_at.desc())
+        select(DocumentORM).order_by(DocumentORM.created_at.desc())
     )
     docs = result.scalars().all()
     summaries = []
@@ -555,10 +576,7 @@ async def extract_topics_from_pdf(
 
 async def _get_or_404(doc_id: uuid.UUID, db: AsyncSession) -> DocumentORM:
     result = await db.execute(
-        select(DocumentORM).where(
-            DocumentORM.id == doc_id,
-            DocumentORM.user_id == _PLACEHOLDER_USER,
-        )
+        select(DocumentORM).where(DocumentORM.id == doc_id)
     )
     doc = result.scalar_one_or_none()
     if doc is None:

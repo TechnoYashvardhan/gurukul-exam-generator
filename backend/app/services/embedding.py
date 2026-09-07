@@ -15,9 +15,16 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+import os
+
 @lru_cache(maxsize=1)
 def _get_model():
-    """Lazy-load the SentenceTransformer model if available."""
+    """Lazy-load the SentenceTransformer model if available and safe."""
+    # Render Free tier is capped at 512MB RAM. Loading PyTorch/SentenceTransformers triggers OOM kill (SIGKILL 137).
+    if os.environ.get("RENDER") or os.environ.get("DISABLE_LOCAL_EMBEDDINGS", "").lower() in ("1", "true"):
+        logger.info("Low-memory cloud container detected (Render / Free Tier). Using lightweight deterministic embeddings.")
+        return None
+
     try:
         from sentence_transformers import SentenceTransformer  # type: ignore
         model = SentenceTransformer(settings.embedding_model)
