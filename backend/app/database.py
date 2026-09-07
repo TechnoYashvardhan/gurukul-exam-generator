@@ -53,12 +53,14 @@ def _create_engine_and_session(url: str):
 
 
 # Initial engine and session factory
+active_db_type: str = "postgresql" if not settings.database_url.startswith("sqlite") else "sqlite"
 engine, AsyncSessionLocal = _create_engine_and_session(settings.database_url)
 
 
 def fallback_to_local_sqlite():
     """Fallback cleanly to local SQLite if remote PostgreSQL is unreachable."""
-    global engine, AsyncSessionLocal
+    global engine, AsyncSessionLocal, active_db_type
+    active_db_type = "sqlite (fallback)"
     logger.warning("[DATABASE] Remote DB unreachable. Switched to local SQLite: sqlite+aiosqlite:///./examgen.db")
     engine, AsyncSessionLocal = _create_engine_and_session("sqlite+aiosqlite:///./examgen.db")
 

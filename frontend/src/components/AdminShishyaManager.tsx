@@ -45,6 +45,7 @@ export default function AdminShishyaManager() {
   const [newScholarId, setNewScholarId] = useState("");
   const [newStudentName, setNewStudentName] = useState("");
   const [newStudentEmail, setNewStudentEmail] = useState("");
+  const [newStudentPassword, setNewStudentPassword] = useState("");
   const [creatingStudent, setCreatingStudent] = useState(false);
 
   // Deep dive report modal
@@ -154,10 +155,12 @@ export default function AdminShishyaManager() {
 
     setCreatingStudent(true);
     try {
+      const finalPassword = newStudentPassword.trim() || `DSVV@${scholarId}`;
       const created = await adminApi.addStudent(selectedClassId, {
         scholar_id: scholarId,
         full_name: newStudentName.trim(),
         email: newStudentEmail.trim(),
+        password: newStudentPassword.trim() || undefined,
       });
       setStudents((prev) => [created, ...prev]);
       setClasses((prev) =>
@@ -167,8 +170,9 @@ export default function AdminShishyaManager() {
       setNewScholarId("");
       setNewStudentName("");
       setNewStudentEmail("");
+      setNewStudentPassword("");
       setToast({
-        message: `Student '${created.full_name}' added! Default password is 'student@dsvv123'.`,
+        message: `Student '${created.full_name}' added! Initial password: '${finalPassword}'.`,
         variant: "success",
       });
     } catch (err: any) {
@@ -570,6 +574,17 @@ export default function AdminShishyaManager() {
                 />
               </div>
 
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Initial Password (Optional)</label>
+                <input
+                  type="password"
+                  placeholder="Leave blank to default to DSVV@{scholar_id}"
+                  value={newStudentPassword}
+                  onChange={(e) => setNewStudentPassword(e.target.value)}
+                  className="gk-input"
+                />
+              </div>
+
               {/* Password Notice */}
               <div
                 style={{
@@ -586,7 +601,11 @@ export default function AdminShishyaManager() {
               >
                 <AlertCircle size={15} style={{ color: "var(--gold)", flexShrink: 0, marginTop: 1 }} />
                 <span>
-                  Default password for this student will automatically be set to <strong>student@dsvv123</strong>.
+                  {newStudentPassword.trim() ? (
+                    <>Custom initial password specified. Student can change it anytime after login.</>
+                  ) : (
+                    <>If left blank, initial password will default to <strong>DSVV@{newScholarId || "XXXXXXX"}</strong>.</>
+                  )}
                 </span>
               </div>
 

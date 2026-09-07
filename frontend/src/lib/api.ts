@@ -292,7 +292,7 @@ export const adminApi = {
     request<ClassSummary>("POST", "/admin/classes", payload),
   deleteClass: (id: string) => request<void>("DELETE", `/admin/classes/${id}`),
   listClassStudents: (classId: string) => request<StudentRosterItem[]>("GET", `/admin/classes/${classId}/students`),
-  addStudent: (classId: string, payload: { scholar_id: string; full_name: string; email: string }) =>
+  addStudent: (classId: string, payload: { scholar_id: string; full_name: string; email: string; password?: string }) =>
     request<StudentRosterItem>("POST", `/admin/classes/${classId}/students`, payload),
   deleteStudent: (studentId: string) => request<void>("DELETE", `/admin/students/${studentId}`),
   getStudentReport: (studentId: string) => request<StudentFullReport>("GET", `/admin/students/${studentId}/report`),

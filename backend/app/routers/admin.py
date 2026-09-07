@@ -55,6 +55,7 @@ class StudentCreateRequest(BaseModel):
     scholar_id: str = Field(..., description="7-digit Scholar ID, e.g. 2410852")
     full_name: str
     email: str
+    password: Optional[str] = Field(None, description="Custom initial password, defaults to DSVV@{scholar_id}")
 
 
 class StudentRosterItem(BaseModel):
@@ -314,12 +315,13 @@ async def add_student_to_class(
             detail=f"Scholar ID '{scholar_id}' or Email '{clean_email}' is already registered.",
         )
 
+    initial_password = body.password.strip() if body.password and body.password.strip() else f"DSVV@{scholar_id}"
     student = User(
         id=uuid.uuid4(),
         scholar_id=scholar_id,
         email=clean_email,
         full_name=body.full_name.strip(),
-        hashed_pw=get_password_hash("student@dsvv123"),
+        hashed_pw=get_password_hash(initial_password),
         role="student",
         is_active=True,
         class_id=cg.id,

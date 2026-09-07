@@ -50,6 +50,9 @@ async def lifespan(app: FastAPI):
             from app.database import engine as fb_engine
             async with fb_engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
+        else:
+            if not settings.database_url.startswith("sqlite"):
+                logger.info("[DATABASE] Successfully connected to PostgreSQL / Supabase cloud database!")
 
         from app.database import engine as cur_engine
         is_postgres = not settings.database_url.startswith("sqlite")
@@ -107,21 +110,6 @@ async def lifespan(app: FastAPI):
                     section="Semester 1",
                 ))
 
-            # Seed Teacher
-            user = await session.get(User, _default_uid)
-            teacher_pw_hash = get_password_hash("teacher123")
-            if not user:
-                session.add(User(
-                    id=_default_uid,
-                    email="teacher@gurukul.local",
-                    hashed_pw=teacher_pw_hash,
-                    full_name="Acharya Vashishta",
-                    role="teacher"
-                ))
-            else:
-                user.hashed_pw = teacher_pw_hash
-                user.email = "teacher@gurukul.local"
-
             # Seed Official Single Admin (Admin_DSVV01)
             admin = await session.get(User, _admin_uid)
             admin_pw_hash = get_password_hash("OmBhBS@123")
@@ -138,25 +126,16 @@ async def lifespan(app: FastAPI):
                 admin.email = "Admin_DSVV01@dsvv.ac.in"
                 admin.full_name = "Chief Admin DSVV"
 
-            # Seed Sample Student (Scholar ID: 2410852, default pw: student@dsvv123)
-            student_user = await session.get(User, _student_uid)
-            student_pw_hash = get_password_hash("student@dsvv123")
-            if not student_user:
-                session.add(User(
-                    id=_student_uid,
-                    scholar_id="2410852",
-                    email="student@campus.dsvv.in",
-                    hashed_pw=student_pw_hash,
-                    full_name="Arjuna Shishya",
-                    role="student",
-                    class_id=_class_1_id,
-                ))
-            else:
-                student_user.scholar_id = "2410852"
-                student_user.hashed_pw = student_pw_hash
-                student_user.class_id = _class_1_id
+            # Clean up legacy dummy accounts if present
+            old_teacher = await session.get(User, _default_uid)
+            if old_teacher:
+                await session.delete(old_teacher)
 
-            # Seed Default Templates (Vidya Blueprints)
+            old_student = await session.get(User, _student_uid)
+            if old_student:
+                await session.delete(old_student)
+
+            # Seed Default Templates (Vidya Blueprints) assigned to Admin
             from app.models.db import Template
             _tpl_1_id = uuid.UUID("20000000-0000-0000-0000-000000000001")
             _tpl_2_id = uuid.UUID("20000000-0000-0000-0000-000000000002")
@@ -166,7 +145,7 @@ async def lifespan(app: FastAPI):
             if not t1:
                 session.add(Template(
                     id=_tpl_1_id,
-                    user_id=_default_uid,
+                    user_id=_admin_uid,
                     name="BCA - Computer Hardware & Components",
                     subject="Computer Hardware & Components",
                     grade="BCA",
@@ -185,12 +164,14 @@ async def lifespan(app: FastAPI):
                         ]
                     }
                 ))
+            else:
+                t1.user_id = _admin_uid
 
             t2 = await session.get(Template, _tpl_2_id)
             if not t2:
                 session.add(Template(
                     id=_tpl_2_id,
-                    user_id=_default_uid,
+                    user_id=_admin_uid,
                     name="Physics - Class 11 Mechanics & Optics",
                     subject="Physics",
                     grade="Class 11",
@@ -210,12 +191,14 @@ async def lifespan(app: FastAPI):
                         ]
                     }
                 ))
+            else:
+                t2.user_id = _admin_uid
 
             t3 = await session.get(Template, _tpl_3_id)
             if not t3:
                 session.add(Template(
                     id=_tpl_3_id,
-                    user_id=_default_uid,
+                    user_id=_admin_uid,
                     name="Mathematics - Class 10 Board Blueprint",
                     subject="Mathematics",
                     grade="Class 10",
@@ -234,6 +217,8 @@ async def lifespan(app: FastAPI):
                         ]
                     }
                 ))
+            else:
+                t3.user_id = _admin_uid
 
             await session.commit()
     except Exception as e:
@@ -296,9 +281,11 @@ async def root() -> dict:
 
 @app.get("/api/v1/health", tags=["system"], summary="Health check")
 async def health() -> dict:
+    from app.database import active_db_type
     return {
         "status": "ok",
         "env": settings.app_env,
+        "database": active_db_type,
         "llm_provider": settings.llm_provider,
         "llm_model": (
             settings.openrouter_model

@@ -7,7 +7,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -113,17 +113,16 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     identifier = body.email.strip()
     user: Optional[User] = None
 
-    # 1. 7-digit Scholar ID match
-    if identifier.isdigit() and len(identifier) == 7:
-        res = await db.execute(select(User).where(User.scholar_id == identifier))
-        user = res.scalar_one_or_none()
+    # 1. Scholar ID match (direct exact match, case-insensitive, handles any scholar ID format)
+    res = await db.execute(select(User).where(func.lower(User.scholar_id) == identifier.lower()))
+    user = res.scalar_one_or_none()
 
     # 2. Admin username match (Admin_DSVV01)
-    elif identifier.lower() in ["admin_dsvv01", "admin_dsvv01@dsvv.ac.in", "admin@dsvv.ac.in"]:
+    if not user and identifier.lower() in ["admin_dsvv01", "admin_dsvv01@dsvv.ac.in", "admin@dsvv.ac.in", "admin"]:
         res = await db.execute(select(User).where(User.role == "admin").limit(1))
         user = res.scalar_one_or_none()
 
-    # 3. Email match
+    # 3. Email match (case-insensitive)
     if not user:
         res = await db.execute(select(User).where(User.email.ilike(identifier)))
         user = res.scalar_one_or_none()

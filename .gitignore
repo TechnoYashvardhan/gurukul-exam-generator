@@ -53,4 +53,5 @@ searxng/*.log
 write_section_card.py
 temp_write.js
 scratch/
+*.sql
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/components/AuthProvider";
-import { BookOpen, ShieldCheck, GraduationCap, ArrowRight, Lock, Mail, Sparkles, User as UserIcon } from "lucide-react";
+import { ShieldCheck, ArrowRight, Lock, User as UserIcon } from "lucide-react";
 import Toast, { ToastVariant } from "@/components/Toast";
 import GurukulLogo from "@/components/GurukulLogo";
 
@@ -157,7 +157,7 @@ export default function LoginPage() {
                 lineHeight: 1.4,
               }}
             >
-              🎓 <strong>Students <span className="shloka" style={{ fontWeight: 600, fontSize: "12px", color: "var(--accent)" }}>(शिष्य)</span>:</strong> Sign in with your <strong>7-Digit Scholar ID</strong> (or email) and default password (<code>student@dsvv123</code>). You can change your password anytime from your dashboard.
+              🎓 <strong>Students <span className="shloka" style={{ fontWeight: 600, fontSize: "12px", color: "var(--accent)" }}>(शिष्य)</span>:</strong> Sign in with your <strong>7-Digit Scholar ID</strong> (or registered email) and your account password. You can change your password anytime from your dashboard.
             </div>
 
             <button
@@ -182,71 +182,29 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Credentials */}
-          <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
-            <div style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "var(--text-3)",
-              textAlign: "center",
-              marginBottom: 12,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-            }}>
-              <Sparkles size={13} color="var(--gold)" />
-              Quick Fill Credentials
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-              <button
-                type="button"
-                className="gk-btn gk-btn--secondary gk-btn--sm"
-                onClick={() => {
-                  setEmail("Admin_DSVV01");
-                  setPassword("OmBhBS@123");
-                }}
-                style={{ flexDirection: "column", padding: "10px 4px", height: "auto", fontSize: 11 }}
-                title="Fill Admin credentials"
-              >
-                <ShieldCheck size={16} color="var(--terracotta)" />
-                <span style={{ fontWeight: 700 }}>Admin DSVV</span>
-                <span style={{ fontSize: 9.5, opacity: 0.7 }}>Admin_DSVV01</span>
-              </button>
-
-              <button
-                type="button"
-                className="gk-btn gk-btn--secondary gk-btn--sm"
-                onClick={() => {
-                  setEmail("teacher@gurukul.local");
-                  setPassword("teacher123");
-                }}
-                style={{ flexDirection: "column", padding: "10px 4px", height: "auto", fontSize: 11 }}
-                title="Fill Teacher credentials"
-              >
-                <BookOpen size={16} color="var(--forest)" />
-                <span style={{ fontWeight: 700 }}>Teacher</span>
-                <span style={{ fontSize: 9.5, opacity: 0.7 }}>Worldwide</span>
-              </button>
-
-              <button
-                type="button"
-                className="gk-btn gk-btn--secondary gk-btn--sm"
-                onClick={() => {
-                  setEmail("2410852");
-                  setPassword("student@dsvv123");
-                }}
-                style={{ flexDirection: "column", padding: "10px 4px", height: "auto", fontSize: 11 }}
-                title="Fill Sample Student credentials"
-              >
-                <GraduationCap size={16} color="var(--gold)" />
-                <span style={{ fontWeight: 700 }}>Student</span>
-                <span style={{ fontSize: 9.5, opacity: 0.7 }}>ID: 2410852</span>
-              </button>
-            </div>
+          {/* Quick Admin Access */}
+          <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--border)" }}>
+            <button
+              type="button"
+              className="gk-btn gk-btn--secondary"
+              onClick={() => {
+                setEmail("Admin_DSVV01");
+                setPassword("OmBhBS@123");
+              }}
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                gap: 8,
+                fontSize: 12,
+                height: 38,
+                borderRadius: "var(--radius-md)",
+              }}
+              title="Quick fill Chief Admin credentials"
+            >
+              <ShieldCheck size={16} color="var(--terracotta)" />
+              <span style={{ fontWeight: 600 }}>Quick Fill Admin DSVV</span>
+              <span style={{ fontSize: 11, opacity: 0.6 }}>(Admin_DSVV01)</span>
+            </button>
           </div>
 
           {/* Footer Link */}
