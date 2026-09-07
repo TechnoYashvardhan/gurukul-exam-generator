@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Sidebar, { View } from "@/components/Sidebar";
 import StudentDashboard from "@/components/StudentDashboard";
 import StudentQuizArena from "@/components/StudentQuizArena";
+import StudentHistory from "@/components/StudentHistory";
 import QuizPlayer from "@/components/QuizPlayer";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -79,7 +80,7 @@ export default function StudentPage() {
               )}
 
               {activeView === "history" && (
-                <StudentDashboard
+                <StudentHistory
                   onNavigateToQuiz={handleStartQuiz}
                   onNavigateToAttempt={handleViewAttempt}
                 />
