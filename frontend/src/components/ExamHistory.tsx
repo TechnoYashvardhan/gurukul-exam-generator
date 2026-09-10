@@ -28,10 +28,8 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
   const [showPublishModal, setShowPublishModal] = useState(false);
 
   useEffect(() => {
-    if (role === "admin") {
-      adminApi.listClasses().then(setClasses).catch(() => {});
-    }
-  }, [role]);
+    adminApi.listClasses().then(setClasses).catch(() => {});
+  }, []);
 
   // Rename state
   const [editingId, setEditingId] = useState<string | null>(null);

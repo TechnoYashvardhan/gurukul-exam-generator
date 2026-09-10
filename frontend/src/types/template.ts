@@ -84,3 +84,17 @@ export interface GeneratedExam {
   llm_provider: string;
   llm_model: string;
 }
+
+export interface ExamHistoryEntry {
+  id: string;
+  title: string;
+  subject: string;
+  grade: string;
+  created_at: string;
+  created_by_role?: string;
+  is_published?: boolean;
+  target_class_id?: string | null;
+  schedule_start_at?: string | null;
+  schedule_end_at?: string | null;
+  exam: GeneratedExam;
+}

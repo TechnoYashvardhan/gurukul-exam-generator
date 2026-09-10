@@ -509,6 +509,7 @@ async def delete_document(
 
     # Cascade deletes chunks via FK
     await db.execute(delete(DocumentORM).where(DocumentORM.id == document_id))
+    await db.commit()
     logger.info("Document deleted | id=%s", document_id)
 
 

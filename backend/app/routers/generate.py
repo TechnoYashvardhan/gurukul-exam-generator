@@ -1,8 +1,14 @@
 import logging
 import uuid
 import json
+import re
 from datetime import datetime, timezone
 from typing import Optional
+
+def _clean_title(text: str) -> str:
+    cleaned = re.sub(r"<[^>]+>", " ", text)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
 
 def to_utc_iso(dt: Optional[datetime]) -> Optional[str]:
     """Ensure datetime is serialized as standard ISO 8601 with explicit Z UTC indicator."""
@@ -17,13 +23,13 @@ def to_utc_iso(dt: Optional[datetime]) -> Optional[str]:
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db, get_async_session
 from app.llm.base import LLMProviderError
 from app.models.db import GeneratedExam as GeneratedExamORM
-from app.models.db import User, Document as DocumentORM
+from app.models.db import User, Document as DocumentORM, QuizAttempt
 from app.schemas.exam import ExamGenerationResponse
 from app.schemas.template import ExamTemplate
 from app.services.auth import get_current_user
@@ -166,7 +172,10 @@ async def publish_exam_endpoint(
     eff_end = payload.schedule_end_at if payload is not None else schedule_end_at
 
     record.is_published = eff_publish
-    record.created_by_role = "admin"
+    if current_user and current_user.role:
+        record.created_by_role = current_user.role
+    elif not record.created_by_role:
+        record.created_by_role = "teacher"
     if eff_target_class and eff_target_class != "all":
         try:
             record.target_class_id = uuid.UUID(eff_target_class)
@@ -257,4 +266,116 @@ async def import_exam_endpoint(
     await db.refresh(db_record)
 
     return {"status": "ok", "exam": exam_dict, "exam_id": str(exam_id)}
+
+
+class GeneratedExamHistoryItem(BaseModel):
+    id: str
+    title: str
+    subject: str
+    grade: str
+    created_at: str
+    created_by_role: str
+    is_published: bool
+    target_class_id: Optional[str] = None
+    schedule_start_at: Optional[str] = None
+    schedule_end_at: Optional[str] = None
+    exam: dict
+
+
+@router.get("/exams", response_model=list[GeneratedExamHistoryItem])
+async def list_generated_exams(
+    role: Optional[str] = None,
+    current_user: User | None = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retrieve generated exams for exam history tracking.
+    Teachers and Admins can see persisted exams.
+    """
+    stmt = select(GeneratedExamORM).order_by(GeneratedExamORM.created_at.desc())
+    if role:
+        stmt = stmt.where(GeneratedExamORM.created_by_role == role)
+
+    result = await db.execute(stmt)
+    records = result.scalars().all()
+
+    items = []
+    for rec in records:
+        exam_dict = rec.exam_json or {}
+        subject = exam_dict.get("subject") or "General"
+        grade = exam_dict.get("grade") or "All"
+        heading = _clean_title(exam_dict.get("heading_details") or f"{subject} - {grade}")
+        exam_dict["exam_id"] = str(rec.id)
+        exam_dict["is_published"] = rec.is_published
+        items.append(
+            GeneratedExamHistoryItem(
+                id=str(rec.id),
+                title=str(heading),
+                subject=str(subject),
+                grade=str(grade),
+                created_at=to_utc_iso(rec.created_at) or "",
+                created_by_role=rec.created_by_role or "teacher",
+                is_published=rec.is_published,
+                target_class_id=str(rec.target_class_id) if rec.target_class_id else None,
+                schedule_start_at=to_utc_iso(rec.schedule_start_at),
+                schedule_end_at=to_utc_iso(rec.schedule_end_at),
+                exam=exam_dict,
+            )
+        )
+    return items
+
+
+@router.delete("/exam/{exam_id}")
+async def delete_generated_exam(
+    exam_id: str,
+    current_user: User | None = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a generated exam and cascade any associated attempts."""
+    try:
+        e_uuid = uuid.UUID(exam_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid exam ID")
+
+    record = await db.get(GeneratedExamORM, e_uuid)
+    if not record:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    await db.execute(delete(QuizAttempt).where(QuizAttempt.exam_id == e_uuid))
+    await db.delete(record)
+    await db.commit()
+    logger.info("Generated Exam deleted | id=%s", exam_id)
+    return {"status": "ok", "deleted_id": exam_id}
+
+
+class RenameExamPayload(BaseModel):
+    title: str
+
+
+@router.put("/exam/{exam_id}/title")
+async def rename_generated_exam(
+    exam_id: str,
+    payload: RenameExamPayload,
+    current_user: User | None = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Rename a generated exam title in the database."""
+    try:
+        e_uuid = uuid.UUID(exam_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid exam ID")
+
+    record = await db.get(GeneratedExamORM, e_uuid)
+    if not record:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    if record.exam_json:
+        exam_dict = dict(record.exam_json)
+        exam_dict["heading_details"] = payload.title
+        record.exam_json = exam_dict
+        await db.commit()
+        await db.refresh(record)
+
+    return {"status": "ok", "id": exam_id, "title": payload.title}
+
 

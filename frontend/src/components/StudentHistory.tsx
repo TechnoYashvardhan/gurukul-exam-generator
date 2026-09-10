@@ -421,7 +421,9 @@ export default function StudentHistory({
                     </div>
 
                     <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", margin: 0 }}>
-                      {attempt.title || `${attempt.subject || "Quiz"} Assessment`}
+                      {attempt.title
+                        ? attempt.title.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+                        : `${attempt.subject || "Quiz"} Assessment`}
                     </h3>
                   </div>
 

@@ -66,8 +66,6 @@ async def create_template(
     """Persist an exam template for future reuse."""
     if current_user and current_user.id:
         user_id = current_user.id
-    elif role == "admin":
-        user_id = _ADMIN_UID
     else:
         user_id = _ADMIN_UID
 
@@ -81,7 +79,7 @@ async def create_template(
         config=body.template.model_dump(),
     )
     db.add(record)
-    await db.flush()
+    await db.commit()
     await db.refresh(record)
 
     logger.info(
@@ -107,15 +105,8 @@ async def list_templates(
     current_user: User | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[TemplateSummary]:
-    """Return all templates belonging to the requested role or current user."""
+    """Return all saved exam templates (blueprints) available for examination creation."""
     stmt = select(TemplateORM).order_by(TemplateORM.created_at.desc())
-    if role == "admin":
-        stmt = stmt.where(TemplateORM.user_id == _ADMIN_UID)
-    elif role == "teacher":
-        stmt = stmt.where(TemplateORM.user_id == _TEACHER_UID)
-    elif current_user:
-        stmt = stmt.where(TemplateORM.user_id.in_([current_user.id, _TEACHER_UID, _ADMIN_UID]))
-
     result = await db.execute(stmt)
     rows = result.scalars().all()
     return [_to_summary(r) for r in rows]
@@ -149,7 +140,7 @@ async def update_template(
     record.subject = body.template.subject
     record.grade = body.template.grade
     record.config = body.template.model_dump()
-    await db.flush()
+    await db.commit()
     await db.refresh(record)
 
     logger.info("Template updated | id=%s | name=%s", template_id, body.name)
@@ -169,6 +160,7 @@ async def delete_template(
     await db.execute(
         delete(TemplateORM).where(TemplateORM.id == template_id)
     )
+    await db.commit()
     logger.info("Template deleted | id=%s", template_id)
 
 

@@ -3,6 +3,7 @@ import type {
   TemplateDetail,
   TemplateSummary,
   GeneratedExam,
+  ExamHistoryEntry,
 } from "@/types/template";
 import type { DocumentSummary, GenerateWithSourceRequest } from "@/types/document";
 import type {
@@ -320,6 +321,12 @@ export const generationApi = {
       exam: GeneratedExam;
       exam_id: string;
     }>("POST", "/generate/import-json", { exam }),
+  listExams: (role?: string) =>
+    request<ExamHistoryEntry[]>("GET", `/generate/exams${role ? `?role=${role}` : ""}`),
+  deleteExam: (id: string) =>
+    request<{ status: string; deleted_id: string }>("DELETE", `/generate/exam/${id}`),
+  renameExam: (id: string, title: string) =>
+    request<{ status: string; id: string; title: string }>("PUT", `/generate/exam/${id}/title`, { title }),
 };
 
 export const adminApi = {

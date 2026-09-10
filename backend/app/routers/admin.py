@@ -594,7 +594,12 @@ async def get_published_quiz_detail(
     exam_json = dict(exam.exam_json) if exam.exam_json else {}
     subject = exam_json.get("subject", "General Subject")
     grade = exam_json.get("grade", "All Grades")
-    title = exam_json.get("heading_details") or f"{subject} Pariksha ({grade})"
+    raw_heading = exam_json.get("heading_details")
+    if raw_heading:
+        clean_t = re.sub(r"<[^>]+>", " ", raw_heading)
+        title = re.sub(r"\s+", " ", clean_t).strip() or f"{subject} Pariksha ({grade})"
+    else:
+        title = f"{subject} Pariksha ({grade})"
     total_marks = int(exam_json.get("total_marks", 100))
     duration_minutes = int(exam_json.get("duration_minutes", 60))
     questions = exam_json.get("questions", [])
@@ -685,27 +690,58 @@ async def get_published_quiz_detail(
                 classes_cache[student.class_id] = c_obj.name if c_obj else "Unknown Class"
             cls_name = classes_cache[student.class_id]
 
-        answers_map = dict(att.answers) if att.answers else {}
+        raw_att_answers = att.answers if isinstance(att.answers, dict) else {}
+        feedback_list = raw_att_answers.get("feedback")
+        raw_answers_map = raw_att_answers.get("raw_answers") or raw_att_answers
+
+        feedback_map: dict[str, dict] = {}
+        if isinstance(feedback_list, list):
+            for f in feedback_list:
+                if isinstance(f, dict):
+                    if f.get("question_no") is not None:
+                        feedback_map[str(f["question_no"])] = f
+                    if f.get("id"):
+                        feedback_map[str(f["id"])] = f
+
         questions_feedback = []
 
         for q in questions:
-            q_no = str(q.get("question_no"))
+            q_no = str(q.get("question_no", ""))
             q_id = str(q.get("id", ""))
-            response_data = answers_map.get(q_no) or answers_map.get(q_id) or {}
-            if not isinstance(response_data, dict):
-                response_data = {"user_answer": response_data, "is_correct": False, "score": 0}
+
+            fb = feedback_map.get(q_no) or feedback_map.get(q_id) or {}
+
+            # Determine user answer with fallbacks
+            u_ans = fb.get("user_answer")
+            if u_ans is None and isinstance(raw_answers_map, dict):
+                u_ans = raw_answers_map.get(q_no) or raw_answers_map.get(q_id)
+
+            if isinstance(u_ans, dict):
+                u_ans = ", ".join(f"{k}→{v}" for k, v in u_ans.items())
+            elif isinstance(u_ans, list):
+                u_ans = ", ".join(str(x) for x in u_ans)
+            elif u_ans is not None:
+                u_ans = str(u_ans).strip()
+
+            is_correct = fb.get("is_correct", False)
+            marks_awarded = fb.get("marks_awarded")
+            if marks_awarded is None:
+                marks_awarded = fb.get("score_awarded", fb.get("score", 1 if is_correct else 0))
+
+            max_marks = fb.get("max_marks", q.get("marks", 1))
+            eval_reason = fb.get("explanation") or fb.get("evaluation_reason") or fb.get("reason")
 
             questions_feedback.append({
                 "question_no": q.get("question_no"),
                 "text": q.get("text"),
                 "type": q.get("type"),
-                "marks": q.get("marks", 1),
+                "marks": max_marks,
                 "options": q.get("options", []),
-                "correct_answer": q.get("answer"),
-                "user_answer": response_data.get("user_answer"),
-                "is_correct": response_data.get("is_correct", False),
-                "score_awarded": response_data.get("score", 0),
-                "evaluation_reason": response_data.get("evaluation") or response_data.get("reason"),
+                "correct_answer": q.get("answer") or fb.get("correct_answer"),
+                "user_answer": u_ans,
+                "is_correct": bool(is_correct),
+                "score_awarded": marks_awarded,
+                "evaluation_reason": eval_reason,
             })
 
         student_attempts.append(

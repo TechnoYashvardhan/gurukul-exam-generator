@@ -29,43 +29,51 @@ NUMBER_WORDS: dict[str, str] = {
 
 
 def normalize_text(text: str) -> str:
-    """Normalize text for quick matching by stripping LaTeX, punctuation, and mapping number words."""
+    """Normalize text for quick matching by stripping LaTeX, punctuation, hyphens, and mapping number words."""
     if not text:
         return ""
     cleaned = str(text).replace("$", "").replace("\\", "").strip().lower()
-    
+
+    # Replace punctuation, hyphens, underscores, slashes, quotes with spaces
+    cleaned = re.sub(r"[-_/.,;:\"\'\(\)\[\]]+", " ", cleaned)
+
     # Word-by-word number conversion
     words = cleaned.split()
     converted_words = [NUMBER_WORDS.get(w, w) for w in words]
     cleaned = " ".join(converted_words)
-    
-    # Keep only alphanumeric and basic operators
-    return re.sub(r"[^a-zA-Z0-9\s]", "", cleaned).strip()
+
+    # Keep only alphanumeric and basic spaces
+    cleaned = re.sub(r"[^a-zA-Z0-9\s]", "", cleaned)
+    return re.sub(r"\s+", " ", cleaned).strip()
 
 
 def is_fast_match(user_ans: str, expected_ans: str) -> bool:
     """Check if the user answer directly matches the expected answer via normalization or numeric equivalence."""
     u_str = str(user_ans).strip()
     e_str = str(expected_ans).strip()
-    
+
     if not u_str or not e_str:
         return False
-        
+
     if u_str.lower() == e_str.lower():
         return True
-        
+
     norm_u = normalize_text(u_str)
     norm_e = normalize_text(e_str)
-    if norm_u and norm_e and norm_u == norm_e:
-        return True
-        
+    if norm_u and norm_e:
+        if norm_u == norm_e:
+            return True
+        # Also compare space-collapsed versions: e.g. "timesaving" == "time saving"
+        if norm_u.replace(" ", "") == norm_e.replace(" ", ""):
+            return True
+
     # Check numeric equivalence e.g. "1.0" == "1"
     try:
         if float(u_str) == float(e_str):
             return True
     except ValueError:
         pass
-        
+
     return False
 
 
@@ -78,7 +86,7 @@ class EvaluationItem(BaseModel):
 
 async def evaluate_answers_with_ai(
     items_to_eval: list[dict[str, Any]],
-    timeout_seconds: float = 8.0,
+    timeout_seconds: float = 25.0,
 ) -> dict[int, EvaluationItem]:
     """
     Use LLM to evaluate student answers conceptually and semantically.
@@ -93,9 +101,9 @@ async def evaluate_answers_with_ai(
 Your job is to evaluate whether a student's answer to an exam question is conceptually and factually correct compared to the expected answer.
 
 EVALUATION CRITERIA:
-1. SEMANTIC EQUIVALENCE: Accept synonyms, equivalent phrases, and alternate valid terms (e.g., '1' vs 'one', '0.5' vs '1/2', 'Oxygen' vs 'O2', 'commutative' vs 'commutative property', 'additive identity' vs '0').
+1. SEMANTIC EQUIVALENCE: Accept synonyms, equivalent phrases, and alternate valid terms (e.g., '1' vs 'one', '0.5' vs '1/2', 'Oxygen' vs 'O2', 'time saving' vs 'time-saving', 'commutative' vs 'commutative property', 'additive identity' vs '0').
 2. MATHEMATICAL & ALGEBRAIC EQUIVALENCE: Recognize equivalent algebraic equations or solutions (e.g. 'x = 17', '17', 'x=17', or 'y = 2x+1').
-3. TYPO TOLERANCE: For one-word / fill-in-the-blank answers, tolerate minor spelling errors if phonetic intent and meaning are unmistakably correct.
+3. TYPO TOLERANCE: For one-word / fill-in-the-blank answers, tolerate minor spelling errors or hyphen differences if phonetic intent and meaning are unmistakably correct.
 4. PARTIAL / SUBJECTIVE CREDIT: For short explanations or descriptive questions, award a score_ratio between 0.0 and 1.0 according to key concept coverage.
 5. IF TOTALLY WRONG / UNRELATED: Set is_correct = false, score_ratio = 0.0.
 
@@ -133,10 +141,10 @@ Return ONLY valid JSON matching this structure:
     try:
         llm = get_llm_client(settings.llm_provider)
         response = await asyncio.wait_for(
-            llm.generate(prompt, system_prompt=system_prompt),
+            llm.generate(system_prompt=system_prompt, user_message=prompt),
             timeout=timeout_seconds,
         )
-        
+
         # Clean JSON fences if any
         cleaned_resp = response.strip()
         if cleaned_resp.startswith("```json"):
@@ -147,7 +155,12 @@ Return ONLY valid JSON matching this structure:
             cleaned_resp = cleaned_resp[:-3]
         cleaned_resp = cleaned_resp.strip()
 
-        data = json.loads(cleaned_resp)
+        try:
+            import json_repair
+            data = json_repair.loads(cleaned_resp)
+        except Exception:
+            data = json.loads(cleaned_resp)
+
         eval_list = data.get("evaluations", [])
         for ev in eval_list:
             q_no = ev.get("question_no")
@@ -158,6 +171,7 @@ Return ONLY valid JSON matching this structure:
                     score_ratio=float(ev.get("score_ratio", 1.0 if ev.get("is_correct") else 0.0)),
                     explanation=ev.get("explanation"),
                 )
+        logger.info("[AI EVAL] Evaluated %d student answers using %s", len(eval_dict), llm.provider_name)
     except Exception as e:
         logger.warning(f"AI semantic answer evaluation failed or timed out ({e}). Falling back to heuristic matching.")
         # Fallback to heuristic normalization for each item

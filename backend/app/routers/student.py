@@ -102,7 +102,6 @@ async def list_available_quizzes(
 ):
     """List all available quizzes for students — filtered by their enrolled class or global quizzes."""
     conditions = [
-        GeneratedExam.created_by_role == "admin",
         GeneratedExam.is_published == True,
     ]
     if user and user.class_id:
@@ -480,12 +479,22 @@ async def get_student_stats(
     recent = []
     for att, ex in rows[:20]:
         ex_json = ex.exam_json or {}
+        raw_heading = ex_json.get("heading_details")
+        clean_title = None
+        if raw_heading:
+            clean_title = re.sub(r"<[^>]+>", " ", str(raw_heading)).strip()
+            clean_title = re.sub(r"\s+", " ", clean_title)
+            if len(clean_title) > 85:
+                clean_title = clean_title[:85] + "..."
+        if not clean_title:
+            clean_title = f"{ex_json.get('subject', 'Quiz')} ({ex_json.get('grade', '')})"
+
         recent.append({
             "id": str(att.id),
             "exam_id": str(att.exam_id),
             "subject": ex_json.get("subject", "General"),
             "grade": ex_json.get("grade", "All"),
-            "title": ex_json.get("heading_details") or f"{ex_json.get('subject', 'Quiz')} ({ex_json.get('grade', '')})",
+            "title": clean_title,
             "score": att.score,
             "total_marks": att.total_marks,
             "percentage": att.percentage,
