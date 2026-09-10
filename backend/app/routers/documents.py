@@ -25,6 +25,7 @@ POST /api/v1/documents/web-fetch
 
 import asyncio
 import logging
+import re
 import uuid
 from pathlib import Path
 
@@ -87,10 +88,10 @@ class DocumentSummary(BaseModel):
 
 
 class WebFetchRequest(BaseModel):
-    subject: str = Field(..., min_length=1, max_length=200)
-    grade: str = Field(..., min_length=1, max_length=100)
-    extra_keywords: str = Field("", max_length=500)
-    url: str | None = Field(None, max_length=1000)
+    subject: str = Field(..., min_length=1, max_length=500)
+    grade: str = Field("", max_length=200)
+    extra_keywords: str = Field("", max_length=50000)
+    url: str | None = Field(None, max_length=2000)
 
 
 class CustomTopicRequest(BaseModel):
@@ -342,11 +343,13 @@ async def web_fetch_document(
         )
         return _to_summary(existing_doc, 0)
 
-    title_tag = f"{body.subject} {body.grade}"
+    title_tag = f"{body.subject} {body.grade}".strip()
     if body.url:
         title_tag = f"{body.subject} ({body.url.split('/')[-1][:20]})"
     elif body.extra_keywords:
-        title_tag = f"{body.subject} - {body.extra_keywords[:25]}"
+        first_line = body.extra_keywords.strip().split("\n")[0].strip()
+        first_line = re.sub(r"[^\w\s-]", "", first_line).strip()
+        title_tag = f"{body.subject} - {first_line[:25]}".strip()
 
     doc_id = uuid.uuid4()
     author_id = await _resolve_document_user_id(db, current_user)

@@ -231,15 +231,38 @@ async def fetch_syllabus_from_web(
                 return (header + text)[:MAX_TOTAL_CHARS]
             logger.warning("Direct URL scrape returned insufficient text, proceeding to multi-tier search.")
 
-    # ── 2. Build topic query ──────────────────────────────────────────────────
+    # ── 2. Build concise topic query for search engines ───────────────────────
+    search_keywords = ""
+    raw_kw = extra_keywords.strip()
+    if raw_kw:
+        if len(raw_kw) <= 90 and "\n" not in raw_kw:
+            search_keywords = raw_kw
+        else:
+            # Extract key topic headings for search engines
+            lines = [l.strip() for l in raw_kw.splitlines() if l.strip()]
+            extracted: list[str] = []
+            for l in lines:
+                cleaned = re.sub(r"(?i)^(unit\s*[-:\d]*|s\.?n\.?|topics?\s*covered|outcome:?)\s*", "", l).strip()
+                cleaned = re.sub(r"\[.*?\]", "", cleaned).strip()
+                cleaned = re.sub(r"^\d+[\.\)]\s*", "", cleaned).strip()
+                if (
+                    cleaned
+                    and len(cleaned) > 2
+                    and not cleaned.lower().startswith(("outcome", "gain a basic", "hrs", "understand", "duration"))
+                ):
+                    extracted.append(cleaned)
+                if sum(len(x) + 1 for x in extracted) >= 80:
+                    break
+            search_keywords = " ".join(extracted)[:90].strip() if extracted else raw_kw[:90].strip()
+
     query_parts = []
     if subject.strip():
         query_parts.append(subject.strip())
-    if grade.strip():
+    if grade.strip() and grade.strip().lower() not in ("all grades", "all levels"):
         query_parts.append(grade.strip())
-    if extra_keywords.strip():
-        query_parts.append(extra_keywords.strip())
-    query_parts.append("syllabus topics curriculum")
+    if search_keywords:
+        query_parts.append(search_keywords)
+    query_parts.append("syllabus curriculum")
     query = " ".join(query_parts)
 
     logger.info("Searching web for syllabus | query=%s", query)
@@ -257,9 +280,11 @@ async def fetch_syllabus_from_web(
         except Exception:
             return []
 
+    wiki_query = f"{subject} {search_keywords}".strip() if search_keywords else subject.strip()
+
     async def _safe_wiki() -> str:
         try:
-            return await _search_wikipedia(f"{subject} {extra_keywords}".strip())
+            return await _search_wikipedia(wiki_query)
         except Exception:
             return ""
 
@@ -303,6 +328,16 @@ async def fetch_syllabus_from_web(
         logger.info("Web search returned sparse text (%d chars). Synthesizing curriculum via Gemini...", len(combined.strip()))
         synthetic = await _generate_synthetic_curriculum(subject, grade, extra_keywords)
         combined = synthetic + ("\n\n" + combined if combined.strip() else "")
+
+    # ── 5. Always include user's specified syllabus outline at the top if provided
+    if raw_kw:
+        user_syllabus_header = (
+            f"=== Specified Syllabus & Course Topics ===\n"
+            f"Subject: {subject}\n"
+            f"Level: {grade or 'Standard'}\n\n"
+            f"{raw_kw}\n\n"
+        )
+        combined = user_syllabus_header + combined
 
     final_content = combined[:MAX_TOTAL_CHARS]
     logger.info("[OK] Syllabus fetch complete | subject=%s | grade=%s | length=%d chars", subject, grade, len(final_content))

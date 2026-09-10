@@ -43,6 +43,18 @@ function getAuthHeader(): Record<string, string> {
   return {};
 }
 
+function parseDetailMessage(parsed: any, fallback: string): string {
+  if (!parsed) return fallback;
+  if (typeof parsed.detail === "string") return parsed.detail;
+  if (parsed.detail?.message && typeof parsed.detail.message === "string") return parsed.detail.message;
+  if (Array.isArray(parsed.detail)) {
+    return parsed.detail
+      .map((d: any) => d.msg || (d.loc ? `${d.loc.slice(-1)}: ${d.msg}` : JSON.stringify(d)))
+      .join("; ");
+  }
+  return fallback;
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -64,7 +76,7 @@ async function request<T>(
     let errText = await res.text();
     try {
       const parsed = JSON.parse(errText);
-      errText = parsed.detail?.message || parsed.detail || errText;
+      errText = parseDetailMessage(parsed, errText);
     } catch {}
     throw new Error(errText);
   }
@@ -107,7 +119,7 @@ export const documentsApi = {
       let errText = await res.text();
       try {
         const parsed = JSON.parse(errText);
-        errText = parsed.detail?.message || parsed.detail || errText;
+        errText = parseDetailMessage(parsed, errText);
       } catch {}
       throw new Error(errText);
     }
@@ -131,7 +143,7 @@ export const documentsApi = {
       let errText = await res.text();
       try {
         const parsed = JSON.parse(errText);
-        errText = parsed.detail ?? errText;
+        errText = parseDetailMessage(parsed, errText);
       } catch {}
       throw new Error(errText);
     }
@@ -147,7 +159,7 @@ export const documentsApi = {
       let errText = await res.text();
       try {
         const parsed = JSON.parse(errText);
-        errText = parsed.detail ?? errText;
+        errText = parseDetailMessage(parsed, errText);
       } catch {}
       throw new Error(errText);
     }
