@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/components/AuthProvider";
-import { ArrowRight, Lock, User as UserIcon } from "lucide-react";
+import { ArrowRight, Lock, User as UserIcon, Eye, EyeOff } from "lucide-react";
 import Toast, { ToastVariant } from "@/components/Toast";
 import GurukulLogo from "@/components/GurukulLogo";
 
@@ -17,6 +17,7 @@ const ParticleBackground = dynamic(
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
 
@@ -123,16 +124,39 @@ export default function LoginPage() {
             </div>
 
             <div className="gk-field">
-              <label className="gk-label" htmlFor="password">Password</label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <label className="gk-label" htmlFor="password" style={{ marginBottom: 0 }}>Password</label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: showPassword ? "var(--accent)" : "var(--text-3)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    padding: "2px 4px",
+                    borderRadius: "var(--radius-sm)",
+                  }}
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  <span>{showPassword ? "Hide" : "Show"}</span>
+                </button>
+              </div>
               <div style={{ position: "relative" }}>
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   className="gk-input"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingLeft: 38 }}
+                  style={{ paddingLeft: 38, paddingRight: 38 }}
                   required
                 />
                 <Lock size={16} style={{
@@ -142,6 +166,27 @@ export default function LoginPage() {
                   transform: "translateY(-50%)",
                   color: "var(--text-3)",
                 }} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    color: showPassword ? "var(--accent)" : "var(--text-3)",
+                    padding: 4,
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  tabIndex={-1}
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
