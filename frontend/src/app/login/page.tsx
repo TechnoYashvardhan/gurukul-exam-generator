@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/components/AuthProvider";
-import { ShieldCheck, ArrowRight, Lock, User as UserIcon } from "lucide-react";
+import { ArrowRight, Lock, User as UserIcon } from "lucide-react";
 import Toast, { ToastVariant } from "@/components/Toast";
 import GurukulLogo from "@/components/GurukulLogo";
 
@@ -106,7 +106,7 @@ export default function LoginPage() {
                   id="email"
                   type="text"
                   className="gk-input"
-                  placeholder="e.g. 2410852, Admin_DSVV01, or email"
+                  placeholder="e.g. 2410852, scholar ID, or email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={{ paddingLeft: 38 }}
@@ -181,31 +181,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Quick Admin Access */}
-          <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--border)" }}>
-            <button
-              type="button"
-              className="gk-btn gk-btn--secondary"
-              onClick={() => {
-                setEmail("Admin_DSVV01");
-                setPassword("OmBhBS@123");
-              }}
-              style={{
-                width: "100%",
-                justifyContent: "center",
-                gap: 8,
-                fontSize: 12,
-                height: 38,
-                borderRadius: "var(--radius-md)",
-              }}
-              title="Quick fill Chief Admin credentials"
-            >
-              <ShieldCheck size={16} color="var(--terracotta)" />
-              <span style={{ fontWeight: 600 }}>Quick Fill Admin DSVV</span>
-              <span style={{ fontSize: 11, opacity: 0.6 }}>(Admin_DSVV01)</span>
-            </button>
-          </div>
 
           {/* Footer Link */}
           <div style={{ textAlign: "center", marginTop: 24, fontSize: 13, color: "var(--text-2)" }}>
