@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db, AsyncSessionLocal
+from app.database import get_db, get_async_session
 from app.llm.base import LLMProviderError
 from app.models.db import GeneratedExam as GeneratedExamORM
 from app.models.db import User, Document as DocumentORM
@@ -80,8 +80,8 @@ async def generate_exam_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     syllabus_text, source_type = await _resolve_syllabus(body, db)
-    user_role = current_user.role if current_user else "teacher"
-    author_id = current_user.id if current_user else (_ADMIN_UID if user_role == "admin" else _TEACHER_UID)
+    user_role = current_user.role if current_user else "admin"
+    author_id = current_user.id if current_user else _ADMIN_UID
 
     async def event_stream():
         try:
@@ -111,9 +111,12 @@ async def generate_exam_endpoint(
                         is_published=False,
                         retries_used=retries_used,
                     )
-                    async with AsyncSessionLocal() as session:
-                        session.add(db_record)
-                        await session.commit()
+                    try:
+                        async with get_async_session() as session:
+                            session.add(db_record)
+                            await session.commit()
+                    except Exception as db_err:
+                        logger.error("Failed to persist generated exam to DB (non-fatal): %s", db_err, exc_info=True)
                     
                     res = ExamGenerationResponse(exam=exam)
                     yield json.dumps(res.model_dump(mode="json"), default=str) + "\n"
@@ -122,7 +125,8 @@ async def generate_exam_endpoint(
             yield json.dumps({"error": f"LLM error: {str(exc)}"}) + "\n"
         except Exception as exc:
             logger.error("Exception in generation stream: %s", exc, exc_info=True)
-            yield json.dumps({"error": str(exc)}) + "\n"
+            err_msg = str(exc).strip() or "An unexpected error occurred during exam generation"
+            yield json.dumps({"error": err_msg}) + "\n"
 
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 

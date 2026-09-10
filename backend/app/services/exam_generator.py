@@ -83,7 +83,8 @@ def _strip_markdown_from_json(s: str) -> str:
 def _sanitize_exam_text(text: str) -> str:
     """
     Cleans up hallucinated LaTeX artifacts, pseudo-LaTeX unit representations,
-    unclosed delimiters, and missing spaces from LLM generated exam text.
+    unclosed delimiters, and missing spaces from LLM generated exam text,
+    WITHOUT corrupting legitimate LaTeX math, formulas, angles, or symbols.
     """
     if not text or not isinstance(text, str):
         return text or ""
@@ -93,45 +94,47 @@ def _sanitize_exam_text(text: str) -> str:
     # 1. Strip hallucinated backslashes before plain digits / numbers: \90% -> 90%, \5 -> 5, \50 -> 50, \4.184 -> 4.184
     s = re.sub(r'\\(?=\d)', '', s)
 
-    # 2. Fix pseudo-LaTeX unit representations like $1\text{ ns}$ or \text{ GB/s} or 2\text{ GT/s}
-    s = re.sub(r'\\text\{\s*([^{}]+)\s*\}', r' \1 ', s)
+    # 2. Clean degree Celsius notation ONLY when followed by explicit C / \text{C} (preserve angles like 30^\circ, 75^\circ)
+    s = re.sub(r'\$([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C)\$', r'\1 °C', s)
+    s = re.sub(r'([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C)', r'\1 °C', s)
+    s = re.sub(r'\\cdot\^\\circ\s*(?:\\text\{C\}|C)', '·°C', s)
 
-    # 3. Clean degree Celsius notation: $1.79^\circ\text{C}$ -> 1.79 °C
-    s = re.sub(r'\$([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C|\s*)\$', r'\1 °C', s)
-    s = re.sub(r'([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C|\s*)', r'\1 °C', s)
-    s = re.sub(r'\\cdot\^\\circ\s*(?:\\text\{C\}|C|\s*)', '·°C', s)
-
-    # 4. Clean up common engineering and physical units inside stray math delimiters:
+    # 3. Clean up common engineering and physical units inside stray math delimiters:
     # e.g. $8.33 ms$, $7200 RPM$, $2 GT/s$, $100 W$, $250 W$, $32 bits$, $8 GB/s$, $16 GB/s$
     units_pattern = r'\$([0-9.,]+)\s+([a-zA-Z/°%]{1,10}(?:\s+[a-zA-Z/°%]{1,10})?)\$'
     s = re.sub(units_pattern, r'\1 \2', s)
 
-    # 5. Fix spaces between common squished words inside broken math mode
+    # 4. Fix spaces between common squished words inside broken math mode
     s = re.sub(r'perdirectionwith', ' per direction with ', s)
     s = re.sub(r'whatisthesteady\s*-\s*statetemperaturerise', ' what is the steady-state temperature rise ', s)
     s = re.sub(r'whatisthesteady', ' what is the steady ', s)
     s = re.sub(r'statetemperaturerise', ' state temperature rise ', s)
 
-    # 6. Clean up single unbalanced dollar signs that span across sentence endings (. / ? / !)
-    def clean_multisentence_math(match):
+    # 5. Clean up non-math English sentences mistakenly wrapped in single dollars $...$
+    def clean_math_delimiters(match):
         content = match.group(1)
-        words = re.findall(r"[a-zA-Z]{3,}", content)
-        puncts = [". ", "? ", "! ", ", "]
-        if len(words) > 2 or any(p in content for p in puncts):
-            content_fixed = re.sub(r"(\\[a-zA-Z]+(?:\s+[a-zA-Z0-9])?)", r"$\1$", content)
-            return content_fixed
+        # If it has backslashes (LaTeX commands), it's genuine math
+        if '\\' in content:
+            return f"${content}$"
+        # If it has math operators/exponents/subscripts, it's genuine math
+        if any(op in content for op in ['^', '_', '=', '<', '>', '+', '±', '×', '÷']):
+            return f"${content}$"
+        # If it has sentence punctuation or 4+ English words, it's an accidental dollar-wrapped sentence
+        words = re.findall(r'\b[a-zA-Z]{2,}\b', content)
+        has_sentence_punct = any(p in content for p in [". ", "? ", "! "]) or content.strip().endswith("?") or content.strip().endswith(".")
+        if len(words) >= 4 or (len(words) >= 2 and has_sentence_punct):
+            return content  # strip the surrounding $
         return f"${content}$"
 
-    s = re.sub(r'\$([^$]+)\$', clean_multisentence_math, s)
+    s = re.sub(r'\$([^$]+)\$', clean_math_delimiters, s)
 
-    # 7. Remove any remaining stray single dollars around plain numbers or simple unit phrases
+    # 6. Remove any remaining stray single dollars around plain numbers
     s = re.sub(r'\$([0-9.,]+)\$', r'\1', s)
-    s = re.sub(r'\$([0-9]+\s+[a-zA-Z]+)\$', r'\1', s)
 
-    # 8. Clean up multiple spaces
+    # 7. Clean up multiple spaces
     s = re.sub(r'[ \t]+', ' ', s)
 
-    # 9. Format Match the Following questions if squished on one line or missing item indices
+    # 8. Format Match the Following questions if squished on one line or missing item indices
     if ("Column I" in s or "स्तम्भ I" in s or "स्तम्भ 1" in s) and ("Column II" in s or "स्तम्भ II" in s or "स्तम्भ 2" in s):
         col1_m = list(re.finditer(r'(?:(?:^|[\n\.\:\;])\s*)(?:Column\s*[-–—:]?\s*(?:I|1|A)|स्तम्भ\s*[-–—:]?\s*(?:1|I))\s*[:\-\n\s]*', s, re.IGNORECASE))
         col2_m = list(re.finditer(r'(?:(?:^|[\n\.\:\;])\s*)(?:Column\s*[-–—:]?\s*(?:II|2|B)|स्तम्भ\s*[-–—:]?\s*(?:2|II))\s*[:\-\n\s]*', s, re.IGNORECASE))
@@ -168,15 +171,28 @@ except ImportError:
     json_repair = None
 
 def _escape_latex_in_json(s: str) -> str:
-    """Escapes backslashes before LaTeX keywords in JSON strings to prevent json control character errors."""
-    return re.sub(r'(?<!\\)\\([a-zA-Z]+)', lambda m: '\\\\' + m.group(1), s)
+    """Escapes backslashes before LaTeX keywords and symbols in JSON strings to prevent json control character errors."""
+    # 1. Escape unescaped backslashes before LaTeX keywords: \frac -> \\frac, \mu -> \\mu, etc.
+    s = re.sub(r'(?<!\\)\\([a-zA-Z]+)', r'\\\\\1', s)
+    # 2. Escape unescaped backslashes before LaTeX symbols: \{, \}, \,, \;, \:, \!
+    s = re.sub(r'(?<!\\)\\([{} ,;:!])', r'\\\\\1', s)
+    return s
 
 def _clean_and_parse_json(raw: str) -> Any:
     json_str = _extract_json_string(raw)
     json_str = _strip_markdown_from_json(json_str)
     escaped_json_str = _escape_latex_in_json(json_str)
 
-    # 1. Standard json.loads on escaped string
+    # 1. json_repair on escaped string (most resilient against formatting / control char quirks)
+    if json_repair:
+        try:
+            data = json_repair.loads(escaped_json_str)
+            if isinstance(data, (dict, list)) and data:
+                return data
+        except Exception:
+            pass
+
+    # 2. Standard json.loads on escaped string
     try:
         data = json.loads(escaped_json_str)
         if isinstance(data, (dict, list)):
@@ -184,7 +200,7 @@ def _clean_and_parse_json(raw: str) -> Any:
     except Exception:
         pass
 
-    # 2. Standard json.loads on raw string
+    # 3. Standard json.loads on raw string
     try:
         data = json.loads(json_str)
         if isinstance(data, (dict, list)):
@@ -192,38 +208,33 @@ def _clean_and_parse_json(raw: str) -> Any:
     except Exception:
         pass
 
-    # 3. json_repair on escaped string
-    try:
-        data = json_repair.loads(escaped_json_str)
-        if isinstance(data, (dict, list)) and data:
-            return data
-    except Exception:
-        pass
-
     # 4. json_repair on raw string
-    try:
-        data = json_repair.loads(json_str)
-        if isinstance(data, (dict, list)) and data:
-            return data
-    except Exception:
-        pass
+    if json_repair:
+        try:
+            data = json_repair.loads(json_str)
+            if isinstance(data, (dict, list)) and data:
+                return data
+        except Exception:
+            pass
 
     # 5. Last-ditch repair_json
-    try:
-        fixed_str = json_repair.repair_json(escaped_json_str, return_objects=False)
-        data = json.loads(fixed_str)
-        if isinstance(data, (dict, list)):
-            return data
-    except Exception:
-        pass
+    if json_repair:
+        try:
+            fixed_str = json_repair.repair_json(escaped_json_str, return_objects=False)
+            data = json.loads(fixed_str)
+            if isinstance(data, (dict, list)):
+                return data
+        except Exception:
+            pass
 
     # 6. Direct repair on raw input
-    try:
-        data = json_repair.loads(raw)
-        if isinstance(data, (dict, list)) and data:
-            return data
-    except Exception:
-        pass
+    if json_repair:
+        try:
+            data = json_repair.loads(raw)
+            if isinstance(data, (dict, list)) and data:
+                return data
+        except Exception:
+            pass
 
     logger.error("JSON Parse failed after all repair attempts.\nRaw:\n%s", raw[:500])
     raise ValueError(f"Could not parse LLM response as JSON. Raw (first 200 chars): {raw[:200]}")
@@ -657,13 +668,13 @@ async def generate_exam(
     except Exception:
         qwen = llm_client
 
-    CHUNK_SIZE = 10
+    CHUNK_SIZE = 5
     task_info = []
 
     for sec_bp in blueprint.sections:
         marks = marks_map.get(sec_bp.section_id, 1)
         
-        # Smart Batching: Split section questions into chunks of 10 to guarantee 100% complete generation without token limits
+        # Smart Batching: Split section questions into chunks of 5 to guarantee 100% complete generation without token limits
         for i in range(0, len(sec_bp.questions), CHUNK_SIZE):
             chunk_sec = sec_bp.model_copy(deep=True)
             chunk_sec.questions = sec_bp.questions[i:i + CHUNK_SIZE]
@@ -693,10 +704,9 @@ async def generate_exam(
         
     yield {"status": "Adding final touches..."}
     
-    # Ensure contiguous numbering across the entire exam and unbiased option randomization
+    # Ensure contiguous numbering across the entire exam
     for idx, q in enumerate(all_questions):
         q.question_no = idx + 1
-        _shuffle_and_randomize_options(q)
         
     exam = GeneratedExam(
         subject=template.subject,

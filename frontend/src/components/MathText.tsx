@@ -97,10 +97,10 @@ export function formatMathText(raw: string): string {
   // 3. Fix pseudo-LaTeX unit representations like $1\text{ ns}$ or \text{ GB/s} or 2\text{ GT/s}
   text = text.replace(/\\text\{\s*([^{}]+)\s*\}/g, " $1 ");
 
-  // 4. Clean degree Celsius notation: $1.79^\circ\text{C}$ -> 1.79 °C or $1.79^\circ C$ -> 1.79 °C
-  text = text.replace(/\$([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C|\s*)\$/g, "$1 °C");
-  text = text.replace(/([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C|\s*)/g, "$1 °C");
-  text = text.replace(/\\cdot\^\\circ\s*(?:\\text\{C\}|C|\s*)/g, "·°C");
+  // 4. Clean degree Celsius notation ONLY when followed by explicit C or \text{C} (preserve angles like 30^\circ, 75^\circ)
+  text = text.replace(/\$([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C)\$/g, "$1 °C");
+  text = text.replace(/([0-9.,]+)\s*\^\\circ\s*(?:\\text\{C\}|C)/g, "$1 °C");
+  text = text.replace(/\\cdot\^\\circ\s*(?:\\text\{C\}|C)/g, "·°C");
 
   // 5. Clean up common engineering and physical units inside stray math delimiters:
   // e.g. $8.33 ms$, $7200 RPM$, $2 GT/s$, $100 W$, $250 W$, $32 bits$, $8 GB/s$, $16 GB/s$
@@ -115,13 +115,19 @@ export function formatMathText(raw: string): string {
   // 7. Convert chemistry \ce{...} expressions and chemical formulas
   text = convertChemicalFormulas(text);
 
-  // 8. Clean up single unbalanced dollar signs that span across sentence endings (. / ? / !)
-  text = text.replace(/\$([^$]+)\$/g, (_, content) => {
-    const words = content.match(/[a-zA-Z]{3,}/g) || [];
-    if (words.length > 2 || /[.?!,]\s/.test(content)) {
-      return content.replace(/(\\[a-zA-Z]+(?:\s+[a-zA-Z0-9])?)/g, "$$1$");
+  // 8. Clean up non-math English sentences mistakenly wrapped in single dollars $...$
+  text = text.replace(/\$([^$]+)\$/g, (match, content) => {
+    // If it has backslashes (LaTeX commands), it's genuine math
+    if (content.includes("\\")) return match;
+    // If it has math operators/exponents/subscripts, it's genuine math
+    if (/[=^_+<>\-±×÷]/.test(content)) return match;
+    // If it has sentence punctuation or 4+ English words, it's an accidental dollar-wrapped sentence
+    const words = content.match(/\b[a-zA-Z]{2,}\b/g) || [];
+    const hasSentencePunct = /[.?!]\s/.test(content) || content.trim().endsWith("?") || content.trim().endsWith(".");
+    if (words.length >= 4 || (words.length >= 2 && hasSentencePunct)) {
+      return content; // strip the surrounding $
     }
-    return `$${content}$`;
+    return match;
   });
 
   // 9. Escape Currency like $50,000 USD (only when followed purely by digits and not a math expression)

@@ -246,11 +246,29 @@ export const generationApi = {
           const data = JSON.parse(line);
           if (data.status && onProgress) onProgress(data.status);
           if (data.exam) finalExam = data.exam as GeneratedExam;
-          if (data.error) throw new Error(data.error as string);
+          if (data.error !== undefined && data.error !== null) {
+            const errStr = String(data.error).trim();
+            throw new Error(errStr || "Exam generation failed on the server.");
+          }
         } catch (e) {
           if (e instanceof SyntaxError) continue; // partial JSON chunk, skip
           throw e;
         }
+      }
+    }
+
+    // Flush and parse any remaining data in buffer after stream ends
+    if (buffer.trim()) {
+      try {
+        const data = JSON.parse(buffer.trim());
+        if (data.status && onProgress) onProgress(data.status);
+        if (data.exam) finalExam = data.exam as GeneratedExam;
+        if (data.error !== undefined && data.error !== null) {
+          const errStr = String(data.error).trim();
+          throw new Error(errStr || "Exam generation failed on the server.");
+        }
+      } catch (e) {
+        if (!(e instanceof SyntaxError)) throw e;
       }
     }
 
