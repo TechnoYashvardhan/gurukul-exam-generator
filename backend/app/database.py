@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy import event
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
@@ -41,7 +42,29 @@ def _create_engine_and_session(url: str):
             "max_overflow": 2,
             "connect_args": connect_args,
         })
+    else:
+        # SQLite connection tuning: timeout and multi-threading
+        kwargs.update({
+            "connect_args": {"check_same_thread": False, "timeout": 20}
+        })
+
     eng = create_async_engine(url, **kwargs)
+
+    if url.startswith("sqlite"):
+        # Configure high-performance WAL mode and foreign keys on every SQLite connection
+        @event.listens_for(eng.sync_engine, "connect")
+        def _set_sqlite_pragmas(dbapi_connection, connection_record):
+            try:
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA journal_mode = WAL;")
+                cursor.execute("PRAGMA synchronous = NORMAL;")
+                cursor.execute("PRAGMA foreign_keys = ON;")
+                cursor.execute("PRAGMA busy_timeout = 10000;")
+                cursor.execute("PRAGMA cache_size = -64000;")
+                cursor.close()
+            except Exception as e:
+                logger.debug("Failed to set SQLite PRAGMAs: %s", e)
+
     sm = async_sessionmaker(
         bind=eng,
         class_=AsyncSession,

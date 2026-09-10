@@ -54,4 +54,11 @@ write_section_card.py
 temp_write.js
 scratch/
 *.sql
+*.tsbuildinfo
+certs/
+*/certs/
+screenshots/
+*/screenshots/
+*.pem
+
 

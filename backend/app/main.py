@@ -57,19 +57,37 @@ async def lifespan(app: FastAPI):
         from app.database import engine as cur_engine
         is_postgres = not settings.database_url.startswith("sqlite")
         from sqlalchemy import text
-        migrations = [
-            ("ALTER TABLE users ADD COLUMN IF NOT EXISTS scholar_id TEXT" if is_postgres else "ALTER TABLE users ADD COLUMN scholar_id TEXT"),
-            ("ALTER TABLE users ADD COLUMN IF NOT EXISTS class_id TEXT" if is_postgres else "ALTER TABLE users ADD COLUMN class_id TEXT"),
-            ("ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS target_class_id TEXT" if is_postgres else "ALTER TABLE generated_exams ADD COLUMN target_class_id TEXT"),
-            ("ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS schedule_start_at TIMESTAMP WITH TIME ZONE" if is_postgres else "ALTER TABLE generated_exams ADD COLUMN schedule_start_at DATETIME"),
-            ("ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS schedule_end_at TIMESTAMP WITH TIME ZONE" if is_postgres else "ALTER TABLE generated_exams ADD COLUMN schedule_end_at DATETIME"),
-        ]
-        for sql in migrations:
-            try:
-                async with cur_engine.begin() as conn:
-                    await conn.execute(text(sql))
-            except Exception:
-                pass
+        if is_postgres:
+            migrations = [
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS scholar_id TEXT",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS class_id TEXT",
+                "ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS target_class_id TEXT",
+                "ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS schedule_start_at TIMESTAMP WITH TIME ZONE",
+                "ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS schedule_end_at TIMESTAMP WITH TIME ZONE",
+            ]
+            async with cur_engine.begin() as conn:
+                for sql in migrations:
+                    try:
+                        await conn.execute(text(sql))
+                    except Exception:
+                        pass
+        else:
+            # SQLite: inspect table columns first to avoid OperationalError on every boot
+            async with cur_engine.begin() as conn:
+                for table, col, col_def in [
+                    ("users", "scholar_id", "TEXT"),
+                    ("users", "class_id", "TEXT"),
+                    ("generated_exams", "target_class_id", "TEXT"),
+                    ("generated_exams", "schedule_start_at", "DATETIME"),
+                    ("generated_exams", "schedule_end_at", "DATETIME"),
+                ]:
+                    try:
+                        info = await conn.execute(text(f"PRAGMA table_info({table})"))
+                        existing_cols = {row[1] for row in info.fetchall()}
+                        if col not in existing_cols:
+                            await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}"))
+                    except Exception:
+                        pass
             
         # Seed default users & classes
         _default_uid = uuid.UUID("00000000-0000-0000-0000-000000000001")
