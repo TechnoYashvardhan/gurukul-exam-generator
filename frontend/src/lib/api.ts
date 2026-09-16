@@ -20,18 +20,24 @@ import type {
 } from "@/types/auth";
 
 export function getApiBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
+  let url = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (!url) {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname || "localhost";
+      url = `http://${host}:8000`;
+    } else {
+      url = "http://localhost:8000";
+    }
   }
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname || "localhost";
-    return `http://${host}:8001`;
-  }
-  return "http://localhost:8001";
+  return url.replace(/\/+$/, "");
 }
 
 export function getApiUrl(): string {
-  return `${getApiBaseUrl()}/api/v1`;
+  const base = getApiBaseUrl();
+  if (base.endsWith("/api/v1")) {
+    return base;
+  }
+  return `${base}/api/v1`;
 }
 
 function getAuthHeader(): Record<string, string> {
