@@ -23,18 +23,20 @@ class Base(DeclarativeBase):
 def _create_engine_and_session(url: str):
     kwargs = {"echo": settings.debug}
     if not url.startswith("sqlite"):
-        # Configure SSL context for Supabase / PostgreSQL cloud connections
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-
-        connect_args = {
-            "ssl": ctx,
+        is_local_pg = "localhost" in url or "127.0.0.1" in url or "sslmode=disable" in url
+        connect_args: dict = {
             "statement_cache_size": 0,
             "prepared_statement_cache_size": 0,
-            "timeout": 2,
-            "command_timeout": 4,
         }
+        if not is_local_pg:
+            # Configure SSL context for Supabase / PostgreSQL cloud connections
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            connect_args["ssl"] = ctx
+            connect_args["timeout"] = 5
+            connect_args["command_timeout"] = 10
+
         kwargs.update({
             "pool_pre_ping": True,
             "pool_recycle": 300,
