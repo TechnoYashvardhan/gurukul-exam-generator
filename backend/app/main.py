@@ -144,14 +144,43 @@ async def lifespan(app: FastAPI):
                 admin.email = "Admin_DSVV01@dsvv.ac.in"
                 admin.full_name = "Chief Admin DSVV"
 
-            # Clean up legacy dummy accounts if present
-            old_teacher = await session.get(User, _default_uid)
-            if old_teacher:
-                await session.delete(old_teacher)
+            # Seed Official Teacher
+            teacher = await session.get(User, _default_uid)
+            teacher_pw_hash = get_password_hash("teacher123")
+            if not teacher:
+                session.add(User(
+                    id=_default_uid,
+                    email="teacher@gurukul.local",
+                    hashed_pw=teacher_pw_hash,
+                    full_name="Gurukul Teacher",
+                    role="teacher"
+                ))
+            else:
+                teacher.email = "teacher@gurukul.local"
+                teacher.hashed_pw = teacher_pw_hash
+                teacher.full_name = "Gurukul Teacher"
+                teacher.role = "teacher"
 
-            old_student = await session.get(User, _student_uid)
-            if old_student:
-                await session.delete(old_student)
+            # Seed Official Student (Scholar ID: 2410852)
+            student = await session.get(User, _student_uid)
+            student_pw_hash = get_password_hash("student@dsvv123")
+            if not student:
+                session.add(User(
+                    id=_student_uid,
+                    email="student@gurukul.local",
+                    scholar_id="2410852",
+                    class_id=str(_class_1_id),
+                    hashed_pw=student_pw_hash,
+                    full_name="Arjuna Student",
+                    role="student"
+                ))
+            else:
+                student.email = "student@gurukul.local"
+                student.scholar_id = "2410852"
+                student.class_id = str(_class_1_id)
+                student.hashed_pw = student_pw_hash
+                student.full_name = "Arjuna Student"
+                student.role = "student"
 
             # Seed Default Templates (Vidya Blueprints) assigned to Admin
             from app.models.db import Template
