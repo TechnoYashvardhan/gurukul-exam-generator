@@ -94,6 +94,13 @@ export interface QuestionFeedback {
   explanation?: string | null;
 }
 
+export interface ViolationEvent {
+  type: "tab_switch" | "window_blur" | "copy_attempt" | "cut_attempt" | "paste_attempt" | "context_menu" | "devtools_attempt" | "fullscreen_exit";
+  timestamp: string;
+  warning_number: number;
+  detail: string;
+}
+
 export interface QuizResult {
   attempt_id: string;
   exam_id: string;
@@ -104,6 +111,11 @@ export interface QuizResult {
   percentage: number;
   time_spent_seconds: number;
   questions_feedback: QuestionFeedback[];
+  is_disqualified?: boolean;
+  warnings_count?: number;
+  integrity_status?: "clean" | "flagged" | "disqualified";
+  integrity_remarks?: string | null;
+  violation_log?: ViolationEvent[] | null;
   completed_at: string;
 }
 
@@ -181,7 +193,12 @@ export interface PublishedQuizStudentAttempt {
   percentage: number;
   time_spent_seconds: number;
   submitted_at: string;
-  questions_feedback: QuestionFeedback[];
+  is_disqualified?: boolean;
+  warnings_count?: number;
+  integrity_status?: "clean" | "flagged" | "disqualified";
+  integrity_remarks?: string | null;
+  violation_log?: ViolationEvent[] | null;
+  questions_feedback: any[];
 }
 
 export interface PublishedQuizDetailResponse {

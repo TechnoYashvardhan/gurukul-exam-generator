@@ -65,6 +65,11 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS target_class_id TEXT",
                 "ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS schedule_start_at TIMESTAMP WITH TIME ZONE",
                 "ALTER TABLE generated_exams ADD COLUMN IF NOT EXISTS schedule_end_at TIMESTAMP WITH TIME ZONE",
+                "ALTER TABLE quiz_attempts ADD COLUMN IF NOT EXISTS is_disqualified BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE quiz_attempts ADD COLUMN IF NOT EXISTS warnings_count INTEGER DEFAULT 0",
+                "ALTER TABLE quiz_attempts ADD COLUMN IF NOT EXISTS integrity_status VARCHAR(50) DEFAULT 'clean'",
+                "ALTER TABLE quiz_attempts ADD COLUMN IF NOT EXISTS violation_log JSONB",
+                "ALTER TABLE quiz_attempts ADD COLUMN IF NOT EXISTS integrity_remarks TEXT",
             ]
             async with cur_engine.begin() as conn:
                 for sql in migrations:
@@ -81,6 +86,11 @@ async def lifespan(app: FastAPI):
                     ("generated_exams", "target_class_id", "TEXT"),
                     ("generated_exams", "schedule_start_at", "DATETIME"),
                     ("generated_exams", "schedule_end_at", "DATETIME"),
+                    ("quiz_attempts", "is_disqualified", "BOOLEAN DEFAULT 0"),
+                    ("quiz_attempts", "warnings_count", "INTEGER DEFAULT 0"),
+                    ("quiz_attempts", "integrity_status", "VARCHAR(50) DEFAULT 'clean'"),
+                    ("quiz_attempts", "violation_log", "JSON"),
+                    ("quiz_attempts", "integrity_remarks", "TEXT"),
                 ]:
                     try:
                         info = await conn.execute(text(f"PRAGMA table_info({table})"))

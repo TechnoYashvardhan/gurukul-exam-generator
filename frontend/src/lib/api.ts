@@ -428,8 +428,18 @@ export const authApi = {
 export const studentApi = {
   listQuizzes: () => request<QuizListItem[]>("GET", "/student/quizzes"),
   getQuiz: (id: string) => request<GeneratedExam & { id: string }>("GET", `/student/quiz/${id}`),
-  submitQuiz: (id: string, payload: { answers: Record<string, any>; time_spent_seconds: number }) =>
-    request<QuizResult>("POST", `/student/quiz/${id}/submit`, payload),
+  submitQuiz: (
+    id: string,
+    payload: {
+      answers: Record<string, any>;
+      time_spent_seconds: number;
+      is_disqualified?: boolean;
+      warnings_count?: number;
+      integrity_status?: string;
+      violations?: any[];
+      disqualification_reason?: string;
+    }
+  ) => request<QuizResult>("POST", `/student/quiz/${id}/submit`, payload),
   getAttempt: (attemptId: string) => request<QuizResult>("GET", `/student/attempt/${attemptId}`),
   getStats: () => request<StudentStats>("GET", "/student/stats"),
 };

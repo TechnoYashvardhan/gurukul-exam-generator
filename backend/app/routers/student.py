@@ -42,6 +42,11 @@ class QuizListItem(BaseModel):
 class QuizSubmitRequest(BaseModel):
     answers: dict[str, Any]  # question index or question_no as string -> student's answer
     time_spent_seconds: int = 0
+    is_disqualified: bool = False
+    warnings_count: int = 0
+    integrity_status: str = "clean"
+    violations: Optional[list[dict[str, Any]]] = None
+    disqualification_reason: Optional[str] = None
 
 
 class QuestionFeedback(BaseModel):
@@ -68,6 +73,11 @@ class QuizResultResponse(BaseModel):
     percentage: float
     time_spent_seconds: int
     questions_feedback: list[QuestionFeedback]
+    is_disqualified: bool = False
+    warnings_count: int = 0
+    integrity_status: str = "clean"
+    integrity_remarks: Optional[str] = None
+    violation_log: Optional[list[dict[str, Any]]] = None
     completed_at: str
 
 
@@ -385,7 +395,26 @@ async def submit_quiz_attempt(
             )
         )
 
-    percentage = round((total_score / total_marks) * 100, 1) if total_marks > 0 else 0.0
+    # Handle Kavach Disqualification enforcement
+    is_disqualified = bool(body.is_disqualified)
+    if is_disqualified:
+        total_score = 0.0
+        percentage = 0.0
+        integrity_status = "disqualified"
+        warnings_count = max(body.warnings_count, 3)
+        integrity_remarks = body.disqualification_reason or "Disqualified due to multiple exam integrity violations (3 strikes)"
+        violation_log = body.violations or []
+    else:
+        percentage = round((total_score / total_marks) * 100, 1) if total_marks > 0 else 0.0
+        warnings_count = body.warnings_count
+        if warnings_count > 0:
+            integrity_status = "flagged"
+            integrity_remarks = f"{warnings_count} window/tab focus warning(s) logged during examination"
+            violation_log = body.violations or []
+        else:
+            integrity_status = "clean"
+            integrity_remarks = None
+            violation_log = []
 
     attempt = QuizAttempt(
         id=uuid.uuid4(),
@@ -399,6 +428,11 @@ async def submit_quiz_attempt(
             "feedback": [f.model_dump() for f in feedback_list],
             "raw_answers": body.answers,
         },
+        is_disqualified=is_disqualified,
+        warnings_count=warnings_count,
+        integrity_status=integrity_status,
+        violation_log=violation_log,
+        integrity_remarks=integrity_remarks,
         created_at=datetime.now(timezone.utc),
     )
     db.add(attempt)
@@ -414,6 +448,11 @@ async def submit_quiz_attempt(
         percentage=percentage,
         time_spent_seconds=body.time_spent_seconds,
         questions_feedback=feedback_list,
+        is_disqualified=is_disqualified,
+        warnings_count=warnings_count,
+        integrity_status=integrity_status,
+        integrity_remarks=integrity_remarks,
+        violation_log=violation_log,
         completed_at=to_utc_iso(attempt.created_at) or "",
     )
 
@@ -452,7 +491,12 @@ async def get_quiz_attempt(
         total_marks=attempt.total_marks,
         percentage=attempt.percentage,
         time_spent_seconds=attempt.time_spent_seconds,
-        questions_feedback=feedback_data,
+        questions_feedback=[QuestionFeedback(**f) for f in feedback_data] if feedback_data else [],
+        is_disqualified=bool(getattr(attempt, "is_disqualified", False)),
+        warnings_count=int(getattr(attempt, "warnings_count", 0)),
+        integrity_status=str(getattr(attempt, "integrity_status", "clean")),
+        integrity_remarks=getattr(attempt, "integrity_remarks", None),
+        violation_log=getattr(attempt, "violation_log", None),
         completed_at=to_utc_iso(attempt.created_at) or "",
     )
 

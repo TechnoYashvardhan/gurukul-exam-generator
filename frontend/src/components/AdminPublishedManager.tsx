@@ -25,7 +25,11 @@ import {
   BarChart3,
   HelpCircle,
   Check,
-  RefreshCw
+  RefreshCw,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  AlertOctagon,
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import {
@@ -698,6 +702,7 @@ export default function AdminPublishedManager() {
                         <th>Class / Cohort</th>
                         <th>Score</th>
                         <th>Percentage</th>
+                        <th>Integrity / Kavach</th>
                         <th>Time Spent</th>
                         <th>Submitted At</th>
                         <th>Action</th>
@@ -728,11 +733,67 @@ export default function AdminPublishedManager() {
                                 <span
                                   style={{
                                     fontWeight: 700,
-                                    color: att.percentage >= 75 ? "var(--forest)" : att.percentage >= 40 ? "var(--gold-dark)" : "#dc2626",
+                                    color: att.is_disqualified ? "#dc2626" : att.percentage >= 75 ? "var(--forest)" : att.percentage >= 40 ? "var(--gold-dark)" : "#dc2626",
                                   }}
                                 >
                                   {att.percentage}%
                                 </span>
+                              </td>
+                              <td>
+                                {att.is_disqualified ? (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 4,
+                                      background: "rgba(220, 38, 38, 0.12)",
+                                      color: "#dc2626",
+                                      border: "1px solid rgba(220, 38, 38, 0.3)",
+                                      borderRadius: "var(--radius-sm)",
+                                      padding: "2px 8px",
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                    }}
+                                    title={att.integrity_remarks || "Disqualified"}
+                                  >
+                                    <AlertOctagon size={12} /> Disqualified
+                                  </span>
+                                ) : (att.warnings_count ?? 0) > 0 ? (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 4,
+                                      background: "rgba(217, 119, 6, 0.12)",
+                                      color: "#d97706",
+                                      border: "1px solid rgba(217, 119, 6, 0.3)",
+                                      borderRadius: "var(--radius-sm)",
+                                      padding: "2px 8px",
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                    }}
+                                    title={`${att.warnings_count} warning(s)`}
+                                  >
+                                    <ShieldAlert size={12} /> {att.warnings_count} Warning{(att.warnings_count ?? 0) > 1 ? "s" : ""}
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 4,
+                                      background: "rgba(34, 197, 94, 0.12)",
+                                      color: "var(--forest)",
+                                      border: "1px solid rgba(34, 197, 94, 0.25)",
+                                      borderRadius: "var(--radius-sm)",
+                                      padding: "2px 8px",
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    <ShieldCheck size={12} /> Verified Clean
+                                  </span>
+                                )}
                               </td>
                               <td>{Math.round(att.time_spent_seconds / 60)}m {att.time_spent_seconds % 60}s</td>
                               <td>{new Date(att.submitted_at).toLocaleDateString()}</td>
@@ -749,10 +810,37 @@ export default function AdminPublishedManager() {
                               </td>
                             </tr>
 
-                            {/* Expandable Question Feedback Breakdown */}
+                            {/* Expandable Question Feedback Breakdown & Forensic Audit Log */}
                             {isExpanded && (
                               <tr>
-                                <td colSpan={8} style={{ padding: "14px 16px", background: "var(--surface-sunken)" }}>
+                                <td colSpan={9} style={{ padding: "14px 16px", background: "var(--surface-sunken)" }}>
+                                  {/* Forensic Audit Log if violations exist */}
+                                  {att.violation_log && att.violation_log.length > 0 && (
+                                    <div
+                                      style={{
+                                        marginBottom: 14,
+                                        padding: "10px 14px",
+                                        background: "rgba(220, 38, 38, 0.08)",
+                                        border: "1px solid rgba(220, 38, 38, 0.25)",
+                                        borderRadius: "var(--radius-sm)",
+                                      }}
+                                    >
+                                      <div style={{ fontSize: 12, fontWeight: 700, color: "#dc2626", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                                        <ShieldAlert size={14} /> Kavach Security Audit Trail Recorded:
+                                      </div>
+                                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                        {att.violation_log.map((v, vIdx) => (
+                                          <div key={vIdx} style={{ fontSize: 11.5, color: "var(--text-1)", display: "flex", gap: 8 }}>
+                                            <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-3)" }}>[{v.timestamp}]</span>
+                                            <span style={{ fontWeight: 600, color: v.warning_number >= 3 ? "#dc2626" : "#d97706" }}>
+                                              Strike {v.warning_number}: {v.detail || v.type}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
                                   <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 10, color: "var(--text-1)" }}>
                                     📝 Question-by-Question Submission Breakdown for {att.student_name}:
                                   </div>

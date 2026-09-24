@@ -137,6 +137,11 @@ class PublishedQuizStudentAttempt(BaseModel):
     percentage: float
     time_spent_seconds: int
     submitted_at: str
+    is_disqualified: bool = False
+    warnings_count: int = 0
+    integrity_status: str = "clean"
+    integrity_remarks: Optional[str] = None
+    violation_log: Optional[list[dict]] = None
     questions_feedback: list[dict]
 
 
@@ -757,6 +762,11 @@ async def get_published_quiz_detail(
                 percentage=att.percentage,
                 time_spent_seconds=att.time_spent_seconds,
                 submitted_at=to_utc_iso(att.created_at) or "",
+                is_disqualified=bool(getattr(att, "is_disqualified", False)),
+                warnings_count=int(getattr(att, "warnings_count", 0)),
+                integrity_status=str(getattr(att, "integrity_status", "clean")),
+                integrity_remarks=getattr(att, "integrity_remarks", None),
+                violation_log=getattr(att, "violation_log", None),
                 questions_feedback=questions_feedback,
             )
         )

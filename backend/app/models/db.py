@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     JSON,
+    String,
     Text,
     Uuid,
     func,
@@ -253,6 +254,11 @@ class QuizAttempt(Base):
     time_spent_seconds: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     # Dict mapping question_no or question id -> user response and correctness
     answers: Mapped[dict] = mapped_column(JSON, nullable=False)
+    is_disqualified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    warnings_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    integrity_status: Mapped[str] = mapped_column(String(50), default="clean", nullable=False)
+    violation_log: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    integrity_remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
