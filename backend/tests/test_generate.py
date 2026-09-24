@@ -237,3 +237,41 @@ async def test_health_endpoint() -> None:
         resp = await ac.get("/api/v1/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_generate_endpoint_multi_document(
+    simple_template: ExamTemplate,
+) -> None:
+    """POST /api/v1/generate/exam supports document_ids list."""
+    valid_json = _make_valid_exam_json(simple_template)
+
+    class _MockLLM:
+        provider_name = "mock"
+        model_name = "mock-model"
+
+    async def fake_generate_exam(*args, **kwargs):
+        yield {"status": "Synthesizing exam from multiple sources..."}
+        mock_exam = GeneratedExam.model_validate(json.loads(valid_json))
+        yield (mock_exam, 0, _MockLLM())
+
+    doc_id1 = str(uuid.uuid4())
+    doc_id2 = str(uuid.uuid4())
+    payload = {
+        "template": simple_template.model_dump(),
+        "document_ids": [doc_id1, doc_id2],
+        "source_type": "document",
+    }
+
+    with patch("app.routers.generate.generate_exam", side_effect=fake_generate_exam):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.post("/api/v1/generate/exam", json=payload)
+
+    assert resp.status_code == 200
+    lines = [json.loads(line) for line in resp.text.strip().split("\n") if line.strip()]
+    assert len(lines) >= 2
+    final_event = lines[-1]
+    assert "exam" in final_event
+    assert final_event["exam"]["total_marks"] == simple_template.total_marks
+

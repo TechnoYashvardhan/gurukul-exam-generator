@@ -1,4 +1,4 @@
-﻿# 🕉️ Gurukul AI — Running Process & Access Handbook
+# 🕉️ Gurukul AI — Running Process & Access Handbook
 
 > **Institutional Examination & Assessment Sanctuary**  
 > Complete deployment, background execution processes, database specifications, and institutional credentials guide.
@@ -53,9 +53,9 @@ The platform runs on a **100% local Linux PostgreSQL 14** instance, completely d
 
 ### 1. Database Initialization & Seeding (Run Once)
 ```bash
-cd ~/Desktop/"sdc students projects"/yashvardhan/gurukul-exam-generator/backend
+cd ~/Desktop/"sdc students projects"/yashvardhan/gurukul-exam-generator/
 source .venv/bin/activate
-
+cd backend
 # Execute the standalone database table builder and seeder
 python3 seed_postgres.py
 ```
@@ -66,15 +66,17 @@ python3 seed_postgres.py
 
 #### Option A: Foreground Mode (For live debugging & logs)
 ```bash
-cd ~/Desktop/"sdc students projects"/yashvardhan/gurukul-exam-generator/backend
+cd ~/Desktop/"sdc students projects"/yashvardhan/gurukul-exam-generator/
 source .venv/bin/activate
+cd backend
 python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 #### Option B: Background Daemon Mode (Keeps running 24/7 even if SSH is closed)
 ```bash
-cd ~/Desktop/"sdc students projects"/yashvardhan/gurukul-exam-generator/backend
+cd ~/Desktop/"sdc students projects"/yashvardhan/gurukul-exam-generator/
 source .venv/bin/activate
+cd backend
 nohup python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
 ```
 
@@ -84,13 +86,17 @@ nohup python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > backend.log 2
 
 #### Option A: Foreground Mode
 ```bash
-cd ~/Desktop/"sdc students projects"/yashvardhan/gurukul-exam-generator/frontend
+cd ~/Desktop/"sdc students projects"/yashvardhan/gurukul-exam-generator/
+source .venv/bin/activate
+cd frontend
 npm run dev
 ```
 
 #### Option B: Background Daemon Mode (Keeps running 24/7 even if SSH is closed)
 ```bash
-cd ~/Desktop/"sdc students projects"/yashvardhan/gurukul-exam-generator/frontend
+cd ~/Desktop/"sdc students projects"/yashvardhan/gurukul-exam-generator/
+source .venv/bin/activate
+cd frontend
 nohup npm run dev > frontend.log 2>&1 &
 ```
 
@@ -100,16 +106,18 @@ nohup npm run dev > frontend.log 2>&1 &
 
 ### Backend (`backend/.env`)
 ```ini
+# ── App ──────────────────────────────────────────
 APP_ENV=development
 DEBUG=true
 
-# Database (Local PostgreSQL 14)
-DATABASE_URL=postgresql+asyncpg://gurukul_user:gurukul123@localhost:5432/gurukul_db
-SYNC_DATABASE_URL=postgresql://gurukul_user:gurukul123@localhost:5432/gurukul_db
+# ── 100% Local SQLite Database ───────────────────
+DATABASE_URL=sqlite+aiosqlite:///./examgen.db
+SYNC_DATABASE_URL=sqlite:///./examgen.db
 
+# ── Redis ────────────────────────────────────────
 REDIS_URL=redis://:redis_secret@localhost:6379/0
 
-# LLM Engine Suite
+# ✨ LLM 
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=models/gemini-3.5-flash
@@ -120,9 +128,10 @@ OLLAMA_BASE_URL=http://localhost:11434
 GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=openai/gpt-oss-20b
 
-# Rate Limiting
+# ── Rate limiting ─────────────────────────────────
 LLM_RATE_LIMIT_PER_MIN=10
 LLM_MAX_RETRIES=2
+
 ```
 
 ### Frontend (`frontend/.env.local`)

@@ -32,6 +32,7 @@ async def lifespan(app: FastAPI):
     # Create upload directory on startup
     from pathlib import Path
     import uuid
+    from sqlalchemy import select, text
     from app.services.redis_client import close_redis
     from app.database import engine, Base, AsyncSessionLocal
     from app.models.db import User
@@ -129,7 +130,8 @@ async def lifespan(app: FastAPI):
                 ))
 
             # Seed Official Single Admin (Admin_DSVV01)
-            admin = await session.get(User, _admin_uid)
+            admin_res = await session.execute(select(User).where(User.email.ilike("Admin_DSVV01@dsvv.ac.in")))
+            admin = admin_res.scalar_one_or_none()
             admin_pw_hash = get_password_hash("OmBhBS@123")
             if not admin:
                 session.add(User(
@@ -145,7 +147,8 @@ async def lifespan(app: FastAPI):
                 admin.full_name = "Chief Admin DSVV"
 
             # Seed Official Teacher
-            teacher = await session.get(User, _default_uid)
+            teacher_res = await session.execute(select(User).where(User.email == "teacher@gurukul.local"))
+            teacher = teacher_res.scalar_one_or_none()
             teacher_pw_hash = get_password_hash("teacher123")
             if not teacher:
                 session.add(User(
@@ -162,14 +165,15 @@ async def lifespan(app: FastAPI):
                 teacher.role = "teacher"
 
             # Seed Official Student (Scholar ID: 2410852)
-            student = await session.get(User, _student_uid)
+            student_res = await session.execute(select(User).where((User.scholar_id == "2410852") | (User.email == "student@gurukul.local")))
+            student = student_res.scalar_one_or_none()
             student_pw_hash = get_password_hash("student@dsvv123")
             if not student:
                 session.add(User(
                     id=_student_uid,
                     email="student@gurukul.local",
                     scholar_id="2410852",
-                    class_id=str(_class_1_id),
+                    class_id=_class_1_id,
                     hashed_pw=student_pw_hash,
                     full_name="Arjuna Student",
                     role="student"
@@ -177,7 +181,7 @@ async def lifespan(app: FastAPI):
             else:
                 student.email = "student@gurukul.local"
                 student.scholar_id = "2410852"
-                student.class_id = str(_class_1_id)
+                student.class_id = _class_1_id
                 student.hashed_pw = student_pw_hash
                 student.full_name = "Arjuna Student"
                 student.role = "student"

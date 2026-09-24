@@ -1,0 +1,107 @@
+﻿================================================================================
+           GURUKUL AI — LINUX SERVER RUN & SETUP COMMANDS
+================================================================================
+Server IP: 192.160.108.197
+LAN Portal: http://192.160.108.197:3000
+API Docs:   http://192.160.108.197:8000/docs
+================================================================================
+
+--------------------------------------------------------------------------------
+OPTION 1: RUN EVERYTHING IN BACKGROUND WITH ONE COPY-PASTE BLOCK
+--------------------------------------------------------------------------------
+Copy and paste this entire block into your Linux server terminal:
+
+cd /files/yashvardhan/gurukul-exam-generator/backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+nohup python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+
+cd ../frontend
+npm install
+nohup npm run dev > frontend.log 2>&1 &
+
+echo "=================================================="
+echo "✅ Both Backend & Frontend running in BACKGROUND!"
+echo "   Access: http://192.160.108.197:3000"
+echo "=================================================="
+
+
+--------------------------------------------------------------------------------
+OPTION 2: STEP-BY-STEP COMMANDS
+--------------------------------------------------------------------------------
+
+STEP 1: Navigate to Project Directory
+--------------------------------------
+cd /files/yashvardhan/gurukul-exam-generator
+
+
+STEP 2: Setup & Start Backend in Background
+--------------------------------------------
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+nohup python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+
+
+STEP 3: Setup & Start Frontend in Background
+---------------------------------------------
+cd ../frontend
+npm install
+nohup npm run dev > frontend.log 2>&1 &
+
+
+STEP 4: Check if Both Servers Are Running
+------------------------------------------
+sudo fuser 8000/tcp 3000/tcp
+
+
+STEP 5: Open Firewall Ports (If other PCs cannot connect)
+---------------------------------------------------------
+sudo ufw allow 8000/tcp
+sudo ufw allow 3000/tcp
+
+
+--------------------------------------------------------------------------------
+LOGS & MONITORING
+--------------------------------------------------------------------------------
+
+View Backend Live Logs:
+  tail -f /files/yashvardhan/gurukul-exam-generator/backend/backend.log
+
+View Frontend Live Logs:
+  tail -f /files/yashvardhan/gurukul-exam-generator/frontend/frontend.log
+
+
+--------------------------------------------------------------------------------
+STOPPING / RESTARTING THE SERVERS
+--------------------------------------------------------------------------------
+
+To Stop Both Servers:
+  sudo fuser -k 8000/tcp 3000/tcp 2>/dev/null || true
+  pkill -f uvicorn 2>/dev/null || true
+  pkill -f "next dev" 2>/dev/null || true
+
+
+--------------------------------------------------------------------------------
+LOGIN CREDENTIALS
+--------------------------------------------------------------------------------
+Chief Admin:
+  URL:      http://192.160.108.197:3000/login
+  Email:    Admin_DSVV01@dsvv.ac.in
+  Password: OmBhBS@123
+
+Teacher:
+  URL:      http://192.160.108.197:3000/login
+  Email:    teacher@gurukul.local
+  Password: teacher123
+
+Student:
+  URL:        http://192.160.108.197:3000/login
+  Scholar ID: 2410852
+  Password:   student@dsvv123
+
+================================================================================

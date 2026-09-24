@@ -40,14 +40,18 @@ export default function TeacherPage() {
   // Library state
   const [docs, setDocs] = useState<DocumentSummary[]>([]);
   const [docsLoaded, setDocsLoaded] = useState(false);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-
-  const selectedDoc = docs.find((d) => d.id === selectedDocId) ?? null;
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
 
   const handleSaved = useCallback(() => setRefreshKey((k) => k + 1), []);
   const handleLoad = useCallback((name: string, config: ExamTemplate) => {
     setLoadTrigger({ name, config });
   }, []);
+
+  function handleToggleDocSelect(id: string) {
+    setSelectedDocIds((prev) =>
+      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
+    );
+  }
 
   async function handleViewChange(view: View) {
     setActiveView(view);
@@ -72,7 +76,7 @@ export default function TeacherPage() {
 
   function handleDocDeleted(id: string) {
     setDocs((prev) => prev.filter((d) => d.id !== id));
-    if (selectedDocId === id) setSelectedDocId(null);
+    setSelectedDocIds((prev) => prev.filter((d) => d !== id));
   }
 
   return (
@@ -138,6 +142,45 @@ export default function TeacherPage() {
               {/* Upload widget */}
               <LibraryUpload onUploaded={handleDocUploaded} />
 
+              {/* Multi-selection Banner */}
+              {selectedDocIds.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "var(--forest-light)",
+                    border: "1px solid var(--forest)",
+                    padding: "10px 16px",
+                    borderRadius: "var(--radius-md)",
+                    marginTop: 20,
+                    marginBottom: -12,
+                    boxShadow: "var(--shadow-sm)",
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--forest)" }}>
+                    📌 {selectedDocIds.length} syllabus document{selectedDocIds.length > 1 ? "s" : ""} selected for question synthesis
+                  </span>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      type="button"
+                      className="gk-btn gk-btn--primary gk-btn--sm"
+                      onClick={() => handleViewChange("generate")}
+                    >
+                      Generate Exam with Selected ({selectedDocIds.length}) →
+                    </button>
+                    <button
+                      type="button"
+                      className="gk-btn gk-btn--ghost gk-btn--sm"
+                      onClick={() => setSelectedDocIds([])}
+                      style={{ color: "var(--text-3)", fontSize: 12 }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Documents grid */}
               {docs.length === 0 ? (
                 <div className="empty-state" style={{ marginTop: 32 }}>
@@ -173,8 +216,8 @@ export default function TeacherPage() {
                       <DocumentCard
                         key={doc.id}
                         doc={doc}
-                        selected={doc.id === selectedDocId}
-                        onSelect={() => setSelectedDocId(doc.id)}
+                        selected={selectedDocIds.includes(doc.id)}
+                        onSelect={() => handleToggleDocSelect(doc.id)}
                         onDelete={() => handleDocDeleted(doc.id)}
                         onReady={handleDocReady}
                       />
@@ -189,9 +232,8 @@ export default function TeacherPage() {
           {activeView === "generate" && (
             <GeneratePanel
               docs={docs}
-              selectedDocId={selectedDocId}
-              onSelectDoc={setSelectedDocId}
-              selectedDoc={selectedDoc}
+              selectedDocIds={selectedDocIds}
+              onSelectDocs={setSelectedDocIds}
               onExamSaved={saveToHistory}
               role="teacher"
               onNavigate={handleViewChange}

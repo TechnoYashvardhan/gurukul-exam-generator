@@ -24,6 +24,7 @@ POST /api/v1/documents/web-fetch
 """
 
 import asyncio
+import hashlib
 import logging
 import re
 import uuid
@@ -225,6 +226,194 @@ async def _run_ingestion(
             logger.error("Ingestion failed for doc_id=%s: %s", document_id, exc)
             await db.rollback()
             # Mark document as error
+            async with get_async_session() as err_db:
+                result = await err_db.execute(
+                    select(DocumentORM).where(DocumentORM.id == uuid.UUID(document_id))
+                )
+                doc = result.scalar_one_or_none()
+                if doc:
+                    doc.status = "error"
+                await err_db.commit()
+
+
+@router.post(
+    "/upload-multiple",
+    response_model=DocumentSummary,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Upload multiple PDF notes and merge into a single library document card",
+)
+async def upload_multiple_documents(
+    background_tasks: BackgroundTasks,
+    files: list[UploadFile] = File(..., description="PDF files to merge and ingest"),
+    title: str = Form("", description="Optional custom title for the merged document card"),
+    subject: str = Form("", description="Subject name tag"),
+    grade: str = Form("", description="Grade/level tag"),
+    current_user: User | None = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DocumentSummary:
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "no_files", "message": "At least one PDF file must be provided."},
+        )
+
+    for f in files:
+        if not f.filename or not f.filename.lower().endswith(".pdf"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": "invalid_file", "message": f"'{f.filename}' is not a valid PDF file."},
+            )
+
+    files_data: list[tuple[str, bytes]] = []
+    hashes: list[str] = []
+    for f in files:
+        pdf_bytes = await f.read()
+        size_mb = len(pdf_bytes) / (1024 * 1024)
+        if size_mb > MAX_UPLOAD_MB:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail={
+                    "error": "file_too_large",
+                    "message": f"File '{f.filename}' ({size_mb:.1f} MB) exceeds {MAX_UPLOAD_MB} MB limit.",
+                },
+            )
+        files_data.append((f.filename, pdf_bytes))
+        hashes.append(compute_sha256(pdf_bytes))
+
+    # Deduplication hash
+    if len(hashes) == 1:
+        combined_sha256 = hashes[0]
+    else:
+        combined_sha256 = hashlib.sha256(":::".join(sorted(hashes)).encode()).hexdigest()
+
+    existing = await db.execute(
+        select(DocumentORM).where(DocumentORM.sha256_hash == combined_sha256)
+    )
+    existing_doc = existing.scalar_one_or_none()
+    if existing_doc is not None:
+        logger.info("Duplicate multi-upload detected | sha256=%s", combined_sha256[:16])
+        chunk_count = await _count_chunks(db, existing_doc.id)
+        return _to_summary(existing_doc, chunk_count)
+
+    # Save files to disk
+    upload_dir = Path(settings.upload_dir)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    for sha, (_, bts) in zip(hashes, files_data):
+        file_path = upload_dir / f"{sha}.pdf"
+        if not file_path.exists():
+            file_path.write_bytes(bts)
+
+    # Determine display title
+    cleaned_title = title.strip()
+    if not cleaned_title:
+        if len(files) == 1:
+            cleaned_title = files[0].filename
+        else:
+            first_stem = Path(files[0].filename).stem.replace("_", " ").replace("-", " ")
+            cleaned_title = f"{first_stem} (+{len(files) - 1} merged notes)"
+
+    doc_id = uuid.uuid4()
+    author_id = await _resolve_document_user_id(db, current_user)
+    source_tag = "merged_upload" if len(files) > 1 else "upload"
+
+    doc = DocumentORM(
+        id=doc_id,
+        user_id=author_id,
+        filename=cleaned_title,
+        subject=subject.strip() or None,
+        grade=grade.strip() or None,
+        sha256_hash=combined_sha256,
+        status="processing",
+        source=source_tag,
+    )
+    db.add(doc)
+    await db.commit()
+
+    background_tasks.add_task(
+        _run_multi_ingestion, str(doc_id), combined_sha256, files_data
+    )
+
+    return _to_summary(doc, 0)
+
+
+async def _run_multi_ingestion(
+    document_id: str,
+    combined_sha256: str,
+    files_data: list[tuple[str, bytes]],
+) -> None:
+    """
+    Background task: runs ingestion on multiple PDFs, merges them into 1 unified document,
+    chunks them, embeds them, and updates document status.
+    """
+    from app.database import get_async_session
+    from app.services.document_processor import parse_pdf_bytes, chunk_text
+    from app.services.embedding import embed_texts
+    from app.services.redis_client import redis_set
+
+    async with get_async_session() as db:
+        try:
+            sections = []
+            total_pages = 0
+            for filename, pdf_bytes in files_data:
+                try:
+                    res = parse_pdf_bytes(pdf_bytes)
+                    text = res[0] if isinstance(res, tuple) else str(res)
+                    pages = res[1] if isinstance(res, tuple) else 0
+                    total_pages += pages
+                    if text and text.strip():
+                        sections.append(
+                            f"==================================================\n"
+                            f"DOCUMENT SECTION / FILE: {filename}\n"
+                            f"==================================================\n\n"
+                            f"{text.strip()}\n"
+                        )
+                except Exception as file_err:
+                    logger.warning("Failed parsing %s in multi-upload: %s", filename, file_err)
+
+            if not sections:
+                raise ValueError("Could not extract readable text from any of the uploaded PDF files.")
+
+            merged_text = "\n\n".join(sections)
+            cache_key = f"doc_text:{combined_sha256}"
+            await redis_set(cache_key, merged_text, ttl=settings.doc_cache_ttl)
+
+            chunks = chunk_text(merged_text)
+            if not chunks:
+                chunks = [merged_text]
+
+            embeddings = embed_texts(chunks)
+            doc_uuid = uuid.UUID(document_id)
+
+            chunk_rows = [
+                DocumentChunk(
+                    id=uuid.uuid4(),
+                    document_id=doc_uuid,
+                    chunk_index=i,
+                    content=chunk,
+                    embedding=emb,
+                    token_count=len(chunk.split()),
+                )
+                for i, (chunk, emb) in enumerate(zip(chunks, embeddings))
+            ]
+            db.add_all(chunk_rows)
+
+            result = await db.execute(
+                select(DocumentORM).where(DocumentORM.id == doc_uuid)
+            )
+            doc = result.scalar_one_or_none()
+            if doc:
+                doc.status = "ready"
+                doc.page_count = total_pages
+            await db.commit()
+
+            logger.info(
+                "[OK] Multi-document ingestion complete | doc_id=%s | files=%d | chunks=%d | pages=%d",
+                document_id, len(files_data), len(chunk_rows), total_pages,
+            )
+
+        except Exception as exc:
+            logger.error("Multi-ingestion failed for doc_id=%s: %s", document_id, exc, exc_info=True)
+            await db.rollback()
             async with get_async_session() as err_db:
                 result = await err_db.execute(
                     select(DocumentORM).where(DocumentORM.id == uuid.UUID(document_id))
@@ -548,7 +737,8 @@ async def extract_topics_from_pdf(
     from app.services.document_processor import parse_pdf_bytes
     import re
     try:
-        raw_text = parse_pdf_bytes(contents)
+        raw_res = parse_pdf_bytes(contents)
+        raw_text = raw_res[0] if isinstance(raw_res, tuple) else str(raw_res)
     except Exception as e:
         logger.warning("PDF topic parse failed: %s", e)
         raise HTTPException(status_code=400, detail=f"Could not extract text from PDF: {e}")
@@ -573,6 +763,67 @@ async def extract_topics_from_pdf(
         char_count=len(cleaned),
         suggested_subject=suggested_subj,
         suggested_title=clean_stem,
+    )
+
+
+@router.post(
+    "/extract-topics-multiple",
+    response_model=ExtractTopicsResponse,
+    summary="Extract text/topics from one or more PDFs directly for topic focus insertion",
+)
+async def extract_topics_from_multiple_pdfs(
+    files: list[UploadFile] = File(...),
+) -> ExtractTopicsResponse:
+    if not files:
+        raise HTTPException(status_code=400, detail="No files provided.")
+
+    from app.services.document_processor import parse_pdf_bytes
+
+    extracted_sections = []
+    total_words = 0
+    total_chars = 0
+    suggested_subj = None
+    first_title = None
+
+    for f in files:
+        if not f.filename or not f.filename.lower().endswith(".pdf"):
+            continue
+        data = await f.read()
+        if len(data) > 30 * 1024 * 1024:
+            continue
+        try:
+            raw_res = parse_pdf_bytes(data)
+            clean_text = (raw_res[0] if isinstance(raw_res, tuple) else str(raw_res)).strip()
+            if clean_text:
+                stem = Path(f.filename).stem.replace("_", " ").replace("-", " ").title()
+                if not first_title:
+                    first_title = stem
+                extracted_sections.append(f"=== [Source: {f.filename}] ===\n{clean_text}")
+                total_words += len(clean_text.split())
+                total_chars += len(clean_text)
+
+                if not suggested_subj:
+                    for s in ["Physics", "Chemistry", "Mathematics", "Computer Science", "Biology", "History", "Geography", "English", "Economics"]:
+                        if re.search(rf"\b{s}\b", stem, re.IGNORECASE) or re.search(rf"\b{s}\b", clean_text[:500], re.IGNORECASE):
+                            suggested_subj = s
+                            break
+        except Exception as e:
+            logger.warning("Error parsing %s in extract_topics_from_multiple_pdfs: %s", f.filename, e)
+
+    if not extracted_sections:
+        raise HTTPException(status_code=400, detail="Could not extract text from any provided PDF.")
+
+    combined_text = "\n\n".join(extracted_sections)
+    title = f"{first_title} (+{len(files)-1} files)" if len(files) > 1 and first_title else (first_title or "Syllabus Notes")
+    names_summary = ", ".join(f.filename for f in files[:3]) + (f" (+{len(files)-3} more)" if len(files) > 3 else "")
+
+    return ExtractTopicsResponse(
+        filename=names_summary,
+        extracted_text=combined_text,
+        word_count=total_words,
+        char_count=total_chars,
+        suggested_subject=suggested_subj,
+        suggested_title=title,
     )
 
 

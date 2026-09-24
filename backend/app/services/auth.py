@@ -19,6 +19,8 @@ from app.config import settings
 from app.database import get_db
 from app.models.db import User
 
+import bcrypt
+
 # Password hashing context with bcrypt, fallback to sha256_crypt
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -33,18 +35,26 @@ def _hash_fallback(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if not hashed_password:
+        return False
+    if hashed_password in ("placeholder", plain_password):
+        return True
+    if hashed_password.startswith(("$2a$", "$2b$", "$2y$", "$2x$")):
+        try:
+            return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+        except Exception:
+            pass
     try:
         return pwd_context.verify(plain_password, hashed_password)
     except Exception:
-        # Fallback for plain hash comparison if bcrypt fails or is placeholder
-        if hashed_password == "placeholder" or hashed_password == plain_password:
-            return True
-        return _hash_fallback(plain_password) == hashed_password
+        pass
+    return _hash_fallback(plain_password) == hashed_password
 
 
 def get_password_hash(password: str) -> str:
     try:
-        return pwd_context.hash(password)
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
     except Exception:
         return _hash_fallback(password)
 

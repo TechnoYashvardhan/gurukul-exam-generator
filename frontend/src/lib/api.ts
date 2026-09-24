@@ -221,6 +221,65 @@ export const documentsApi = {
     }
     return res.json();
   },
+
+  uploadMultiple: async (
+    files: File[],
+    title: string = "",
+    subject: string = "",
+    grade: string = ""
+  ): Promise<DocumentSummary> => {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append("files", file);
+    }
+    if (title) formData.append("title", title);
+    if (subject) formData.append("subject", subject);
+    if (grade) formData.append("grade", grade);
+
+    const res = await fetch(`${getApiUrl()}/documents/upload-multiple`, {
+      method: "POST",
+      headers: { ...getAuthHeader() },
+      body: formData,
+    });
+    if (!res.ok) {
+      let errText = await res.text();
+      try {
+        const parsed = JSON.parse(errText);
+        errText = parseDetailMessage(parsed, errText);
+      } catch {}
+      throw new Error(errText);
+    }
+    return res.json();
+  },
+
+  extractTopicsMultiple: async (files: File[]): Promise<{
+    filename: string;
+    extracted_text: string;
+    word_count: number;
+    char_count: number;
+    suggested_subject?: string;
+    suggested_title?: string;
+  }> => {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append("files", file);
+    }
+
+    const res = await fetch(`${getApiUrl()}/documents/extract-topics-multiple`, {
+      method: "POST",
+      headers: { ...getAuthHeader() },
+      body: formData,
+    });
+    if (!res.ok) {
+      let errText = await res.text();
+      try {
+        const parsed = JSON.parse(errText);
+        errText = parsed.detail ?? errText;
+      } catch {}
+      throw new Error(errText);
+    }
+    return res.json();
+  },
 };
 
 export const generationApi = {

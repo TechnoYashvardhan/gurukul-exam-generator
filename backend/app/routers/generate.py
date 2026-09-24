@@ -44,26 +44,35 @@ _ADMIN_UID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 class GenerateExamRequest(BaseModel):
     template: ExamTemplate = Field(...)
     document_id: str | None = Field(None)
+    document_ids: list[str] | None = Field(None)
     web_query: str | None = Field(None)
     syllabus_text: str | None = Field(None)
     source_type: str = Field("hardcoded")
     custom_topic: str | None = Field(None)
 
+def _extract_doc_ids(body: GenerateExamRequest) -> list[str]:
+    doc_ids: list[str] = []
+    if body.document_ids:
+        for did in body.document_ids:
+            if did and str(did).strip() and str(did).strip() not in doc_ids:
+                doc_ids.append(str(did).strip())
+    if body.document_id and str(body.document_id).strip() and str(body.document_id).strip() not in doc_ids:
+        doc_ids.append(str(body.document_id).strip())
+    return doc_ids
+
 async def _resolve_syllabus(body: GenerateExamRequest, db: AsyncSession) -> tuple[str, str]:
     default_fallback = f"Standard comprehensive academic curriculum and core examination topics for {body.template.subject} {body.template.grade} ({body.template.difficulty} level). Focus areas: {body.custom_topic or 'Core curriculum, theoretical principles, problem-solving, and applications'}."
 
-    if body.document_id:
+    doc_ids = _extract_doc_ids(body)
+    if doc_ids:
         try:
-            doc_uuid = uuid.UUID(body.document_id)
-            doc = await db.get(DocumentORM, doc_uuid)
-            if doc and doc.status == "ready":
-                from app.services.rag import retrieve_context
-                query_base = body.custom_topic if body.custom_topic else f"{body.template.subject} {body.template.grade} {body.template.difficulty} exam topics chapters"
-                context = await retrieve_context(db=db, document_id=body.document_id, query=query_base, top_k=14)
-                if context and "No web results found" not in context and len(context.strip()) > 50:
-                    return context, "document"
+            from app.services.rag import retrieve_context_multi
+            query_base = body.custom_topic if body.custom_topic else f"{body.template.subject} {body.template.grade} {body.template.difficulty} exam topics chapters"
+            context = await retrieve_context_multi(db=db, document_ids=doc_ids, query=query_base, top_k=16)
+            if context and "No web results found" not in context and len(context.strip()) > 50:
+                return context, "document"
         except Exception as err:
-            logger.warning("Error retrieving document context: %s", err)
+            logger.warning("Error retrieving multi-document context: %s", err)
 
     if body.web_query:
         try:
@@ -88,6 +97,16 @@ async def generate_exam_endpoint(
     syllabus_text, source_type = await _resolve_syllabus(body, db)
     user_role = current_user.role if current_user else "admin"
     author_id = current_user.id if current_user else _ADMIN_UID
+    doc_ids = _extract_doc_ids(body)
+    valid_primary_doc_id = None
+    if doc_ids:
+        try:
+            cand_uuid = uuid.UUID(doc_ids[0])
+            doc_check = await db.get(DocumentORM, cand_uuid)
+            if doc_check:
+                valid_primary_doc_id = doc_check.id
+        except (ValueError, TypeError):
+            pass
 
     async def event_stream():
         try:
@@ -104,13 +123,17 @@ async def generate_exam_endpoint(
                     
                     exam_id = uuid.uuid4()
                     exam.exam_id = str(exam_id)
+                    exam_payload = exam.model_dump()
+                    if doc_ids:
+                        exam_payload["source_document_ids"] = doc_ids
+
                     db_record = GeneratedExamORM(
                         id=exam_id,
                         user_id=author_id,
                         template_id=None,
-                        document_id=uuid.UUID(body.document_id) if body.document_id else None,
+                        document_id=valid_primary_doc_id,
                         source_type=source_type,
-                        exam_json=exam.model_dump(),
+                        exam_json=exam_payload,
                         llm_provider=llm.provider_name,
                         llm_model=llm.model_name,
                         created_by_role=user_role,

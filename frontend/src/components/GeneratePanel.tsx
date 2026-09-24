@@ -49,7 +49,9 @@ import type { View } from "./Sidebar";
 interface GeneratePanelProps {
   docs?: DocumentSummary[];
   selectedDocId?: string | null;
+  selectedDocIds?: string[];
   onSelectDoc?: (docId: string | null) => void;
+  onSelectDocs?: (docIds: string[]) => void;
   selectedDoc?: DocumentSummary | null;
   onExamSaved: (exam: GeneratedExam) => void;
   role?: "admin" | "teacher";
@@ -59,7 +61,9 @@ interface GeneratePanelProps {
 export default function GeneratePanel({
   docs: propDocs,
   selectedDocId: propSelectedDocId,
+  selectedDocIds: propSelectedDocIds,
   onSelectDoc: propOnSelectDoc,
+  onSelectDocs: propOnSelectDocs,
   selectedDoc: propSelectedDoc,
   onExamSaved,
   role: propRole,
@@ -70,7 +74,7 @@ export default function GeneratePanel({
 
   // Documents & Blueprints state
   const [internalDocs, setInternalDocs] = useState<DocumentSummary[]>([]);
-  const [internalSelectedDocId, setInternalSelectedDocId] = useState<string | null>(null);
+  const [internalSelectedDocIds, setInternalSelectedDocIds] = useState<string[]>([]);
   const [templates, setTemplates] = useState<TemplateSummary[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [selectedTemplateDetail, setSelectedTemplateDetail] = useState<ExamTemplate | null>(null);
@@ -93,19 +97,55 @@ export default function GeneratePanel({
 
   // Resolve active docs list and selection
   const docs = propDocs !== undefined ? propDocs : internalDocs;
-  const currentDocId = propSelectedDocId !== undefined ? propSelectedDocId : internalSelectedDocId;
-  const selectedDoc =
-    propSelectedDoc !== undefined
-      ? propSelectedDoc
-      : docs.find((d) => d.id === currentDocId) || null;
 
-  const handleSelectDoc = (id: string | null) => {
-    if (propOnSelectDoc) {
-      propOnSelectDoc(id);
+  // Resolve active document IDs array
+  const activeDocIds: string[] =
+    propSelectedDocIds !== undefined
+      ? propSelectedDocIds
+      : propSelectedDocId !== undefined
+      ? propSelectedDocId
+        ? [propSelectedDocId]
+        : []
+      : internalSelectedDocIds;
+
+  const handleToggleDoc = (id: string) => {
+    let nextIds: string[];
+    if (activeDocIds.includes(id)) {
+      nextIds = activeDocIds.filter((d) => d !== id);
     } else {
-      setInternalSelectedDocId(id);
+      nextIds = [...activeDocIds, id];
     }
+    if (propOnSelectDocs) {
+      propOnSelectDocs(nextIds);
+    }
+    if (propOnSelectDoc) {
+      propOnSelectDoc(nextIds.length > 0 ? nextIds[0] : null);
+    }
+    setInternalSelectedDocIds(nextIds);
   };
+
+  const handleSelectAllDocs = () => {
+    const readyIds = docs.filter((d) => d.status === "ready").map((d) => d.id);
+    if (propOnSelectDocs) {
+      propOnSelectDocs(readyIds);
+    }
+    if (propOnSelectDoc) {
+      propOnSelectDoc(readyIds[0] || null);
+    }
+    setInternalSelectedDocIds(readyIds);
+  };
+
+  const handleClearDocs = () => {
+    if (propOnSelectDocs) {
+      propOnSelectDocs([]);
+    }
+    if (propOnSelectDoc) {
+      propOnSelectDoc(null);
+    }
+    setInternalSelectedDocIds([]);
+  };
+
+  const selectedDocuments = docs.filter((d) => activeDocIds.includes(d.id));
 
   // Initial data loading
   useEffect(() => {
@@ -222,8 +262,9 @@ export default function GeneratePanel({
       const exam = await generationApi.generate(
         {
           template: full.config,
-          document_id: selectedDoc ? selectedDoc.id : undefined,
-          source_type: selectedDoc ? "document" : "hardcoded",
+          document_id: selectedDocuments.length > 0 ? selectedDocuments[0].id : undefined,
+          document_ids: selectedDocuments.map((d) => d.id),
+          source_type: selectedDocuments.length > 0 ? "document" : "hardcoded",
           custom_topic: customTopic.trim() || null,
         },
         (msg) => setProgressMsg(msg)
@@ -642,10 +683,10 @@ export default function GeneratePanel({
                   </div>
                   <div>
                     <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "15.5px", fontWeight: 700, margin: 0, color: "var(--text)" }}>
-                      1. Syllabus Source (Granth)
+                      1. Syllabus Source (Granth Library)
                     </h3>
                     <p style={{ fontSize: "11.5px", color: "var(--text-3)", margin: 0 }}>
-                      Select the textbook or notes to extract questions from
+                      Select 1 or more textbooks/notes for question synthesis, or use standard curriculum
                     </p>
                   </div>
                 </div>
@@ -678,74 +719,184 @@ export default function GeneratePanel({
                   )}
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "240px", overflowY: "auto", paddingRight: "4px" }}>
-                  {/* No document option */}
-                  <div
-                    onClick={() => handleSelectDoc(null)}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: "var(--radius-sm)",
-                      border: currentDocId === null ? "1.5px solid var(--accent)" : "1px solid var(--border)",
-                      background: currentDocId === null ? "var(--accent-light)" : "var(--surface)",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      transition: "all 0.15s ease",
-                      boxShadow: "var(--shadow-sm)",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <Globe size={16} color={currentDocId === null ? "var(--accent)" : "var(--text-2)"} />
-                      <div>
-                        <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text)" }}>
-                          Direct AI Synthesis (Standard Course Syllabus)
-                        </div>
-                        <div style={{ fontSize: "11.5px", color: "var(--text-2)", marginTop: 2 }}>
-                          Synthesizes questions from standard academic textbook curriculum (No PDF required)
-                        </div>
-                      </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {/* Selection Toolbar */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 2px" }}>
+                    <div style={{ fontSize: "12px", color: "var(--text-2)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                      {activeDocIds.length === 0 ? (
+                        <span>✨ Direct Curriculum Mode (Standard Syllabus)</span>
+                      ) : (
+                        <span>
+                          📚 <strong>{activeDocIds.length}</strong> of {docs.length} Granth document{activeDocIds.length > 1 ? "s" : ""} selected
+                        </span>
+                      )}
                     </div>
-                    {currentDocId === null && <Check size={16} color="var(--accent)" />}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {docs.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={handleSelectAllDocs}
+                          className="gk-btn gk-btn--ghost gk-btn--sm"
+                          style={{ fontSize: "11px", padding: "2px 8px" }}
+                        >
+                          Select All
+                        </button>
+                      )}
+                      {activeDocIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleClearDocs}
+                          className="gk-btn gk-btn--ghost gk-btn--sm"
+                          style={{ fontSize: "11px", padding: "2px 8px", color: "var(--terracotta)" }}
+                        >
+                          Clear Selection
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Document cards */}
-                  {docs.map((doc) => {
-                    const isSelected = doc.id === currentDocId;
-                    return (
-                      <div
-                        key={doc.id}
-                        onClick={() => handleSelectDoc(doc.id)}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: "var(--radius-sm)",
-                          border: isSelected ? "1.5px solid var(--forest)" : "1px solid var(--border)",
-                          background: isSelected ? "var(--forest-light)" : "var(--surface)",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          transition: "all 0.15s ease",
-                          boxShadow: "var(--shadow-sm)",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1, marginRight: 8 }}>
-                          <FileText size={16} color={isSelected ? "var(--forest)" : "var(--text-2)"} style={{ flexShrink: 0 }} />
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {doc.filename}
-                            </div>
-                            <div style={{ fontSize: "11.5px", color: "var(--text-2)", display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-                              <span style={{ fontWeight: 600 }}>{doc.subject || "General"}</span>
-                              <span>•</span>
-                              <span>{doc.chunk_count} Chunks Indexed</span>
-                            </div>
+                  {/* Selected Documents Badges */}
+                  {selectedDocuments.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "6px 8px", background: "var(--bg-2)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
+                      {selectedDocuments.map((d) => (
+                        <span
+                          key={d.id}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            background: "var(--forest-light)",
+                            border: "1px solid var(--forest)",
+                            color: "var(--forest)",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <FileText size={12} />
+                          <span style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {d.filename}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleToggleDoc(d.id); }}
+                            style={{ background: "transparent", border: "none", cursor: "pointer", color: "inherit", padding: 0, display: "flex" }}
+                            title="Remove from selection"
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Scrollable Document List */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "260px", overflowY: "auto", paddingRight: "4px" }}>
+                    {/* Direct AI Synthesis Option */}
+                    <div
+                      onClick={handleClearDocs}
+                      style={{
+                        padding: "11px 14px",
+                        borderRadius: "var(--radius-sm)",
+                        border: activeDocIds.length === 0 ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                        background: activeDocIds.length === 0 ? "var(--accent-light)" : "var(--surface)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        transition: "all 0.15s ease",
+                        boxShadow: "var(--shadow-sm)",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <Globe size={16} color={activeDocIds.length === 0 ? "var(--accent)" : "var(--text-2)"} />
+                        <div>
+                          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)" }}>
+                            Direct AI Synthesis (Standard Course Syllabus)
+                          </div>
+                          <div style={{ fontSize: "11px", color: "var(--text-2)", marginTop: 2 }}>
+                            Synthesizes questions from standard academic textbook curriculum (No PDF required)
                           </div>
                         </div>
-                        {isSelected && <Check size={16} color="var(--forest)" style={{ flexShrink: 0 }} />}
                       </div>
-                    );
-                  })}
+                      {activeDocIds.length === 0 && <Check size={16} color="var(--accent)" />}
+                    </div>
+
+                    {/* Document items */}
+                    {docs.map((doc) => {
+                      const isSelected = activeDocIds.includes(doc.id);
+                      const isMerged = doc.source === "merged_upload";
+                      return (
+                        <div
+                          key={doc.id}
+                          onClick={() => handleToggleDoc(doc.id)}
+                          style={{
+                            padding: "11px 14px",
+                            borderRadius: "var(--radius-sm)",
+                            border: isSelected ? "1.5px solid var(--forest)" : "1px solid var(--border)",
+                            background: isSelected ? "var(--forest-light)" : "var(--surface)",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            transition: "all 0.15s ease",
+                            boxShadow: "var(--shadow-sm)",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1, marginRight: 8 }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleDoc(doc.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                accentColor: "var(--forest)",
+                                cursor: "pointer",
+                                width: 15,
+                                height: 15,
+                                flexShrink: 0,
+                              }}
+                            />
+                            {isMerged ? (
+                              <Layers size={16} color={isSelected ? "var(--forest)" : "var(--accent)"} style={{ flexShrink: 0 }} />
+                            ) : (
+                              <FileText size={16} color={isSelected ? "var(--forest)" : "var(--text-2)"} style={{ flexShrink: 0 }} />
+                            )}
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+                                <span>{doc.filename}</span>
+                                {isMerged && (
+                                  <span
+                                    style={{
+                                      fontSize: "10px",
+                                      fontWeight: 600,
+                                      color: "var(--accent)",
+                                      background: "rgba(217, 119, 6, 0.1)",
+                                      padding: "1px 6px",
+                                      borderRadius: 4,
+                                      border: "1px solid var(--accent-mid)",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    Merged Bundle
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: "11px", color: "var(--text-2)", display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                                <span style={{ fontWeight: 600 }}>{doc.subject || "General"}</span>
+                                <span>•</span>
+                                <span>{doc.grade || "All Grades"}</span>
+                                <span>•</span>
+                                <span>{doc.chunk_count} Chunks</span>
+                              </div>
+                            </div>
+                          </div>
+                          {isSelected && <Check size={16} color="var(--forest)" style={{ flexShrink: 0 }} />}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -947,7 +1098,11 @@ export default function GeneratePanel({
                 <div style={{ fontSize: "13px", color: "var(--text)", display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
                   <FileText size={15} color="var(--forest)" />
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {selectedDoc ? selectedDoc.filename : "Curriculum Standard Knowledge (No PDF)"}
+                    {selectedDocuments.length > 0
+                      ? selectedDocuments.length === 1
+                        ? selectedDocuments[0].filename
+                        : `${selectedDocuments.length} Documents Selected`
+                      : "Curriculum Standard Knowledge (No PDF)"}
                   </span>
                 </div>
               </div>

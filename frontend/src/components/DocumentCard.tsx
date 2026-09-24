@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { DocumentSummary } from "@/types/document";
 import { documentsApi } from "@/lib/api";
-import { Clock, Settings, CheckCircle, XCircle, FileText, Globe, X, Check } from "lucide-react";
+import { Clock, Settings, CheckCircle, XCircle, FileText, Globe, X, Check, Layers } from "lucide-react";
 
 interface DocumentCardProps {
   doc: DocumentSummary;
@@ -50,6 +50,7 @@ export default function DocumentCard({
 
   const status = STATUS_CONFIG[doc.status] ?? STATUS_CONFIG.error;
   const isWebFetch = doc.source === "web_fetch";
+  const isMerged = doc.source === "merged_upload";
 
   async function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
@@ -74,7 +75,7 @@ export default function DocumentCard({
     >
       {/* Source icon */}
       <div className="doc-card__source-icon">
-        {isWebFetch ? <Globe size={18} /> : <FileText size={18} />}
+        {isWebFetch ? <Globe size={18} /> : isMerged ? <Layers size={18} color="var(--accent)" /> : <FileText size={18} />}
       </div>
 
       {/* Filename + delete */}
@@ -100,8 +101,21 @@ export default function DocumentCard({
           <span className="chip-badge chip-badge--accent">{doc.chunk_count} chunks</span>
         )}
         <span className="chip-badge">
-          {isWebFetch ? "Web" : "PDF"}
+          {isWebFetch ? "Web" : isMerged ? "Merged PDFs" : "PDF"}
         </span>
+        {isMerged && (
+          <span
+            className="chip-badge"
+            style={{
+              background: "rgba(217, 119, 6, 0.12)",
+              color: "var(--accent)",
+              borderColor: "var(--accent-mid)",
+              fontWeight: 600,
+            }}
+          >
+            📚 Multi-PDF Bundle
+          </span>
+        )}
       </div>
 
       {/* Status + date */}

@@ -18,6 +18,10 @@ import {
   Tag,
   FileText,
   Check,
+  Layers,
+  Plus,
+  Trash2,
+  X,
 } from "lucide-react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
@@ -29,10 +33,12 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
   const [tab, setTab] = useState<"upload" | "web" | "custom">("upload");
   const [error, setError] = useState<string | null>(null);
 
-  // Tab 1: Upload PDF
+  // Tab 1: Upload PDF (supports 1 or multiple PDFs merged into 1 card)
   const [dragging, setDragging] = useState(false);
   const [subject, setSubject] = useLocalStorage("lib-up-subject", "");
   const [grade, setGrade] = useLocalStorage("lib-up-grade", "");
+  const [queuedFiles, setQueuedFiles] = useState<File[]>([]);
+  const [mergedTitle, setMergedTitle] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -62,9 +68,10 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
     wordCount: number;
   } | null>(null);
 
-  async function handleExtractTopicPdf(file: File, targetTab: "web" | "custom") {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setError("Please drop or upload a valid PDF file.");
+  async function handleExtractTopicPdfs(incoming: FileList | File[], targetTab: "web" | "custom") {
+    const list = Array.from(incoming).filter((f) => f.name.toLowerCase().endsWith(".pdf"));
+    if (list.length === 0) {
+      setError("Please drop or upload valid PDF file(s).");
       return;
     }
     setError(null);
@@ -72,15 +79,19 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
     else setExtractingCustom(true);
 
     try {
-      const res = await documentsApi.extractTopicsPdf(file);
+      const res =
+        list.length === 1
+          ? await documentsApi.extractTopicsPdf(list[0])
+          : await documentsApi.extractTopicsMultiple(list);
+
       if (targetTab === "web") {
-        setWebContext(res.extracted_text);
+        setWebContext((prev) => (prev.trim() ? `${prev}\n\n${res.extracted_text}` : res.extracted_text));
         if (!webSubject.trim() && res.suggested_subject) {
           setWebSubject(res.suggested_subject);
         }
         setExtractedInfo({ source: "web", filename: res.filename, wordCount: res.word_count });
       } else {
-        setCustomTopics(res.extracted_text);
+        setCustomTopics((prev) => (prev.trim() ? `${prev}\n\n${res.extracted_text}` : res.extracted_text));
         if (!customTitle.trim() && res.suggested_title) {
           setCustomTitle(res.suggested_title);
         }
@@ -90,24 +101,55 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
         setExtractedInfo({ source: "custom", filename: res.filename, wordCount: res.word_count });
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to extract topics from PDF.");
+      setError(e instanceof Error ? e.message : "Failed to extract topics from PDF(s).");
     } finally {
       if (targetTab === "web") setExtractingWeb(false);
       else setExtractingCustom(false);
     }
   }
 
-  // Handlers
-  async function handleFile(file: File) {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setError("Only PDF files are accepted.");
+  // Handlers for Tab 1
+  function handleAddFiles(incoming: FileList | File[]) {
+    const list = Array.from(incoming);
+    const validPdfs = list.filter((f) => f.name.toLowerCase().endsWith(".pdf"));
+    if (validPdfs.length === 0) {
+      setError("Please select valid PDF file(s).");
+      return;
+    }
+    setError(null);
+    setQueuedFiles((prev) => {
+      const existingKeys = new Set(prev.map((p) => `${p.name}_${p.size}`));
+      const newItems = validPdfs.filter((f) => !existingKeys.has(`${f.name}_${f.size}`));
+      return [...prev, ...newItems];
+    });
+  }
+
+  function handleRemoveQueuedFile(index: number) {
+    setQueuedFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleUploadQueued() {
+    if (queuedFiles.length === 0) {
+      setError("Please select at least one PDF file.");
       return;
     }
     setError(null);
     setUploading(true);
     try {
-      const doc = await documentsApi.upload(file, subject, grade);
+      let doc: DocumentSummary;
+      if (queuedFiles.length === 1 && !mergedTitle.trim()) {
+        doc = await documentsApi.upload(queuedFiles[0], subject.trim(), grade.trim());
+      } else {
+        doc = await documentsApi.uploadMultiple(
+          queuedFiles,
+          mergedTitle.trim(),
+          subject.trim(),
+          grade.trim()
+        );
+      }
       onUploaded(doc);
+      setQueuedFiles([]);
+      setMergedTitle("");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Upload failed.");
     } finally {
@@ -119,11 +161,12 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) handleFile(file);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleAddFiles(e.dataTransfer.files);
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [subject, grade]
+    []
   );
 
   async function handleWebFetch() {
@@ -263,72 +306,237 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
             </div>
           </div>
 
-          {/* Drop zone */}
-          <div
-            className={`upload-zone ${dragging ? "upload-zone--dragover" : ""}`}
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={onDrop}
-            onClick={() => !uploading && fileRef.current?.click()}
-            role="button"
-            tabIndex={0}
-            aria-label="Upload PDF file"
-            onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
-          >
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf"
-              style={{ display: "none" }}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFile(f);
-                e.target.value = "";
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                handleAddFiles(e.target.files);
+              }
+              e.target.value = "";
+            }}
+          />
+
+          {/* Staged Queue or Dropzone */}
+          {queuedFiles.length > 0 ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                padding: "16px",
+                background: "var(--surface)",
+                border: "1.5px solid var(--accent)",
+                borderRadius: "var(--radius-md)",
+                boxShadow: "var(--shadow-sm)",
               }}
-            />
-            {uploading ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                <div className="lotus-loader__petals" style={{ width: 44, height: 44 }}>
-                  {[...Array(8)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="lotus-loader__petal"
-                      style={{ "--r": `${i * 45}deg` } as React.CSSProperties}
-                    />
-                  ))}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Layers size={18} color="var(--accent)" />
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text)" }}>
+                    {queuedFiles.length} PDF{queuedFiles.length > 1 ? "s" : ""} Staged for Document Card
+                  </span>
                 </div>
-                <p style={{ fontSize: 14, color: "var(--text-2)", fontStyle: "italic", fontFamily: "var(--font-heading)" }}>
-                  Extracting text & computing vector embeddings…
-                </p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="gk-btn gk-btn--secondary gk-btn--sm"
+                    style={{ fontSize: 12 }}
+                  >
+                    <Plus size={13} /> Add More PDFs
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQueuedFiles([])}
+                    className="gk-btn gk-btn--ghost gk-btn--sm"
+                    style={{ fontSize: 12, color: "var(--terracotta)" }}
+                  >
+                    Clear All
+                  </button>
+                </div>
               </div>
-            ) : (
-              <>
-                <div className="upload-zone__icon">
-                  <ScrollText size={44} />
+
+              {/* List of staged files */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  maxHeight: "180px",
+                  overflowY: "auto",
+                  padding: "4px 0",
+                }}
+              >
+                {queuedFiles.map((file, idx) => (
+                  <div
+                    key={`${file.name}_${idx}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      background: "var(--bg)",
+                      borderRadius: 6,
+                      border: "1px solid var(--border)",
+                      fontSize: 13,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1, marginRight: 8 }}>
+                      <FileText size={15} color="var(--accent)" style={{ flexShrink: 0 }} />
+                      <span style={{ fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {file.name}
+                      </span>
+                      <span style={{ fontSize: 11, color: "var(--text-3)", flexShrink: 0 }}>
+                        ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveQueuedFile(idx)}
+                      className="gk-btn gk-btn--icon"
+                      style={{ width: 24, height: 24, flexShrink: 0, color: "var(--text-3)" }}
+                      title="Remove file"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Optional Unified Title for multi-PDF upload */}
+              {queuedFiles.length > 1 && (
+                <div className="gk-field" style={{ marginTop: 4 }}>
+                  <label className="gk-label" htmlFor="merged-title">
+                    Unified Document / Card Title (Optional)
+                  </label>
+                  <input
+                    id="merged-title"
+                    className="gk-input"
+                    placeholder="e.g. Physics Class 10 — All Chapters (or leave blank to auto-name)"
+                    value={mergedTitle}
+                    onChange={(e) => setMergedTitle(e.target.value)}
+                  />
+                  <div
+                    style={{
+                      fontSize: 11.5,
+                      color: "var(--accent)",
+                      background: "rgba(217, 119, 6, 0.08)",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      marginTop: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Sparkles size={13} />
+                    <span>
+                      All <strong>{queuedFiles.length} files</strong> will be extracted and merged into <strong>1 unified Granth card</strong> with distinct semantic chapter sections.
+                    </span>
+                  </div>
                 </div>
-                <p className="upload-zone__title">
-                  {dragging ? "Release to offer this scroll" : "Offer a PDF scroll"}
-                </p>
-                <p className="upload-zone__sub">
-                  Drag & drop your PDF here, or click to browse
-                </p>
-                <span
-                  style={{
-                    marginTop: 12,
-                    display: "inline-block",
-                    fontSize: 11,
-                    color: "var(--text-3)",
-                    background: "var(--bg-2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 100,
-                    padding: "2px 12px",
-                  }}
-                >
-                  Max 50 MB · PDF only
-                </span>
-              </>
-            )}
-          </div>
+              )}
+
+              {/* Action button */}
+              <button
+                type="button"
+                className="gk-btn gk-btn--primary gk-btn--full"
+                onClick={handleUploadQueued}
+                disabled={uploading}
+                style={{ height: 42, justifyContent: "center", marginTop: 4 }}
+              >
+                {uploading ? (
+                  <>
+                    <span
+                      className="spin"
+                      style={{ display: "inline-block", width: 16, height: 16, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", marginRight: 8 }}
+                    />
+                    Extracting text & vector indexing {queuedFiles.length} file{queuedFiles.length > 1 ? "s" : ""}…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    {queuedFiles.length > 1
+                      ? `✨ Merge & Ingest ${queuedFiles.length} PDFs into Granth Library`
+                      : "Upload & Ingest PDF into Granth Library"}
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div
+              className={`upload-zone ${dragging ? "upload-zone--dragover" : ""}`}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+              onClick={() => !uploading && fileRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              aria-label="Upload PDF files"
+              onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
+            >
+              {uploading ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                  <div className="lotus-loader__petals" style={{ width: 44, height: 44 }}>
+                    {[...Array(8)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="lotus-loader__petal"
+                        style={{ "--r": `${i * 45}deg` } as React.CSSProperties}
+                      />
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 14, color: "var(--text-2)", fontStyle: "italic", fontFamily: "var(--font-heading)" }}>
+                    Extracting text & computing vector embeddings…
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="upload-zone__icon">
+                    <ScrollText size={44} />
+                  </div>
+                  <p className="upload-zone__title">
+                    {dragging ? "Release to offer these scrolls" : "Offer PDF scrolls (Single or Multiple)"}
+                  </p>
+                  <p className="upload-zone__sub">
+                    Drag & drop 1 or multiple PDF notes / chapters here, or click to browse
+                  </p>
+                  <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "var(--text-3)",
+                        background: "var(--bg-2)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 100,
+                        padding: "2px 12px",
+                      }}
+                    >
+                      Max 50 MB each · PDF only
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "var(--accent)",
+                        background: "rgba(217, 119, 6, 0.08)",
+                        border: "1px solid var(--accent-mid)",
+                        borderRadius: 100,
+                        padding: "2px 12px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ✨ Multi-PDF Merge Supported
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -389,7 +597,7 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
               id="web-context"
               className="gk-textarea"
               rows={3}
-              placeholder="e.g. Ray Optics, Snell's Law, Total Internal Reflection, Optical Instruments (or drop a syllabus PDF below)"
+              placeholder="e.g. Ray Optics, Snell's Law, Total Internal Reflection, Optical Instruments (or drop syllabus PDF(s) below)"
               value={webContext}
               onChange={(e) => setWebContext(e.target.value)}
             />
@@ -402,8 +610,9 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
               onDrop={(e) => {
                 e.preventDefault();
                 setWebDragging(false);
-                const f = e.dataTransfer.files[0];
-                if (f) handleExtractTopicPdf(f, "web");
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  handleExtractTopicPdfs(e.dataTransfer.files, "web");
+                }
               }}
               onClick={() => !extractingWeb && webPdfRef.current?.click()}
               style={{
@@ -426,23 +635,25 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
                 ref={webPdfRef}
                 type="file"
                 accept=".pdf"
+                multiple
                 style={{ display: "none" }}
                 onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleExtractTopicPdf(f, "web");
+                  if (e.target.files && e.target.files.length > 0) {
+                    handleExtractTopicPdfs(e.target.files, "web");
+                  }
                   e.target.value = "";
                 }}
               />
               {extractingWeb ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)" }}>
                   <span className="spin" style={{ width: 14, height: 14, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%" }} />
-                  <span>Extracting topics & syllabus from PDF...</span>
+                  <span>Extracting topics & syllabus from PDF(s)...</span>
                 </div>
               ) : (
                 <>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <FileText size={16} style={{ color: "var(--accent)" }} />
-                    <span><strong>Insert Topics from PDF:</strong> Drag & drop your PDF file here (or click to browse)</span>
+                    <span><strong>Insert Topics from PDF(s):</strong> Drag & drop PDF file(s) here (or click to browse)</span>
                   </div>
                   <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--bg)", padding: "2px 8px", borderRadius: 4 }}>
                     Auto-fills text
@@ -588,7 +799,7 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
               id="custom-topics"
               className="gk-textarea"
               rows={5}
-              placeholder="Paste or enter chapters, formulas, theorems, and key concepts (or drop a syllabus PDF below)..."
+              placeholder="Paste or enter chapters, formulas, theorems, and key concepts (or drop syllabus PDF(s) below)..."
               value={customTopics}
               onChange={(e) => setCustomTopics(e.target.value)}
               required
@@ -602,8 +813,9 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
               onDrop={(e) => {
                 e.preventDefault();
                 setCustomDragging(false);
-                const f = e.dataTransfer.files[0];
-                if (f) handleExtractTopicPdf(f, "custom");
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  handleExtractTopicPdfs(e.dataTransfer.files, "custom");
+                }
               }}
               onClick={() => !extractingCustom && customPdfRef.current?.click()}
               style={{
@@ -626,23 +838,25 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
                 ref={customPdfRef}
                 type="file"
                 accept=".pdf"
+                multiple
                 style={{ display: "none" }}
                 onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleExtractTopicPdf(f, "custom");
+                  if (e.target.files && e.target.files.length > 0) {
+                    handleExtractTopicPdfs(e.target.files, "custom");
+                  }
                   e.target.value = "";
                 }}
               />
               {extractingCustom ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)" }}>
                   <span className="spin" style={{ width: 14, height: 14, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%" }} />
-                  <span>Extracting topics & title from PDF...</span>
+                  <span>Extracting topics & title from PDF(s)...</span>
                 </div>
               ) : (
                 <>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <FileText size={16} style={{ color: "var(--accent)" }} />
-                    <span><strong>Import Topics from PDF:</strong> Drag & drop your PDF file here (or click to browse)</span>
+                    <span><strong>Import Topics from PDF(s):</strong> Drag & drop PDF file(s) here (or click to browse)</span>
                   </div>
                   <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--bg)", padding: "2px 8px", borderRadius: 4 }}>
                     Auto-fills form
