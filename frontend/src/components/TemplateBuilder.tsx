@@ -5,7 +5,23 @@ import { v4 as uuidv4 } from "uuid";
 import { templatesApi } from "@/lib/api";
 import type { Difficulty, ExamTemplate, Section } from "@/types/template";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { Save, RefreshCw, ClipboardList, Plus, Circle, Leaf, Flame, Zap, Skull } from "lucide-react";
+import {
+  Save,
+  RefreshCw,
+  ClipboardList,
+  Plus,
+  Circle,
+  Leaf,
+  Flame,
+  Zap,
+  Skull,
+  Sparkles,
+  UploadCloud,
+  FileText,
+  X,
+  File as FileIcon,
+  Wand2,
+} from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import RichTextEditor from "./RichTextEditor";
 import MarksBar from "./MarksBar";
@@ -60,6 +76,7 @@ function makeSection(index: number, staticId?: string): Section {
     num_questions: 5,
     marks_per_question: 1,
     instructions: null,
+    topic_query: null,
   };
 }
 
@@ -100,6 +117,10 @@ export default function TemplateBuilder({
   // ── UI state ────────────────────────────────────────────────────────────────
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [showDecompilerModal, setShowDecompilerModal] = useState(false);
+  const [pyqFile, setPyqFile] = useState<File | null>(null);
+  const [pyqText, setPyqText] = useState("");
+  const [decompiling, setDecompiling] = useState(false);
 
   // Filter out any corrupted data from localStorage
   const validSections = sections.filter(Boolean);
@@ -196,6 +217,37 @@ export default function TemplateBuilder({
     }
   }
 
+  // ── AI PYQ Decompiler Handler (Gurukul AI 2.0) ──────────────────────────────
+  async function handleDecompile() {
+    if (!pyqFile && (!pyqText || pyqText.trim().length < 20)) {
+      showToast("Please select a PDF file or paste question paper text (at least 20 chars).", "error");
+      return;
+    }
+    setDecompiling(true);
+    try {
+      const res = await templatesApi.analyzePyq(pyqFile, pyqText.trim() || undefined);
+      const t = res.template;
+      setName(`${t.subject} ${t.grade} Blueprint (PYQ)`);
+      setSubject(t.subject);
+      setGrade(t.grade);
+      setDifficulty(t.difficulty || "medium");
+      setTotalMarks(t.total_marks);
+      setDuration(t.duration_minutes || 180);
+      setHeadingDetails(t.heading_details || "");
+      setInstructions(t.instructions || "");
+      setSections(t.sections);
+      showToast(`✨ Successfully reverse-engineered blueprint with ${t.sections.length} sections!`, "success");
+      setShowDecompilerModal(false);
+      setPyqFile(null);
+      setPyqText("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to decompile question paper.";
+      showToast(msg, "error");
+    } finally {
+      setDecompiling(false);
+    }
+  }
+
   // ── Drag and Drop ─────────────────────────────────────────────────────────────
   function onDragEnd(result: DropResult) {
     if (!result.destination) return;
@@ -260,36 +312,53 @@ export default function TemplateBuilder({
         </div>
 
         {/* ── Top action bar ────────────────────────────────────────────────── */}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-          <button
-            className="gk-btn gk-btn--secondary gk-btn--sm"
-            onClick={handleReset}
-          >
-            <RefreshCw size={14} /> Start Fresh
-          </button>
-          <button
-            className="gk-btn gk-btn--primary gk-btn--sm"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <span
-                className="spin"
-                style={{
-                  display: "inline-block",
-                  width: 14,
-                  height: 14,
-                  border: "2px solid currentColor",
-                  borderTopColor: "transparent",
-                  borderRadius: "50%",
-                }}
-              />
-            ) : (
-              <>
-                <Save size={14} /> Save Template
-              </>
-            )}
-          </button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div>
+            <button
+              className="gk-btn gk-btn--secondary gk-btn--sm"
+              onClick={() => setShowDecompilerModal(true)}
+              style={{
+                background: "linear-gradient(135deg, rgba(234, 88, 12, 0.12), rgba(217, 119, 6, 0.18))",
+                borderColor: "var(--accent-mid)",
+                color: "var(--accent)",
+                fontWeight: 700,
+                gap: 8,
+              }}
+            >
+              <Sparkles size={14} /> ⚡ Auto-Create from Sample Paper / PYQ
+            </button>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              className="gk-btn gk-btn--secondary gk-btn--sm"
+              onClick={handleReset}
+            >
+              <RefreshCw size={14} /> Start Fresh
+            </button>
+            <button
+              className="gk-btn gk-btn--primary gk-btn--sm"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? (
+                <span
+                  className="spin"
+                  style={{
+                    display: "inline-block",
+                    width: 14,
+                    height: 14,
+                    border: "2px solid currentColor",
+                    borderTopColor: "transparent",
+                    borderRadius: "50%",
+                  }}
+                />
+              ) : (
+                <>
+                  <Save size={14} /> Save Template
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* ── Exam details card ──────────────────────────────────────────────── */}
@@ -676,6 +745,198 @@ export default function TemplateBuilder({
         </div>
 
       </div>
+
+      {/* ── AI PYQ / Sample Paper Decompiler Modal (Gurukul AI 2.0) ── */}
+      {showDecompilerModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(0, 0, 0, 0.72)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !decompiling) {
+              setShowDecompilerModal(false);
+            }
+          }}
+        >
+          <div
+            className="lens-card"
+            style={{
+              width: "100%",
+              maxWidth: "680px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: "28px",
+              borderRadius: "var(--radius-xl)",
+              border: "1px solid var(--accent-mid)",
+              boxShadow: "0 24px 48px rgba(0,0,0,0.4)",
+              background: "var(--surface)",
+              position: "relative",
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <span className="chip-badge chip-badge--accent" style={{ fontSize: "11px" }}>
+                    <Sparkles size={12} /> Gurukul AI 2.0 Engine
+                  </span>
+                  <span className="shloka" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
+                    प्रश्नपत्र विश्लेषण
+                  </span>
+                </div>
+                <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "20px", fontWeight: 800, margin: 0, color: "var(--text)" }}>
+                  ⚡ Auto-Create from Sample Paper / PYQ
+                </h2>
+                <p style={{ fontSize: "13px", color: "var(--text-2)", marginTop: 6, marginBottom: 0, lineHeight: 1.5 }}>
+                  Upload any CBSE, ICSE, State Board, or University question paper PDF (or paste text) to reverse-engineer its subject, grade, duration, marks balance, and section blueprint.
+                </p>
+              </div>
+              {!decompiling && (
+                <button
+                  type="button"
+                  className="gk-btn gk-btn--ghost gk-btn--icon"
+                  onClick={() => setShowDecompilerModal(false)}
+                  style={{ width: 32, height: 32, padding: 0 }}
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Dropzone & Upload area */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label className="gk-label" style={{ marginBottom: 8, display: "block" }}>
+                  1. Upload Sample Paper PDF (Optional if pasting text)
+                </label>
+                <div
+                  style={{
+                    border: "2px dashed var(--border)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "24px 16px",
+                    textAlign: "center",
+                    background: "var(--surface-sunken)",
+                    cursor: "pointer",
+                    transition: "border-color 0.2s ease",
+                  }}
+                  onClick={() => document.getElementById("pyq-file-input")?.click()}
+                >
+                  <input
+                    id="pyq-file-input"
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setPyqFile(f);
+                    }}
+                  />
+                  {pyqFile ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--forest)" }}>
+                      <FileIcon size={22} />
+                      <div style={{ textAlign: "left" }}>
+                        <div style={{ fontWeight: 700, fontSize: "13.5px" }}>{pyqFile.name}</div>
+                        <div style={{ fontSize: "11.5px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}>
+                          {(pyqFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to analyze
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="gk-btn gk-btn--ghost gk-btn--sm"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          setPyqFile(null);
+                        }}
+                        style={{ marginLeft: 12, padding: "4px 8px" }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                      <UploadCloud size={32} style={{ color: "var(--accent)", opacity: 0.8 }} />
+                      <div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text)" }}>
+                        Drag & Drop or Click to Select Sample Paper PDF
+                      </div>
+                      <div style={{ fontSize: "11.5px", color: "var(--text-3)" }}>
+                        Supports Board PYQs, unit tests, mock papers (up to 30 MB)
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Paste text area */}
+              <div>
+                <label className="gk-label" htmlFor="pyq-text-input" style={{ marginBottom: 8, display: "block" }}>
+                  2. Or Paste Question Paper Text / Instructions
+                </label>
+                <textarea
+                  id="pyq-text-input"
+                  className="gk-textarea"
+                  rows={5}
+                  placeholder="Paste question paper headers, general instructions, section breakdowns, or question text..."
+                  value={pyqText}
+                  onChange={(e) => setPyqText(e.target.value)}
+                  style={{ fontSize: "13px", fontFamily: "var(--font-mono)" }}
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="gk-btn gk-btn--secondary"
+                  onClick={() => setShowDecompilerModal(false)}
+                  disabled={decompiling}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="gk-btn gk-btn--primary"
+                  onClick={handleDecompile}
+                  disabled={decompiling || (!pyqFile && (!pyqText || pyqText.trim().length < 20))}
+                  style={{
+                    background: "linear-gradient(135deg, var(--terracotta), var(--accent))",
+                    fontWeight: 700,
+                  }}
+                >
+                  {decompiling ? (
+                    <>
+                      <span
+                        className="spin"
+                        style={{
+                          display: "inline-block",
+                          width: 14,
+                          height: 14,
+                          border: "2px solid currentColor",
+                          borderTopColor: "transparent",
+                          borderRadius: "50%",
+                        }}
+                      />
+                      <span>Decompiling Blueprint...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 size={15} />
+                      <span>Decompile into Blueprint ⚡</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

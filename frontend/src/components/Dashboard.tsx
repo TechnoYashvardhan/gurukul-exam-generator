@@ -130,6 +130,14 @@ export default function Dashboard({ onNavigate, historyEntries = [], role = "tea
           </p>
 
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button className="gk-btn gk-btn--secondary" onClick={() => onNavigate("library")}>
+              <Library size={16} />
+              Granth (Syllabus Library)
+            </button>
+            <button className="gk-btn gk-btn--secondary" onClick={() => onNavigate("builder")}>
+              <BookOpen size={16} />
+              Vidya (Blueprints)
+            </button>
             <button className="gk-btn gk-btn--primary" onClick={() => onNavigate("generate")}>
               <Sparkles size={16} />
               Rachna (Create Exam)
@@ -138,19 +146,11 @@ export default function Dashboard({ onNavigate, historyEntries = [], role = "tea
               <FileCode2 size={16} />
               Aayat (JSON Import)
             </button>
-            <button className="gk-btn gk-btn--secondary" onClick={() => onNavigate("builder")}>
-              <BookOpen size={16} />
-              Vidya (Blueprints)
-            </button>
-            <button className="gk-btn gk-btn--secondary" onClick={() => onNavigate("library")}>
-              <Library size={16} />
-              Granth (Library)
-            </button>
           </div>
         </div>
       </div>
 
-      {/* ── 4 Gurukul Action Pillars ── */}
+      {/* ── Gurukul Action Pillars (Granth -> Vidya -> Rachna Pipeline) ── */}
       <div
         style={{
           display: "grid",
@@ -158,47 +158,6 @@ export default function Dashboard({ onNavigate, historyEntries = [], role = "tea
           gap: "16px",
         }}
       >
-        {/* Vidya / Blueprints */}
-        <div
-          className="lens-card"
-          onClick={() => onNavigate("builder")}
-          style={{ padding: "20px", cursor: "pointer" }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background: "var(--gold-light)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--gold-border)",
-                border: "1px solid var(--gold)",
-              }}
-            >
-              <ScrollText size={20} />
-            </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-                  Vidya
-                </h3>
-                <span className="shloka" style={{ fontSize: "12px", color: "var(--gold-border)", fontWeight: 600 }}>
-                  विद्या
-                </span>
-              </div>
-              <p style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)", margin: 0 }}>
-                {stats.templates} Saved Blueprints
-              </p>
-            </div>
-          </div>
-          <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-            Configure examination layout, section marks, question types (MCQ, short, long), and time limits.
-          </p>
-        </div>
-
         {/* Granth / Library */}
         <div
           className="lens-card"
@@ -236,7 +195,48 @@ export default function Dashboard({ onNavigate, historyEntries = [], role = "tea
             </div>
           </div>
           <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-            Upload textbooks, syllabus guides, chapter PDFs, or web links for question extraction.
+            Upload textbooks, syllabus notes, chapter PDFs, or web links for question extraction.
+          </p>
+        </div>
+
+        {/* Vidya / Blueprints */}
+        <div
+          className="lens-card"
+          onClick={() => onNavigate("builder")}
+          style={{ padding: "20px", cursor: "pointer" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "10px",
+                background: "var(--gold-light)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--gold-border)",
+                border: "1px solid var(--gold)",
+              }}
+            >
+              <ScrollText size={20} />
+            </div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                  Vidya
+                </h3>
+                <span className="shloka" style={{ fontSize: "12px", color: "var(--gold-border)", fontWeight: 600 }}>
+                  विद्या
+                </span>
+              </div>
+              <p style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)", margin: 0 }}>
+                {stats.templates} Saved Blueprints
+              </p>
+            </div>
+          </div>
+          <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
+            Configure section marks, formats, chapter focus scopes, or auto-create from sample papers.
           </p>
         </div>
 

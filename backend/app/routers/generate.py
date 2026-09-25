@@ -108,6 +108,19 @@ async def generate_exam_endpoint(
         except (ValueError, TypeError):
             pass
 
+    # Multi-RAG: Pre-retrieve targeted syllabus context per section if topic_query is specified
+    section_syllabus_map: dict[str, str] = {}
+    if doc_ids:
+        try:
+            from app.services.rag import retrieve_context_multi
+            for sec in body.template.sections:
+                if sec.topic_query and sec.topic_query.strip():
+                    sec_ctx = await retrieve_context_multi(db=db, document_ids=doc_ids, query=sec.topic_query.strip(), top_k=12)
+                    if sec_ctx and len(sec_ctx.strip()) > 50:
+                        section_syllabus_map[sec.id] = sec_ctx
+        except Exception as sec_rag_err:
+            logger.warning("Error pre-retrieving section syllabus maps: %s", sec_rag_err)
+
     async def event_stream():
         try:
             async for update in generate_exam(
@@ -115,6 +128,7 @@ async def generate_exam_endpoint(
                 syllabus_text=syllabus_text,
                 source_type=source_type,
                 custom_topic=body.custom_topic,
+                section_syllabus_map=section_syllabus_map,
             ):
                 if isinstance(update, dict):
                     yield json.dumps(update) + "\n"

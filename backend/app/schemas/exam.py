@@ -26,6 +26,7 @@ class SectionBlueprint(BaseModel):
     section_id: str
     type: str
     questions: list[QuestionBlueprint]
+    topic_query: str | None = None
 
 class ExamBlueprint(BaseModel):
     sections: list[SectionBlueprint]

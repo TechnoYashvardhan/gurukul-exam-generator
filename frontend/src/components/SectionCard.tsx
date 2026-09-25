@@ -150,6 +150,27 @@ export default function SectionCard({ section, index, onChange, onRemove, canRem
         </div>
       </div>
 
+      {/* Syllabus Scope / Chapter Focus (Gurukul AI 2.0 Multi-RAG) */}
+      <div className="gk-field" style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+          <label className="gk-label" htmlFor={"sec-" + section.id + "-scope"} style={{ margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+            <span>🎯 Syllabus Scope / Chapter Focus</span>
+          </label>
+          <span style={{ fontSize: "10.5px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}>
+            Multi-RAG Scoping
+          </span>
+        </div>
+        <input
+          id={"sec-" + section.id + "-scope"}
+          type="text"
+          className="gk-input"
+          value={section.topic_query || ""}
+          onChange={(e) => update({ topic_query: e.target.value || null })}
+          placeholder="e.g. Chapter 3: Kinematics & Laws of Motion (leave empty for full syllabus)"
+          style={{ width: "100%", height: "38px", fontSize: "13px" }}
+        />
+      </div>
+
       <div className="gk-field" style={{ marginBottom: 14 }}>
         <label className="gk-label" htmlFor={"sec-" + section.id + "-bloom"}>Bloom's Cognitive Level (Optional)</label>
         <select

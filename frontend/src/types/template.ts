@@ -19,6 +19,7 @@ export interface Section {
   marks_per_question: number;
   instructions: string | null;
   bloom_level?: string | null;
+  topic_query?: string | null;
 }
 
 export interface ExamTemplate {

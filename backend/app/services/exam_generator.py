@@ -289,6 +289,7 @@ def _create_default_blueprint(template: ExamTemplate) -> ExamBlueprint:
             SectionBlueprint(
                 section_id=s.id,
                 type=s.type,
+                topic_query=s.topic_query,
                 questions=q_blueprints,
             )
         )
@@ -297,11 +298,12 @@ def _create_default_blueprint(template: ExamTemplate) -> ExamBlueprint:
 async def _generate_blueprint(llm: LLMClient, template: ExamTemplate, syllabus_text: str, custom_topic: str | None) -> ExamBlueprint:
     sections_info = []
     for s in template.sections:
-        sections_info.append(f"Section ID '{s.id}' ({s.type}): {s.num_questions} questions.")
+        scope_str = f" [Scope / Chapter Focus: '{s.topic_query}']" if s.topic_query else ""
+        sections_info.append(f"Section ID '{s.id}' ({s.type}): {s.num_questions} questions, {s.marks_per_question} marks each.{scope_str}")
     sections_text = "\n".join(sections_info)
     bloom_hint = BLOOM_GUIDANCE.get(template.difficulty, BLOOM_GUIDANCE['medium'])
 
-    system_prompt = f"""You are the Chief Exam Architect.
+    system_prompt = f"""You are the Chief Exam Architect for Gurukul AI.
 Your job is to read the syllabus and output a JSON blueprint for the exam. DO NOT write the actual full questions.
 Only output the topics, subtopics, and concepts to cover.
 
@@ -313,6 +315,10 @@ Custom Topic Focus: {custom_topic or 'None'}
 
 SECTIONS REQUIRED:
 {sections_text}
+
+CRITICAL SECTION TOPIC SCOPING RULES:
+- If a section specifies [Scope / Chapter Focus], all question topics, subtopics, and concepts in that section MUST strictly focus on that specified syllabus chapter or topic!
+- Ensure high-quality conceptual diversity matching the section format and Bloom's difficulty.
 
 SYLLABUS CONTENT:
 {syllabus_text}
@@ -367,9 +373,9 @@ Return ONLY the raw JSON.
                 if isinstance(q_item, dict):
                     q_blueprints.append(
                         QuestionBlueprint(
-                            topic=str(q_item.get("topic", template.subject)),
+                            topic=str(q_item.get("topic", s.topic_query or template.subject)),
                             subtopic=str(q_item.get("subtopic", s.title)),
-                            concept=str(q_item.get("concept", f"Concept in {template.subject}")),
+                            concept=str(q_item.get("concept", f"Concept in {s.topic_query or template.subject}")),
                             bloom_level=str(q_item.get("bloom_level", s.bloom_level or template.bloom_level or "apply")),
                             difficulty=str(q_item.get("difficulty", template.difficulty)),
                         )
@@ -379,9 +385,9 @@ Return ONLY the raw JSON.
             while len(q_blueprints) < s.num_questions:
                 q_blueprints.append(
                     QuestionBlueprint(
-                        topic=template.subject,
+                        topic=s.topic_query or template.subject,
                         subtopic=f"{s.title} - Q{len(q_blueprints)+1}",
-                        concept=f"Core concept in {template.subject}",
+                        concept=f"Core concept in {s.topic_query or template.subject}",
                         bloom_level=s.bloom_level or template.bloom_level or "apply",
                         difficulty=template.difficulty,
                     )
@@ -394,6 +400,7 @@ Return ONLY the raw JSON.
                 SectionBlueprint(
                     section_id=s.id,
                     type=s.type,
+                    topic_query=s.topic_query,
                     questions=q_blueprints,
                 )
             )
@@ -453,6 +460,8 @@ def _shuffle_and_randomize_options(q: Question) -> Question:
 
 async def _build_section(llm: LLMClient, template: ExamTemplate, sec: SectionBlueprint, marks_per_q: int, syllabus_text: str) -> list[Question]:
     questions_outline = json.dumps([q.model_dump() for q in sec.questions], indent=2)
+    sec_topic_focus = getattr(sec, "topic_query", None)
+    scope_instruction = f"\n12. SPECIFIC SECTION TOPIC/CHAPTER SCOPE: All questions in this section MUST strictly cover and test the concepts in: '{sec_topic_focus}'." if sec_topic_focus else ""
     system_prompt = f"""You are the Expert Exam Writer.
 Convert the provided blueprint into actual, full questions.
 
@@ -460,7 +469,7 @@ SECTION RULES:
 1. Section ID: {sec.section_id}
 2. Type: {sec.type}
 3. Marks per question: {marks_per_q}
-4. You MUST generate EXACTLY {len(sec.questions)} questions. Not more, not less.
+4. You MUST generate EXACTLY {len(sec.questions)} questions. Not more, not less.{scope_instruction}
 5. IF type is "mcq": provide exactly 4 options (A,B,C,D) and set "answer" to the correct key ("A", "B", "C", or "D").
    CRITICAL: Distribute correct answers evenly across keys A, B, C, and D. Avoid repeating the same letter across consecutive questions.
 6. IF type is "true_false": provide 2 options: [{{"key": "A", "text": "True"}}, {{"key": "B", "text": "False"}}] and set "answer" to "A" (if True) or "B" (if False). Balance answers roughly 50% True and 50% False.
@@ -654,6 +663,7 @@ async def generate_exam(
     source_type: str = "hardcoded",
     custom_topic: str | None = None,
     llm_client: LLMClient | None = None,
+    section_syllabus_map: dict[str, str] | None = None,
 ):
     if llm_client is None:
         llm_client = get_llm_client(settings.llm_provider)
@@ -673,28 +683,29 @@ async def generate_exam(
 
     for sec_bp in blueprint.sections:
         marks = marks_map.get(sec_bp.section_id, 1)
+        sec_syllabus = (section_syllabus_map or {}).get(sec_bp.section_id) or syllabus_text
         
         # Smart Batching: Split section questions into chunks of 5 to guarantee 100% complete generation without token limits
         for i in range(0, len(sec_bp.questions), CHUNK_SIZE):
             chunk_sec = sec_bp.model_copy(deep=True)
             chunk_sec.questions = sec_bp.questions[i:i + CHUNK_SIZE]
-            task_info.append((chunk_sec, marks, llm_client))
+            task_info.append((chunk_sec, marks, llm_client, sec_syllabus))
             
     yield {"status": f"Writing {len(task_info)} parallel batches to bypass limits..."}
     
-    tasks = [_build_section(client, template, bp, marks, syllabus_text) for bp, marks, client in task_info]
+    tasks = [_build_section(client, template, bp, marks, syl) for bp, marks, client, syl in task_info]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     
     yield {"status": "Validating and repairing any failed chunks..."}
     all_questions = []
     for info, result in zip(task_info, results):
-        bp, marks, client = info
+        bp, marks, client, syl = info
         if isinstance(result, Exception):
             logger.warning(f"Cloud API failed on chunk '{bp.section_id}' ({result}). Rescuing with local Ollama...")
             yield {"status": f"Rescuing chunk '{bp.section_id}' with local fallback..."}
             try:
                 # Dynamic Routing: Catch cloud failures and fallback to Ollama
-                result = await _build_section(qwen, template, bp, marks, syllabus_text)
+                result = await _build_section(qwen, template, bp, marks, syl)
                 all_questions.extend(result)
             except Exception as e:
                 logger.error(f"Failed to rescue chunk '{bp.section_id}': {e}")

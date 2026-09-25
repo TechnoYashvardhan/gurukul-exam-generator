@@ -1,4 +1,5 @@
 import type {
+  ExamTemplate,
   SaveTemplateRequest,
   TemplateDetail,
   TemplateSummary,
@@ -106,6 +107,34 @@ export const templatesApi = {
   create: (payload: SaveTemplateRequest, role?: "admin" | "teacher" | string) =>
     request<{ id: string }>("POST", `/templates${role ? `?role=${role}` : ""}`, payload),
   delete: (id: string) => request<void>("DELETE", "/templates/" + id),
+  analyzePyq: async (
+    file?: File | null,
+    text?: string
+  ): Promise<{
+    status: string;
+    template: ExamTemplate;
+    preview_text: string;
+    message?: string;
+  }> => {
+    const formData = new FormData();
+    if (file) formData.append("file", file);
+    if (text) formData.append("text", text);
+
+    const res = await fetch(`${getApiUrl()}/templates/analyze-pyq`, {
+      method: "POST",
+      headers: { ...getAuthHeader() },
+      body: formData,
+    });
+    if (!res.ok) {
+      let errText = await res.text();
+      try {
+        const parsed = JSON.parse(errText);
+        errText = parseDetailMessage(parsed, errText);
+      } catch {}
+      throw new Error(errText);
+    }
+    return res.json();
+  },
 };
 
 export const documentsApi = {

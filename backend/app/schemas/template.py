@@ -32,6 +32,9 @@ class Section(BaseModel):
     bloom_level: str | None = Field(
         None, description="Optional Bloom's taxonomy override for this specific section"
     )
+    topic_query: str | None = Field(
+        None, description="Optional focused chapter/topic query for this section (e.g. 'Chapter 1: Kinematics & Laws of Motion')"
+    )
 
     @property
     def section_marks(self) -> int:
