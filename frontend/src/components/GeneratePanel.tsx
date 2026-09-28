@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { documentsApi, generationApi, templatesApi, adminApi } from "@/lib/api";
 import type { DocumentSummary } from "@/types/document";
-import type { TemplateSummary, GeneratedExam, ExamTemplate } from "@/types/template";
+import type { TemplateSummary, GeneratedExam, ExamTemplate, QuestionChoice } from "@/types/template";
 import type { ClassSummary } from "@/types/auth";
 import {
   Bot,
@@ -32,6 +32,7 @@ import {
   Trash2,
   X,
   FileCode2,
+  Shuffle,
 } from "lucide-react";
 import MathText from "./MathText";
 import { useAuth } from "./AuthProvider";
@@ -190,6 +191,7 @@ export default function GeneratePanel({
   const [editQMarks, setEditQMarks] = useState(1);
   const [editQAnswer, setEditQAnswer] = useState("");
   const [editQOptions, setEditQOptions] = useState<{ key: string; text: string }[]>([]);
+  const [editQOrChoice, setEditQOrChoice] = useState<QuestionChoice | null>(null);
 
   function handleStartEdit(q: any) {
     setEditingQNum(q.question_no);
@@ -198,10 +200,12 @@ export default function GeneratePanel({
     setEditQMarks(q.marks || 1);
     setEditQAnswer(q.answer || "");
     setEditQOptions(q.options ? JSON.parse(JSON.stringify(q.options)) : []);
+    setEditQOrChoice(q.or_choice ? JSON.parse(JSON.stringify(q.or_choice)) : null);
   }
 
   function handleCancelEdit() {
     setEditingQNum(null);
+    setEditQOrChoice(null);
   }
 
   function handleSaveEdit(qNum: number) {
@@ -215,6 +219,7 @@ export default function GeneratePanel({
           marks: editQMarks,
           answer: editQAnswer.trim(),
           options: editQOptions.length > 0 ? editQOptions : q.options,
+          or_choice: editQOrChoice,
         };
       }
       return q;
@@ -229,6 +234,7 @@ export default function GeneratePanel({
     setResult(updatedExam);
     onExamSaved(updatedExam);
     setEditingQNum(null);
+    setEditQOrChoice(null);
     setToast({ message: `Question Q${qNum} updated successfully!`, variant: "success" });
   }
 
@@ -524,6 +530,76 @@ export default function GeneratePanel({
                 </div>
               )}
 
+              {/* Internal Choice ("OR" Option) Editor */}
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: "12px 14px",
+                  background: editQOrChoice ? "rgba(99, 102, 241, 0.05)" : "var(--surface-sunken)",
+                  border: editQOrChoice ? "1px solid rgba(99, 102, 241, 0.3)" : "1px dashed var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: editQOrChoice ? 10 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <Shuffle size={14} style={{ color: editQOrChoice ? "var(--primary, #6366f1)" : "var(--text-3)" }} />
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-1)" }}>
+                      Internal Choice: Option B (OR Question)
+                    </span>
+                  </div>
+                  {editQOrChoice ? (
+                    <button
+                      type="button"
+                      onClick={() => setEditQOrChoice(null)}
+                      className="gk-btn gk-btn--ghost gk-btn--sm"
+                      style={{ fontSize: "11px", color: "var(--terracotta)", padding: "2px 8px" }}
+                    >
+                      <Trash2 size={11} style={{ marginRight: 4 }} /> Remove OR Choice
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setEditQOrChoice({ text: "Alternative Question Text", answer: "Model solution for alternative" })}
+                      className="gk-btn gk-btn--secondary gk-btn--sm"
+                      style={{ fontSize: "11px", padding: "2px 8px" }}
+                    >
+                      <Plus size={11} style={{ marginRight: 4 }} /> + Add OR Alternative
+                    </button>
+                  )}
+                </div>
+
+                {editQOrChoice && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div className="gk-field">
+                      <label className="gk-label" style={{ fontSize: "11px" }}>
+                        Option B Question Text:
+                      </label>
+                      <textarea
+                        className="gk-textarea"
+                        rows={2}
+                        value={editQOrChoice.text || ""}
+                        onChange={(e) => setEditQOrChoice({ ...editQOrChoice, text: e.target.value })}
+                        placeholder="Alternative question text (e.g. Discuss the theme of...)"
+                        style={{ fontSize: "12.5px" }}
+                      />
+                    </div>
+                    <div className="gk-field">
+                      <label className="gk-label" style={{ fontSize: "11px" }}>
+                        Option B Correct Answer / Solution:
+                      </label>
+                      <input
+                        type="text"
+                        className="gk-input"
+                        value={editQOrChoice.answer || ""}
+                        onChange={(e) => setEditQOrChoice({ ...editQOrChoice, answer: e.target.value })}
+                        placeholder="Model answer for Option B"
+                        style={{ fontSize: "12.5px" }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Save / Cancel / Delete Actions */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, borderTop: "1px solid var(--border)" }}>
                 <button
@@ -759,6 +835,208 @@ export default function GeneratePanel({
                 <div style={{ color: "var(--text)" }}>
                   <MathText content={q.answer} />
                 </div>
+              </div>
+            )}
+
+            {/* Internal Choice ("OR" Question) Academic Display */}
+            {q.or_choice && (
+              <div
+                style={{
+                  marginTop: 18,
+                  paddingTop: 14,
+                  borderTop: "1.5px dashed var(--border)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 14,
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      letterSpacing: "0.08em",
+                      padding: "3px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(99, 102, 241, 0.08)",
+                      border: "1px solid rgba(99, 102, 241, 0.25)",
+                      color: "var(--primary, #6366f1)",
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    — OR — (अथवा)
+                  </span>
+                  <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+                </div>
+
+                {/* OR Choice Passage (if any) */}
+                {q.or_choice.passage && (
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      padding: "12px 16px",
+                      background: "var(--surface-sunken)",
+                      border: "1px solid var(--border)",
+                      borderLeft: "4px solid var(--primary, #6366f1)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--primary, #6366f1)", fontWeight: 700, fontSize: "11px", textTransform: "uppercase" }}>
+                      <BookOpen size={13} />
+                      <span>Alternative Passage / Case Context</span>
+                    </div>
+                    <div style={{ fontSize: "13px", lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-line" }}>
+                      <MathText content={q.or_choice.passage} />
+                    </div>
+                  </div>
+                )}
+
+                {/* OR Choice Question Text */}
+                <div style={{ fontSize: "14px", lineHeight: 1.6, marginBottom: 10, paddingLeft: 4 }}>
+                  <span style={{ fontWeight: 700, color: "var(--primary, #6366f1)", marginRight: 8, fontFamily: "var(--font-mono)" }}>
+                    [ Option B ]
+                  </span>
+                  <MathText content={q.or_choice.text} />
+                </div>
+
+                {/* OR Choice Sub-Questions (if any) */}
+                {q.or_choice.sub_questions && q.or_choice.sub_questions.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10, marginBottom: 10 }}>
+                    {q.or_choice.sub_questions.map((sub: any, sIdx: number) => {
+                      const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
+                      return (
+                        <div
+                          key={sIdx}
+                          style={{
+                            padding: "10px 12px",
+                            background: "var(--surface)",
+                            border: "1px solid var(--border)",
+                            borderRadius: "var(--radius-sm)",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1 }}>
+                              <span style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--primary, #6366f1)", minWidth: 24, fontSize: "12.5px" }}>
+                                {subLabel}
+                              </span>
+                              <div style={{ fontSize: "13px", lineHeight: 1.5, flex: 1 }}>
+                                <MathText content={sub.text} />
+                              </div>
+                            </div>
+                            <span className="chip-badge chip-badge--gold" style={{ fontSize: "10px", flexShrink: 0 }}>
+                              {sub.marks} Mark{sub.marks > 1 ? "s" : ""}
+                            </span>
+                          </div>
+
+                          {sub.options && sub.options.length > 0 && (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 6, marginTop: 8, paddingLeft: 32 }}>
+                              {sub.options.map((sOpt: any) => (
+                                <div
+                                  key={sOpt.key}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    padding: "4px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "12px",
+                                    background: activeViewMode === "key" && sOpt.key === sub.answer ? "var(--forest-light)" : "var(--surface-sunken)",
+                                    border: activeViewMode === "key" && sOpt.key === sub.answer ? "1px solid var(--forest)" : "1px solid var(--border)",
+                                  }}
+                                >
+                                  <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: activeViewMode === "key" && sOpt.key === sub.answer ? "var(--forest)" : "var(--text-3)", fontSize: "11px" }}>
+                                    ({sOpt.key})
+                                  </span>
+                                  <span style={{ fontSize: "12px" }}>
+                                    <MathText content={sOpt.text} />
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {activeViewMode === "key" && sub.answer && (
+                            <div style={{ marginTop: 8, marginLeft: 32, padding: "5px 10px", background: "var(--forest-light)", border: "1px solid var(--forest)", borderRadius: "4px", fontSize: "11.5px", display: "flex", alignItems: "center", gap: 6, color: "var(--forest)" }}>
+                              <CheckCircle size={12} />
+                              <span><strong>Model Answer:</strong> <MathText content={sub.answer} /></span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* OR Choice MCQ Options */}
+                {!q.or_choice.sub_questions && q.or_choice.options && q.or_choice.options.length > 0 && (
+                  <div className="mcq-options" style={{ marginTop: 10 }}>
+                    {q.or_choice.options.map((opt: any) => (
+                      <div
+                        key={opt.key}
+                        className={`mcq-option ${activeViewMode === "key" && opt.key === q.or_choice?.answer ? "mcq-option--correct" : ""}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          padding: "6px 10px",
+                          borderRadius: "var(--radius-sm)",
+                          border: "1px solid var(--border)",
+                          marginBottom: "4px",
+                          background: activeViewMode === "key" && opt.key === q.or_choice?.answer ? "var(--forest-light)" : "var(--surface)",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontWeight: 700,
+                            width: "20px",
+                            height: "20px",
+                            borderRadius: "50%",
+                            background: activeViewMode === "key" && opt.key === q.or_choice?.answer ? "var(--forest)" : "var(--surface-sunken)",
+                            color: activeViewMode === "key" && opt.key === q.or_choice?.answer ? "#fff" : "var(--text)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "11px",
+                          }}
+                        >
+                          {opt.key}
+                        </span>
+                        <span style={{ fontSize: "13px" }}>
+                          <MathText content={opt.text} />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* OR Choice Answer Key in key view */}
+                {activeViewMode === "key" && q.or_choice.answer && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: "8px 12px",
+                      background: "var(--forest-light)",
+                      border: "1px solid var(--forest)",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: "12.5px",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: "var(--forest)", marginBottom: 3, display: "flex", alignItems: "center", gap: 6 }}>
+                      <CheckCircle size={14} />
+                      <span>Option B (OR) Model Solution & Marking Scheme:</span>
+                    </div>
+                    <div style={{ color: "var(--text)" }}>
+                      <MathText content={q.or_choice.answer} />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

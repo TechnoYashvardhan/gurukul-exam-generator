@@ -13,6 +13,7 @@ from app.schemas.exam import (
     Question,
     MCQOption,
     SubQuestion,
+    QuestionChoice,
     GeneratedSection,
     ExamBlueprint,
     SectionBlueprint,
@@ -296,6 +297,7 @@ def _create_default_blueprint(template: ExamTemplate) -> ExamBlueprint:
                         type=sub.type,
                         topic_query=sub.topic_query or s.topic_query,
                         case_study_config=sub.case_study_config,
+                        internal_choice_count=getattr(sub, "internal_choice_count", 0) or 0,
                         questions=q_blueprints,
                     )
                 )
@@ -319,6 +321,7 @@ def _create_default_blueprint(template: ExamTemplate) -> ExamBlueprint:
                     type=s.type,
                     topic_query=s.topic_query,
                     case_study_config=s.case_study_config,
+                    internal_choice_count=getattr(s, "internal_choice_count", 0) or 0,
                     questions=q_blueprints,
                 )
             )
@@ -333,7 +336,8 @@ async def _generate_blueprint(llm: LLMClient, template: ExamTemplate, syllabus_t
             sections_info.append(f"Section ID '{s.id}' ({s.title}): Split into {len(s.sub_sections)} Sub-Sections / Parts:")
             for sub in s.sub_sections:
                 sub_scope = f" [Scope / Focus: '{sub.topic_query or s.topic_query}']" if (sub.topic_query or s.topic_query) else ""
-                sections_info.append(f"  - Sub-Section '{sub.id}' ({sub.title} | {sub.type}): {sub.num_questions} questions.{sub_scope}")
+                choice_str = f" [Internal OR Choices: {sub.internal_choice_count}]" if getattr(sub, 'internal_choice_count', 0) > 0 else ""
+                sections_info.append(f"  - Sub-Section '{sub.id}' ({sub.title} | {sub.type}): {sub.num_questions} questions.{sub_scope}{choice_str}")
                 target_units.append({
                     "section_id": s.id,
                     "sub_section_id": sub.id,
@@ -343,11 +347,13 @@ async def _generate_blueprint(llm: LLMClient, template: ExamTemplate, syllabus_t
                     "topic_query": sub.topic_query or s.topic_query,
                     "bloom_level": sub.bloom_level or s.bloom_level or template.bloom_level,
                     "case_study_config": sub.case_study_config,
+                    "internal_choice_count": getattr(sub, "internal_choice_count", 0) or 0,
                     "title": f"{s.title} • {sub.title}",
                 })
         else:
             scope_str = f" [Scope / Chapter Focus: '{s.topic_query}']" if s.topic_query else ""
-            sections_info.append(f"Section ID '{s.id}' ({s.title} | {s.type}): {s.num_questions} questions, {s.marks_per_question} marks each.{scope_str}")
+            choice_str = f" [Internal OR Choices: {s.internal_choice_count}]" if getattr(s, 'internal_choice_count', 0) > 0 else ""
+            sections_info.append(f"Section ID '{s.id}' ({s.title} | {s.type}): {s.num_questions} questions, {s.marks_per_question} marks each.{scope_str}{choice_str}")
             target_units.append({
                 "section_id": s.id,
                 "sub_section_id": None,
@@ -357,6 +363,7 @@ async def _generate_blueprint(llm: LLMClient, template: ExamTemplate, syllabus_t
                 "topic_query": s.topic_query,
                 "bloom_level": s.bloom_level or template.bloom_level,
                 "case_study_config": s.case_study_config,
+                "internal_choice_count": getattr(s, "internal_choice_count", 0) or 0,
                 "title": s.title,
             })
 
@@ -469,6 +476,7 @@ Return ONLY the raw JSON.
                     type=u["type"],
                     topic_query=u["topic_query"],
                     case_study_config=u["case_study_config"],
+                    internal_choice_count=u.get("internal_choice_count", 0) or 0,
                     questions=q_blueprints,
                 )
             )
@@ -743,6 +751,52 @@ def _build_fallback_questions(sec: SectionBlueprint, marks_per_q: int) -> list[Q
             fallback_text = f"Analyze {concept_clean} in the context of {bp_ref.subtopic}. State the governing principles and mathematical relations."
             fallback_ans = f"Comprehensive derivation and governing equations for {concept_clean}."
 
+        fallback_or_choice = None
+        if idx < getattr(sec, "internal_choice_count", 0):
+            if sec.type == "case_study":
+                fallback_or_choice = QuestionChoice(
+                    text="Read the following alternative case study carefully and answer the questions that follow:",
+                    passage=(
+                        f"Alternative Context / Extract: In a parallel study involving {concept_clean} in {bp_ref.subtopic}, "
+                        f"distinct observational parameters highlighted the role of dynamic equilibrium. Systematic "
+                        f"methodological variations demonstrated that secondary constraints alter initial response times proportionally."
+                    ),
+                    sub_questions=[SubQuestion.model_validate(s) for s in fallback_subs] if fallback_subs else None,
+                    options=None,
+                    answer=fallback_ans,
+                    bloom_level=bp_ref.bloom_level,
+                    difficulty=bp_ref.difficulty,
+                )
+            elif sec.type == "mcq":
+                fallback_or_choice = QuestionChoice(
+                    text=f"Alternative Question: Evaluate the governing behavior of {concept_clean} in {bp_ref.subtopic} under standard conditions. Which statement is correct?",
+                    options=[
+                        MCQOption(key="A", text="Directly proportional to the boundary parameter"),
+                        MCQOption(key="B", text="Independent of the initial conditions"),
+                        MCQOption(key="C", text="Inversely proportional to the square of the parameter"),
+                        MCQOption(key="D", text="Remains zero under all dynamic states"),
+                    ],
+                    answer="A",
+                    bloom_level=bp_ref.bloom_level,
+                    difficulty=bp_ref.difficulty,
+                )
+            elif sec.type in ["short_answer", "long_answer"]:
+                fallback_or_choice = QuestionChoice(
+                    text=f"Alternative Question: Critically examine the secondary implications of {concept_clean} in {bp_ref.subtopic}. Provide theoretical justification and relevant examples.",
+                    options=None,
+                    answer=f"Detailed model answer and theoretical evaluation for alternative question on {concept_clean}.",
+                    bloom_level=bp_ref.bloom_level,
+                    difficulty=bp_ref.difficulty,
+                )
+            else:
+                fallback_or_choice = QuestionChoice(
+                    text=f"Alternative Question: State the primary secondary characteristic of {concept_clean} in {bp_ref.subtopic}.",
+                    options=None,
+                    answer=concept_clean,
+                    bloom_level=bp_ref.bloom_level,
+                    difficulty=bp_ref.difficulty,
+                )
+
         fallback_q = Question(
             section_id=sec.section_id,
             sub_section_id=sec.sub_section_id,
@@ -756,7 +810,8 @@ def _build_fallback_questions(sec: SectionBlueprint, marks_per_q: int) -> list[Q
             answer=fallback_ans,
             marks=case_marks_calc,
             bloom_level=bp_ref.bloom_level,
-            difficulty=bp_ref.difficulty
+            difficulty=bp_ref.difficulty,
+            or_choice=fallback_or_choice,
         )
         _shuffle_and_randomize_options(fallback_q)
         fallback_questions.append(fallback_q)
@@ -786,6 +841,23 @@ async def _build_section(llm: LLMClient, template: ExamTemplate, sec: SectionBlu
       You MUST generate EXACTLY the following sub-questions sequence in "sub_questions": {subq_spec_str} (Total = {case_marks_calc} marks).
       Ensure each sub-question matches its requested format (mcq, fill_in_the_blanks, true_false, one_word, short_answer) and exact marks!"""
 
+    choice_instruction = ""
+    choice_cnt = getattr(sec, "internal_choice_count", 0) or 0
+    if choice_cnt > 0:
+        choice_instruction = f"""
+13. MANDATORY INTERNAL CHOICE ('OR' ALTERNATIVE QUESTIONS):
+    Exactly {choice_cnt} question(s) in this section MUST provide an alternative choice in "or_choice".
+    - For each question with an internal choice, provide Option (A) in top-level fields: "text", "passage", "sub_questions", "options", "answer".
+    - In "or_choice", provide Option (B) with equivalent format ({sec.type}), marks ({case_marks_calc}M), and cognitive rigor on an alternative theme or question:
+      "or_choice": {{
+        "text": "<alternative question text>",
+        "passage": "<alternative passage if type is case_study, otherwise null>",
+        "sub_questions": [ ... ] (or null),
+        "options": [ {{"key": "A", "text": "..."}}, ... ] (or null),
+        "answer": "<model answer or key for alternative question>"
+      }}
+    - Questions without an alternative choice MUST set "or_choice" to null."""
+
     system_prompt = f"""You are the Expert Exam Writer.
 Convert the provided blueprint into actual, full questions.
 
@@ -793,7 +865,7 @@ SECTION RULES:
 1. Section ID: {sec.section_id}{f" (Sub-Section: '{sec.sub_section_title}')" if sec.sub_section_title else ""}
 2. Type: {sec.type}
 3. Marks per question: {case_marks_calc}
-4. You MUST generate EXACTLY {len(sec.questions)} questions. Not more, not less.{scope_instruction}
+4. You MUST generate EXACTLY {len(sec.questions)} questions. Not more, not less.{scope_instruction}{choice_instruction}
 5. IF type is "mcq": provide exactly 4 options (A,B,C,D) and set "answer" to the correct key ("A", "B", "C", or "D").
    CRITICAL: Distribute correct answers evenly across keys A, B, C, and D. Avoid repeating the same letter across consecutive questions.
 6. IF type is "true_false": provide 2 options: [{{"key": "A", "text": "True"}}, {{"key": "B", "text": "False"}}] and set "answer" to "A" (if True) or "B" (if False). Balance answers roughly 50% True and 50% False.
@@ -881,7 +953,8 @@ REQUIRED JSON FORMAT
       "answer": "A",
       "marks": {case_marks_calc},
       "bloom_level": "apply",
-      "difficulty": "medium"
+      "difficulty": "medium",
+      "or_choice": null
     }}
   ]
 }}
@@ -947,6 +1020,46 @@ REQUIRED JSON FORMAT
                             for opt in item["options"]:
                                 if isinstance(opt, dict) and "text" in opt:
                                     opt["text"] = _sanitize_exam_text(str(opt["text"]))
+
+                        if "or_choice" in item and isinstance(item["or_choice"], dict) and item["or_choice"].get("text"):
+                            c_dict = dict(item["or_choice"])
+                            c_dict["text"] = _sanitize_exam_text(str(c_dict.get("text", "")))
+                            if "passage" in c_dict and c_dict["passage"]:
+                                c_dict["passage"] = _sanitize_exam_text(str(c_dict["passage"]))
+                            else:
+                                c_dict["passage"] = None
+                            
+                            if "sub_questions" in c_dict and isinstance(c_dict["sub_questions"], list) and len(c_dict["sub_questions"]) > 0:
+                                c_subs = []
+                                for s_idx, sub in enumerate(c_dict["sub_questions"]):
+                                    if isinstance(sub, dict):
+                                        sc = dict(sub)
+                                        sc["sub_no"] = str(sc.get("sub_no") or f"i" if s_idx == 0 else f"{s_idx+1}")
+                                        sc["type"] = str(sc.get("type") or "mcq").lower()
+                                        sc["marks"] = max(1, int(sc.get("marks") or 1))
+                                        sc["bloom_level"] = str(sc.get("bloom_level") or "understand").lower()
+                                        sc["text"] = _sanitize_exam_text(str(sc.get("text") or f"Sub-question {s_idx+1}"))
+                                        sc["answer"] = _sanitize_exam_text(str(sc.get("answer") or "A"))
+                                        if "options" in sc and isinstance(sc["options"], list):
+                                            for opt in sc["options"]:
+                                                if isinstance(opt, dict) and "text" in opt:
+                                                    opt["text"] = _sanitize_exam_text(str(opt["text"]))
+                                        c_subs.append(sc)
+                                c_dict["sub_questions"] = c_subs
+                                c_dict["options"] = None
+                            else:
+                                c_dict["sub_questions"] = None
+
+                            if "options" in c_dict and isinstance(c_dict["options"], list) and not c_dict.get("sub_questions"):
+                                for opt in c_dict["options"]:
+                                    if isinstance(opt, dict) and "text" in opt:
+                                        opt["text"] = _sanitize_exam_text(str(opt["text"]))
+
+                            c_raw_ans = c_dict.get("answer") or ("A" if sec.type == "mcq" else "Model answer")
+                            c_dict["answer"] = _sanitize_exam_text(str(c_raw_ans))
+                            item["or_choice"] = QuestionChoice.model_validate(c_dict)
+                        else:
+                            item["or_choice"] = None
                         
                         q = Question.model_validate(item)
                         validated_questions.append(q)

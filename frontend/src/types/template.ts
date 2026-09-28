@@ -23,6 +23,7 @@ export interface SubSection {
   type: QuestionType;
   num_questions: number;
   marks_per_question: number;
+  internal_choice_count?: number;
   instructions?: string | null;
   bloom_level?: string | null;
   topic_query?: string | null;
@@ -35,6 +36,7 @@ export interface Section {
   type: QuestionType;
   num_questions: number;
   marks_per_question: number;
+  internal_choice_count?: number;
   instructions: string | null;
   bloom_level?: string | null;
   topic_query?: string | null;
@@ -89,6 +91,16 @@ export interface SubQuestion {
   bloom_level?: string;
 }
 
+export interface QuestionChoice {
+  text: string;
+  passage?: string | null;
+  sub_questions?: SubQuestion[] | null;
+  options?: MCQOption[] | null;
+  answer: string;
+  bloom_level?: string;
+  difficulty?: Difficulty;
+}
+
 export interface Question {
   section_id: string;
   sub_section_id?: string | null;
@@ -98,6 +110,7 @@ export interface Question {
   text: string;
   passage?: string | null;
   sub_questions?: SubQuestion[] | null;
+  or_choice?: QuestionChoice | null;
   options: MCQOption[] | null;
   answer: string;
   marks: number;

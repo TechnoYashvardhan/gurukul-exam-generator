@@ -194,6 +194,7 @@ RULES:
      ]
    - num_questions: number of lead questions/passages in this section (integer >= 1).
    - marks_per_question: marks per question (integer >= 1).
+   - internal_choice_count: number of questions with internal OR choices (e.g. 0, 1, 2).
    - instructions: section-specific instructions or null.
    - topic_query: specific syllabus/chapter focus if mentioned, otherwise null.
 

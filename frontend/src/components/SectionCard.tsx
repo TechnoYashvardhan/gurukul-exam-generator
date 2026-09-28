@@ -14,6 +14,7 @@ import {
   Sparkles,
   Sliders,
   Check,
+  Shuffle,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
@@ -490,6 +491,87 @@ function SubSectionItem({
         </div>
       </div>
 
+      {/* Internal Choice (OR Options) for Sub-Section */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: (subSection.internal_choice_count || 0) > 0 ? "rgba(99, 102, 241, 0.08)" : "rgba(255, 255, 255, 0.02)",
+          border: (subSection.internal_choice_count || 0) > 0 ? "1px solid rgba(99, 102, 241, 0.28)" : "1px solid rgba(255, 255, 255, 0.06)",
+          borderRadius: "8px",
+          padding: "8px 12px",
+          marginBottom: "12px",
+        }}
+      >
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <Shuffle size={13} style={{ color: (subSection.internal_choice_count || 0) > 0 ? "var(--primary, #6366f1)" : "var(--text-3)" }} />
+            <span style={{ fontSize: "11.5px", fontWeight: 700, color: "var(--text-1)" }}>
+              Internal Choice (OR Options)
+            </span>
+          </div>
+          <p style={{ fontSize: "10.5px", color: "var(--text-3)", margin: "2px 0 0 0" }}>
+            {(subSection.internal_choice_count || 0) > 0
+              ? `${subSection.internal_choice_count} of ${subSection.num_questions} question(s) will have an "OR" alternative`
+              : "No internal choice (all compulsory)"}
+          </p>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <div style={{ display: "flex", gap: "3px" }}>
+            <button
+              type="button"
+              className={`gk-btn gk-btn--sm ${(subSection.internal_choice_count || 0) === 0 ? "gk-btn--primary" : "gk-btn--ghost"}`}
+              style={{ fontSize: "10.5px", padding: "1px 6px", height: "24px" }}
+              onClick={() => update({ internal_choice_count: 0 })}
+            >
+              None
+            </button>
+            <button
+              type="button"
+              className={`gk-btn gk-btn--sm ${(subSection.internal_choice_count || 0) === 1 ? "gk-btn--primary" : "gk-btn--ghost"}`}
+              style={{ fontSize: "10.5px", padding: "1px 6px", height: "24px" }}
+              onClick={() => update({ internal_choice_count: 1 })}
+            >
+              1 Q
+            </button>
+            <button
+              type="button"
+              className={`gk-btn gk-btn--sm ${(subSection.internal_choice_count || 0) === subSection.num_questions ? "gk-btn--primary" : "gk-btn--ghost"}`}
+              style={{ fontSize: "10.5px", padding: "1px 6px", height: "24px" }}
+              onClick={() => update({ internal_choice_count: subSection.num_questions })}
+            >
+              All
+            </button>
+          </div>
+
+          <div className="gk-stepper" style={{ height: "26px" }}>
+            <button
+              type="button"
+              className="gk-stepper__btn"
+              onClick={() => update({ internal_choice_count: clamp((subSection.internal_choice_count || 0) - 1, 0, subSection.num_questions) })}
+              disabled={(subSection.internal_choice_count || 0) <= 0}
+              style={{ padding: "0 6px" }}
+            >
+              -
+            </button>
+            <span style={{ fontSize: "11px", fontWeight: 700, minWidth: "20px", textAlign: "center" }}>
+              {subSection.internal_choice_count || 0}
+            </span>
+            <button
+              type="button"
+              className="gk-stepper__btn"
+              onClick={() => update({ internal_choice_count: clamp((subSection.internal_choice_count || 0) + 1, 0, subSection.num_questions) })}
+              disabled={(subSection.internal_choice_count || 0) >= subSection.num_questions}
+              style={{ padding: "0 6px" }}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Case Study Breakdown if type === 'case_study' */}
       {subSection.type === "case_study" && (
         <CaseStudyBreakdownBuilder
@@ -827,6 +909,87 @@ export default function SectionCard({
                   className="gk-stepper__btn"
                   onClick={() => update({ marks_per_question: clamp(section.marks_per_question + 1, 1, 100) })}
                   disabled={section.marks_per_question >= 100 || section.type === "case_study"}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Internal Choice (OR Questions) Config */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              background: (section.internal_choice_count || 0) > 0 ? "rgba(99, 102, 241, 0.08)" : "rgba(255, 255, 255, 0.02)",
+              border: (section.internal_choice_count || 0) > 0 ? "1px solid rgba(99, 102, 241, 0.28)" : "1px solid rgba(255, 255, 255, 0.06)",
+              borderRadius: "8px",
+              padding: "10px 14px",
+              marginBottom: "14px",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Shuffle size={14} style={{ color: (section.internal_choice_count || 0) > 0 ? "var(--primary, #6366f1)" : "var(--text-3)" }} />
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-1)" }}>
+                  Internal Choice (OR Options)
+                </span>
+              </div>
+              <p style={{ fontSize: "11px", color: "var(--text-3)", margin: "2px 0 0 0" }}>
+                {(section.internal_choice_count || 0) > 0
+                  ? `${section.internal_choice_count} of ${section.num_questions} question(s) will have an "OR" alternative choice`
+                  : "No internal choice (all questions compulsory)"}
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ display: "flex", gap: "4px" }}>
+                <button
+                  type="button"
+                  className={`gk-btn gk-btn--sm ${(section.internal_choice_count || 0) === 0 ? "gk-btn--primary" : "gk-btn--ghost"}`}
+                  style={{ fontSize: "11px", padding: "2px 8px", height: "26px" }}
+                  onClick={() => update({ internal_choice_count: 0 })}
+                >
+                  None
+                </button>
+                <button
+                  type="button"
+                  className={`gk-btn gk-btn--sm ${(section.internal_choice_count || 0) === 1 ? "gk-btn--primary" : "gk-btn--ghost"}`}
+                  style={{ fontSize: "11px", padding: "2px 8px", height: "26px" }}
+                  onClick={() => update({ internal_choice_count: 1 })}
+                >
+                  1 Q
+                </button>
+                <button
+                  type="button"
+                  className={`gk-btn gk-btn--sm ${(section.internal_choice_count || 0) === section.num_questions ? "gk-btn--primary" : "gk-btn--ghost"}`}
+                  style={{ fontSize: "11px", padding: "2px 8px", height: "26px" }}
+                  onClick={() => update({ internal_choice_count: section.num_questions })}
+                >
+                  All ({section.num_questions})
+                </button>
+              </div>
+
+              <div className="gk-stepper" style={{ height: "28px" }}>
+                <button
+                  type="button"
+                  className="gk-stepper__btn"
+                  onClick={() => update({ internal_choice_count: clamp((section.internal_choice_count || 0) - 1, 0, section.num_questions) })}
+                  disabled={(section.internal_choice_count || 0) <= 0}
+                  style={{ padding: "0 8px" }}
+                >
+                  -
+                </button>
+                <span style={{ fontSize: "12px", fontWeight: 700, minWidth: "24px", textAlign: "center" }}>
+                  {section.internal_choice_count || 0}
+                </span>
+                <button
+                  type="button"
+                  className="gk-stepper__btn"
+                  onClick={() => update({ internal_choice_count: clamp((section.internal_choice_count || 0) + 1, 0, section.num_questions) })}
+                  disabled={(section.internal_choice_count || 0) >= section.num_questions}
+                  style={{ padding: "0 8px" }}
                 >
                   +
                 </button>

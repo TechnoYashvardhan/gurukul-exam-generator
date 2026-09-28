@@ -2,6 +2,11 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.schemas.template import ExamTemplate, Section
+from app.services.auth import get_current_user
+from app.llm.base import LLMClient
+
+# Override auth dependency for endpoint unit tests
+app.dependency_overrides[get_current_user] = lambda: None
 
 
 @pytest.mark.asyncio
@@ -30,6 +35,71 @@ async def test_section_topic_query_schema():
 
 @pytest.mark.asyncio
 async def test_analyze_pyq_endpoint_with_text():
+    import json
+    from unittest.mock import patch
+
+    class MockAnalyzeLLM(LLMClient):
+        @property
+        def provider_name(self) -> str:
+            return "mock-analyze"
+
+        @property
+        def model_name(self) -> str:
+            return "mock"
+
+        async def generate(self, prompt: str, system_prompt: str | None = None, **kwargs) -> str:
+            return json.dumps({
+                "subject": "Physics",
+                "grade": "Grade 12",
+                "difficulty": "medium",
+                "bloom_level": "apply",
+                "total_marks": 70,
+                "duration_minutes": 180,
+                "instructions": "All questions are compulsory.",
+                "sections": [
+                    {
+                        "id": "sec_a",
+                        "title": "Section A — Objective",
+                        "type": "mcq",
+                        "num_questions": 16,
+                        "marks_per_question": 1,
+                        "internal_choice_count": 0
+                    },
+                    {
+                        "id": "sec_b",
+                        "title": "Section B — Short Answer",
+                        "type": "short_answer",
+                        "num_questions": 5,
+                        "marks_per_question": 2,
+                        "internal_choice_count": 1
+                    },
+                    {
+                        "id": "sec_c",
+                        "title": "Section C — Descriptive",
+                        "type": "short_answer",
+                        "num_questions": 7,
+                        "marks_per_question": 3,
+                        "internal_choice_count": 2
+                    },
+                    {
+                        "id": "sec_d",
+                        "title": "Section D — Case Study",
+                        "type": "case_study",
+                        "num_questions": 2,
+                        "marks_per_question": 4,
+                        "internal_choice_count": 0
+                    },
+                    {
+                        "id": "sec_e",
+                        "title": "Section E — Long Answer",
+                        "type": "long_answer",
+                        "num_questions": 3,
+                        "marks_per_question": 5,
+                        "internal_choice_count": 3
+                    }
+                ]
+            })
+
     transport = ASGITransport(app=app)
     sample_text = """
     CBSE CLASS 12 PHYSICS BOARD PAPER
@@ -43,20 +113,21 @@ async def test_analyze_pyq_endpoint_with_text():
     5. Section D contains two case study based questions of 4 marks each.
     6. Section E contains three long answer questions of 5 marks each.
     """
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        res = await client.post(
-            "/api/v1/templates/analyze-pyq",
-            data={"text": sample_text},
-        )
-        assert res.status_code == 200
-        data = res.json()
-        assert data["status"] == "success"
-        tpl = data["template"]
-        assert tpl["subject"] in ["Physics", "General Studies"]
-        assert len(tpl["sections"]) >= 1
-        # Check that marks match mathematically
-        comp = sum(s["num_questions"] * s["marks_per_question"] for s in tpl["sections"])
-        assert comp == tpl["total_marks"]
+    with patch("app.llm.factory.get_llm_client", return_value=MockAnalyzeLLM()):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.post(
+                "/api/v1/templates/analyze-pyq",
+                data={"text": sample_text},
+            )
+            assert res.status_code == 200
+            data = res.json()
+            assert data["status"] == "success"
+            tpl = data["template"]
+            assert tpl["subject"] in ["Physics", "General Studies"]
+            assert len(tpl["sections"]) >= 1
+            # Check that marks match mathematically
+            comp = sum(s["num_questions"] * s["marks_per_question"] for s in tpl["sections"])
+            assert comp == tpl["total_marks"]
 
 
 @pytest.mark.asyncio
@@ -126,6 +197,55 @@ async def test_sub_question_and_case_study_schema():
 
 @pytest.mark.asyncio
 async def test_analyze_pyq_cbse_multi_tier():
+    import json
+    from unittest.mock import patch
+
+    class MockCBSELLM(LLMClient):
+        @property
+        def provider_name(self) -> str:
+            return "mock-cbse"
+
+        @property
+        def model_name(self) -> str:
+            return "mock"
+
+        async def generate(self, prompt: str, system_prompt: str | None = None, **kwargs) -> str:
+            return json.dumps({
+                "subject": "English Core",
+                "grade": "Grade 12",
+                "difficulty": "medium",
+                "bloom_level": "apply",
+                "total_marks": 80,
+                "duration_minutes": 180,
+                "instructions": "All questions are compulsory.",
+                "sections": [
+                    {
+                        "id": "sec_a",
+                        "title": "SECTION A: READING SKILLS",
+                        "type": "case_study",
+                        "num_questions": 2,
+                        "marks_per_question": 11,
+                        "internal_choice_count": 0
+                    },
+                    {
+                        "id": "sec_b",
+                        "title": "SECTION B: CREATIVE WRITING",
+                        "type": "short_answer",
+                        "num_questions": 4,
+                        "marks_per_question": 4,
+                        "internal_choice_count": 2
+                    },
+                    {
+                        "id": "sec_c",
+                        "title": "SECTION C: LITERATURE",
+                        "type": "long_answer",
+                        "num_questions": 7,
+                        "marks_per_question": 6,
+                        "internal_choice_count": 3
+                    }
+                ]
+            })
+
     transport = ASGITransport(app=app)
     sample_cbse_paper = """
     CBSE Senior School Certificate Examination 2025-26
@@ -160,20 +280,21 @@ async def test_analyze_pyq_cbse_multi_tier():
     12. Long answer question (5 Marks)
     13. Analytical question (6 Marks)
     """
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        res = await client.post(
-            "/api/v1/templates/analyze-pyq",
-            data={"text": sample_cbse_paper},
-        )
-        assert res.status_code == 200
-        data = res.json()
-        assert data["status"] == "success"
-        tpl = data["template"]
-        assert tpl["subject"] in ["English Core", "General Studies", "English"]
-        assert tpl["total_marks"] in [80, 70]
-        assert len(tpl["sections"]) >= 1
-        comp = sum(s["num_questions"] * s["marks_per_question"] for s in tpl["sections"])
-        assert comp == tpl["total_marks"]
+    with patch("app.llm.factory.get_llm_client", return_value=MockCBSELLM()):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.post(
+                "/api/v1/templates/analyze-pyq",
+                data={"text": sample_cbse_paper},
+            )
+            assert res.status_code == 200
+            data = res.json()
+            assert data["status"] == "success"
+            tpl = data["template"]
+            assert tpl["subject"] in ["English Core", "General Studies", "English"]
+            assert tpl["total_marks"] in [80, 70]
+            assert len(tpl["sections"]) >= 1
+            comp = sum(s["num_questions"] * s["marks_per_question"] for s in tpl["sections"])
+            assert comp == tpl["total_marks"]
 
 
 @pytest.mark.asyncio
@@ -284,5 +405,61 @@ async def test_sub_sections_template_and_generation():
     for q in part3_qs:
         assert q.type == "long_answer"
         assert q.marks == 5
+
+
+@pytest.mark.asyncio
+async def test_internal_choice_generation_and_evaluation():
+    from app.services.exam_generator import generate_exam
+    from app.schemas.exam import QuestionChoice
+
+    class MockFailingLLM(LLMClient):
+        @property
+        def provider_name(self) -> str:
+            return "mock-failing"
+
+        @property
+        def model_name(self) -> str:
+            return "mock"
+
+        async def generate(self, prompt: str, system_prompt: str | None = None, **kwargs) -> str:
+            raise Exception("Simulated LLM failure to trigger fallback")
+
+    sec = Section(
+        id="sec_1",
+        title="Section with Internal Choice",
+        type="short_answer",
+        num_questions=3,
+        marks_per_question=3,
+        internal_choice_count=2,  # 2 questions will have "OR" choice
+    )
+    assert sec.internal_choice_count == 2
+    assert sec.section_marks == 9
+
+    tpl = ExamTemplate(
+        subject="English",
+        grade="Grade 12",
+        difficulty="medium",
+        total_marks=9,
+        duration_minutes=30,
+        sections=[sec],
+    )
+
+    mock_llm = MockFailingLLM()
+    gen = generate_exam(tpl, syllabus_text="Sample syllabus", llm_client=mock_llm)
+    final_exam = None
+    async for item in gen:
+        if isinstance(item, tuple):
+            final_exam = item[0]
+
+    assert final_exam is not None
+    assert len(final_exam.questions) == 3
+    # Exactly 2 questions should have or_choice
+    or_qs = [q for q in final_exam.questions if q.or_choice is not None]
+    assert len(or_qs) == 2
+    for q in or_qs:
+        assert isinstance(q.or_choice, QuestionChoice)
+        assert len(q.or_choice.text) > 0
+        assert len(q.or_choice.answer) > 0
+
 
 

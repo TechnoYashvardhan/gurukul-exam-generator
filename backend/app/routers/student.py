@@ -61,6 +61,8 @@ class QuestionFeedback(BaseModel):
     marks_awarded: float
     max_marks: float
     explanation: Optional[str] = None
+    or_choice: Optional[dict[str, Any]] = None
+    selected_choice: Optional[str] = "A"
 
 
 class QuizResultResponse(BaseModel):
@@ -262,6 +264,7 @@ async def submit_quiz_attempt(
         q_type = q.get("type", "mcq")
         max_marks = float(q.get("marks", 1))
         correct_ans = str(q.get("answer", "")).strip()
+        or_choice = q.get("or_choice")
 
         # Safely retrieve user's answer:
         # Check explicit question_no string and f"q_{q_no}"
@@ -278,15 +281,36 @@ async def submit_quiz_attempt(
             # Only if client used 0-based indexing
             user_ans = body.answers[str(idx)]
 
+        # Check if student explicitly selected Option B (or_choice) or Option A
+        selected_choice = "A"
+        user_ans_val = user_ans
+        if isinstance(user_ans, dict) and ("choice" in user_ans or "selected_choice" in user_ans):
+            chosen = str(user_ans.get("choice") or user_ans.get("selected_choice") or "A").upper()
+            if chosen in ["B", "OR", "OR_CHOICE", "OPTION B", "OPTION_B"]:
+                selected_choice = "B"
+            user_ans_val = user_ans.get("answer", user_ans.get("text", user_ans))
+
+        # Determine target question details for evaluation
+        if selected_choice == "B" and isinstance(or_choice, dict):
+            target_text = or_choice.get("text") or q.get("text", "")
+            target_options = or_choice.get("options") or q.get("options")
+            target_ans = str(or_choice.get("answer", "")).strip()
+            target_type = or_choice.get("type") or q_type
+        else:
+            target_text = q.get("text", "")
+            target_options = q.get("options")
+            target_ans = correct_ans
+            target_type = q_type
+
         # Extract and sanitize user_ans_str
         user_ans_str = ""
-        if user_ans is not None:
-            if isinstance(user_ans, dict):
-                user_ans_str = "; ".join(f"({k}) {v}" for k, v in user_ans.items() if str(v).strip())
-            elif isinstance(user_ans, list):
-                user_ans_str = "; ".join(str(v) for v in user_ans if str(v).strip())
+        if user_ans_val is not None:
+            if isinstance(user_ans_val, dict):
+                user_ans_str = "; ".join(f"({k}) {v}" for k, v in user_ans_val.items() if str(v).strip())
+            elif isinstance(user_ans_val, list):
+                user_ans_str = "; ".join(str(v) for v in user_ans_val if str(v).strip())
             else:
-                raw_val = str(user_ans).strip()
+                raw_val = str(user_ans_val).strip()
                 if raw_val.lower() not in ["", "null", "undefined", "none", "{}", "[]"]:
                     user_ans_str = raw_val
 
@@ -299,28 +323,49 @@ async def submit_quiz_attempt(
             is_correct = False
             marks_awarded = 0.0
             explanation = "Unanswered"
-        elif not correct_ans:
+        elif not target_ans and not (selected_choice == "A" and or_choice and str(or_choice.get("answer", "")).strip()):
             is_correct = False
             marks_awarded = 0.0
             explanation = "No correct answer specified"
-        elif q_type in ["mcq", "match_the_following"]:
-            if user_ans_str.upper() == correct_ans.upper():
+        elif target_type in ["mcq", "match_the_following"]:
+            if user_ans_str.upper() == target_ans.upper():
                 is_correct = True
                 marks_awarded = max_marks
                 explanation = "Correct option selected"
-            elif q.get("options"):
-                for opt in q["options"]:
-                    if opt.get("key", "").upper() == correct_ans.upper() and opt.get("text", "").strip().lower() == user_ans_str.lower():
+            elif target_options:
+                for opt in target_options:
+                    if opt.get("key", "").upper() == target_ans.upper() and opt.get("text", "").strip().lower() == user_ans_str.lower():
                         is_correct = True
                         marks_awarded = max_marks
                         explanation = "Correct option selected"
                         break
+            # If not matching Option A and user didn't specify choice, check if it matches Option B rule-based
+            if not is_correct and selected_choice == "A" and isinstance(or_choice, dict) and or_choice.get("answer"):
+                alt_ans = str(or_choice.get("answer", "")).strip()
+                alt_options = or_choice.get("options") or []
+                if user_ans_str.upper() == alt_ans.upper():
+                    is_correct = True
+                    marks_awarded = max_marks
+                    explanation = "Correct option selected (Option B)"
+                    selected_choice = "B"
+                    target_ans = alt_ans
+                    target_options = alt_options
+                else:
+                    for opt in alt_options:
+                        if opt.get("key", "").upper() == alt_ans.upper() and opt.get("text", "").strip().lower() == user_ans_str.lower():
+                            is_correct = True
+                            marks_awarded = max_marks
+                            explanation = "Correct option selected (Option B)"
+                            selected_choice = "B"
+                            target_ans = alt_ans
+                            target_options = alt_options
+                            break
             if not is_correct:
                 marks_awarded = 0.0
                 explanation = "Incorrect option"
-        elif q_type == "true_false":
+        elif target_type == "true_false":
             norm_user = user_ans_str.lower()
-            norm_correct = correct_ans.lower()
+            norm_correct = target_ans.lower()
             if (norm_user in ["a", "true"] and norm_correct in ["a", "true"]) or \
                (norm_user in ["b", "false"] and norm_correct in ["b", "false"]) or \
                (norm_user == norm_correct and norm_user in ["true", "false", "a", "b"]):
@@ -333,17 +378,24 @@ async def submit_quiz_attempt(
                 explanation = "Incorrect"
         else:
             # Non-MCQ: fill_in_the_blanks, one_word, short_answer, long_answer, case_study
-            if is_fast_match(user_ans_str, correct_ans):
+            if is_fast_match(user_ans_str, target_ans):
                 is_correct = True
                 marks_awarded = max_marks
                 explanation = "Exact match"
+            elif selected_choice == "A" and isinstance(or_choice, dict) and or_choice.get("answer") and is_fast_match(user_ans_str, str(or_choice.get("answer", ""))):
+                is_correct = True
+                marks_awarded = max_marks
+                explanation = "Exact match (Option B)"
+                selected_choice = "B"
+                target_ans = str(or_choice.get("answer", "")).strip()
+                target_text = or_choice.get("text") or q.get("text", "")
             else:
                 # Requires semantic evaluation (e.g. 'one' vs '1', 'O2' vs 'Oxygen', synonyms)
                 items_to_ai_eval.append({
                     "question_no": q_no,
-                    "text": q.get("text", ""),
-                    "type": q_type,
-                    "expected_answer": correct_ans,
+                    "text": target_text,
+                    "type": target_type,
+                    "expected_answer": target_ans,
                     "student_answer": user_ans_str,
                     "marks": max_marks,
                 })
@@ -354,9 +406,13 @@ async def submit_quiz_attempt(
             "explanation": explanation,
             "user_ans": user_ans,
             "user_ans_str": user_ans_str,
-            "correct_ans": correct_ans,
-            "q_type": q_type,
+            "correct_ans": target_ans,
+            "q_type": target_type,
             "max_marks": max_marks,
+            "or_choice": or_choice,
+            "selected_choice": selected_choice,
+            "target_options": target_options,
+            "target_text": target_text,
         }
 
     # Phase 2: Batch AI Semantic Evaluation for all subjective/fill-in/one-word answers
@@ -386,14 +442,16 @@ async def submit_quiz_attempt(
                 question_no=q_no,
                 section_id=q.get("section_id", "s1"),
                 type=ev_info.get("q_type", q.get("type", "mcq")),
-                text=q.get("text", ""),
-                options=q.get("options"),
+                text=ev_info.get("target_text", q.get("text", "")),
+                options=ev_info.get("target_options", q.get("options")),
                 user_answer=ev_info.get("user_ans"),
                 correct_answer=ev_info.get("correct_ans", ""),
                 is_correct=is_correct,
                 marks_awarded=marks_awarded,
                 max_marks=ev_info.get("max_marks", float(q.get("marks", 1))),
                 explanation=ev_info.get("explanation"),
+                or_choice=ev_info.get("or_choice"),
+                selected_choice=ev_info.get("selected_choice", "A"),
             )
         )
 

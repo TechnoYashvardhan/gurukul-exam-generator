@@ -296,6 +296,47 @@ export function downloadExamAsMarkdown(exam: GeneratedExam, includeAnswerKey: bo
       lines.push(`> **Correct Answer / Marking Scheme:** \`${q.answer}\``);
       lines.push("");
     }
+
+    // Internal Choice ("OR" Question) in Markdown
+    if (q.or_choice) {
+      lines.push("");
+      lines.push("> **— OR — (अथवा)**");
+      lines.push("");
+      lines.push(`**[Option B]** ${q.or_choice.text}`);
+      lines.push("");
+      if (q.or_choice.passage) {
+        lines.push(`> 📖 **Alternative Passage / Case Context:**`);
+        q.or_choice.passage.split("\n").forEach((pLine: string) => {
+          lines.push(`> ${pLine}`);
+        });
+        lines.push("");
+      }
+      if (q.or_choice.sub_questions && q.or_choice.sub_questions.length > 0) {
+        q.or_choice.sub_questions.forEach((sub: any, sIdx: number) => {
+          const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
+          lines.push(`**${subLabel}** ${sub.text}  *(${sub.marks} Mark${sub.marks > 1 ? "s" : ""})*`);
+          if (sub.options && sub.options.length > 0) {
+            sub.options.forEach((opt: any) => {
+              lines.push(`   - **(${opt.key})** ${opt.text}`);
+            });
+          }
+          if (includeAnswerKey && sub.answer) {
+            lines.push(`   > **Answer:** \`${sub.answer}\``);
+          }
+          lines.push("");
+        });
+      }
+      if (!q.or_choice.sub_questions && q.or_choice.options && q.or_choice.options.length > 0) {
+        q.or_choice.options.forEach((opt: any) => {
+          lines.push(`- **(${opt.key})** ${opt.text}`);
+        });
+        lines.push("");
+      }
+      if (includeAnswerKey && q.or_choice.answer && !q.or_choice.sub_questions) {
+        lines.push(`> **Option B Correct Answer / Marking Scheme:** \`${q.or_choice.answer}\``);
+        lines.push("");
+      }
+    }
   });
 
   const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
@@ -1189,6 +1230,209 @@ export async function downloadExamAsDocx(exam: GeneratedExam, includeAnswerKey: 
           ],
         })
       );
+    }
+
+    // Internal Choice ("OR" Question) in Word Docx
+    if (q.or_choice) {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 140, after: 100 },
+          children: [
+            new TextRun({
+              text: "— OR — (अथवा)",
+              bold: true,
+              size: 20,
+              font: "Calibri",
+              color: "4338ca",
+            }),
+          ],
+        })
+      );
+
+      children.push(
+        new Paragraph({
+          spacing: { before: 60, after: 40 },
+          children: [
+            new TextRun({
+              text: "[Option B] ",
+              bold: true,
+              size: 20,
+              font: "Calibri",
+              color: "4338ca",
+            }),
+            ...formatTextToDocxRuns(q.or_choice.text, { size: 21, color: "1e293b" }),
+          ],
+        })
+      );
+
+      // OR choice passage
+      if (q.or_choice.passage) {
+        const altPassageParas = q.or_choice.passage
+          .split("\n")
+          .map((p: string) => p.trim())
+          .filter(Boolean)
+          .map(
+            (pText: string) =>
+              new Paragraph({
+                spacing: { after: 40 },
+                children: formatTextToDocxRuns(pText, { size: 19, color: "1e293b" }),
+              })
+          );
+
+        children.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 4, color: "CBD5E1" },
+              bottom: { style: BorderStyle.SINGLE, size: 4, color: "CBD5E1" },
+              left: { style: BorderStyle.SINGLE, size: 16, color: "4338CA" },
+              right: { style: BorderStyle.SINGLE, size: 4, color: "CBD5E1" },
+              insideHorizontal: { style: BorderStyle.NONE },
+              insideVertical: { style: BorderStyle.NONE },
+            },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 100, type: WidthType.PERCENTAGE },
+                    shading: { type: ShadingType.CLEAR, fill: "F8FAFC" },
+                    children: [
+                      new Paragraph({
+                        spacing: { before: 40, after: 40 },
+                        children: [
+                          new TextRun({
+                            text: "Alternative Passage / Case Study Context:",
+                            bold: true,
+                            size: 19,
+                            font: "Calibri",
+                            color: "4338ca",
+                          }),
+                        ],
+                      }),
+                      ...altPassageParas,
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          })
+        );
+      }
+
+      // OR choice sub-questions
+      if (q.or_choice.sub_questions && q.or_choice.sub_questions.length > 0) {
+        q.or_choice.sub_questions.forEach((sub: any, sIdx: number) => {
+          const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
+          children.push(
+            new Paragraph({
+              indent: { left: 360 },
+              spacing: { before: 80, after: 30 },
+              children: [
+                new TextRun({
+                  text: `${subLabel} `,
+                  bold: true,
+                  size: 20,
+                  font: "Calibri",
+                  color: "0f172a",
+                }),
+                ...formatTextToDocxRuns(sub.text, { size: 20, color: "1e293b" }),
+                new TextRun({
+                  text: `  [${sub.marks} Mark${sub.marks > 1 ? "s" : ""}]`,
+                  bold: true,
+                  size: 18,
+                  font: "Calibri",
+                  color: "b45309",
+                }),
+              ],
+            })
+          );
+
+          if (sub.options && sub.options.length > 0) {
+            sub.options.forEach((opt: any) => {
+              children.push(
+                new Paragraph({
+                  indent: { left: 720 },
+                  spacing: { after: 20 },
+                  children: [
+                    new TextRun({
+                      text: `(${opt.key}) `,
+                      bold: true,
+                      size: 19,
+                      font: "Calibri",
+                      color: "475569",
+                    }),
+                    ...formatTextToDocxRuns(opt.text, { size: 19, color: "1e293b" }),
+                  ],
+                })
+              );
+            });
+          }
+
+          if (includeAnswerKey && sub.answer) {
+            children.push(
+              new Paragraph({
+                indent: { left: 540 },
+                spacing: { before: 20, after: 60 },
+                shading: { type: ShadingType.CLEAR, fill: "ECFDF5" },
+                children: [
+                  new TextRun({
+                    text: "  ✓ Answer: ",
+                    bold: true,
+                    size: 18,
+                    font: "Calibri",
+                    color: "047857",
+                  }),
+                  ...formatTextToDocxRuns(String(sub.answer), { size: 18, color: "065f46" }),
+                ],
+              })
+            );
+          }
+        });
+      }
+
+      // OR choice MCQ options
+      if (!q.or_choice.sub_questions && q.or_choice.options && q.or_choice.options.length > 0) {
+        q.or_choice.options.forEach((opt: any) => {
+          children.push(
+            new Paragraph({
+              indent: { left: 420 },
+              spacing: { after: 30 },
+              children: [
+                new TextRun({
+                  text: `(${opt.key}) `,
+                  bold: true,
+                  size: 20,
+                  font: "Calibri",
+                  color: "334155",
+                }),
+                ...formatTextToDocxRuns(opt.text, { size: 20, color: "1e293b" }),
+              ],
+            })
+          );
+        });
+      }
+
+      // OR choice Answer key
+      if (includeAnswerKey && q.or_choice.answer && !q.or_choice.sub_questions) {
+        children.push(
+          new Paragraph({
+            spacing: { before: 40, after: 100 },
+            indent: { left: 300 },
+            shading: { type: ShadingType.CLEAR, fill: "ECFDF5" },
+            children: [
+              new TextRun({
+                text: "  ✓ Option B Model Solution / Marking Scheme: ",
+                bold: true,
+                size: 19,
+                font: "Calibri",
+                color: "047857",
+              }),
+              ...formatTextToDocxRuns(String(q.or_choice.answer), { size: 19, color: "065f46" }),
+            ],
+          })
+        );
+      }
     }
   });
 

@@ -26,6 +26,7 @@ import {
   Lock,
   AlertOctagon,
   BookOpen,
+  Shuffle,
 } from "lucide-react";
 import Toast, { ToastVariant } from "./Toast";
 import MatchQuestionView from "./MatchQuestionView";
@@ -56,6 +57,7 @@ function formatAnswerDisplay(ans: any, options?: any[] | null) {
 
 export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProps) {
   const { user } = useAuth();
+  const [selectedChoices, setSelectedChoices] = useState<Record<string, "A" | "B">>({});
   const [exam, setExam] = useState<GeneratedExam | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -381,19 +383,45 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
   const handleSelectAnswer = (ans: string) => {
     if (!currentQ) return;
     const qKey = String(currentQ.question_no ?? currentIndex + 1);
-    setAnswers((prev) => ({
-      ...prev,
-      [qKey]: ans,
-    }));
+    const activeChoice = selectedChoices[qKey] || "A";
+    if (currentQ.or_choice && activeChoice === "B") {
+      setAnswers((prev) => ({
+        ...prev,
+        [qKey]: { choice: "B", answer: ans },
+      }));
+    } else if (currentQ.or_choice) {
+      setAnswers((prev) => ({
+        ...prev,
+        [qKey]: { choice: "A", answer: ans },
+      }));
+    } else {
+      setAnswers((prev) => ({
+        ...prev,
+        [qKey]: ans,
+      }));
+    }
   };
 
   const handleSelectSubAnswer = (subNo: string, val: string) => {
     if (!currentQ) return;
     const qKey = String(currentQ.question_no ?? currentIndex + 1);
+    const activeChoice = selectedChoices[qKey] || "A";
     setAnswers((prev) => {
-      const currentVal = prev[qKey];
-      const currentObj = typeof currentVal === "object" && currentVal !== null && !Array.isArray(currentVal) ? { ...currentVal } : {};
+      const currentRaw = prev[qKey];
+      let currentObj: Record<string, any> = {};
+      if (typeof currentRaw === "object" && currentRaw !== null) {
+        if ("answer" in currentRaw && typeof currentRaw.answer === "object" && currentRaw.answer !== null) {
+          currentObj = { ...currentRaw.answer };
+        } else if (!("choice" in currentRaw)) {
+          currentObj = { ...currentRaw };
+        }
+      }
       currentObj[subNo] = val;
+      if (currentQ.or_choice && activeChoice === "B") {
+        return { ...prev, [qKey]: { choice: "B", answer: currentObj } };
+      } else if (currentQ.or_choice) {
+        return { ...prev, [qKey]: { choice: "A", answer: currentObj } };
+      }
       return {
         ...prev,
         [qKey]: currentObj,
@@ -683,6 +711,24 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                     >
                       {fb.type.replace(/_/g, " ")}
                     </span>
+                    {(fb as any).or_choice && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "var(--primary, #6366f1)",
+                          background: "rgba(99, 102, 241, 0.08)",
+                          border: "1px solid rgba(99, 102, 241, 0.25)",
+                          borderRadius: 100,
+                          padding: "1px 8px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <Shuffle size={10} /> Attempted Option {(fb as any).selected_choice || "A"}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -872,8 +918,12 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
     );
   }
 
-  const currentQKey = String(currentQ?.question_no ?? currentIndex + 1);
-  const currentAnswer = answers[currentQKey] || "";
+  const qKey = String(currentQ?.question_no ?? currentIndex + 1);
+  const activeChoice = selectedChoices[qKey] || (typeof answers[qKey] === "object" && answers[qKey]?.choice === "B" ? "B" : "A");
+  const activeQContent: any = (currentQ?.or_choice && activeChoice === "B") ? currentQ.or_choice : (currentQ || { text: "", options: [], sub_questions: [], marks: 1 });
+  const activeQType = activeQContent.type || (activeQContent.sub_questions && activeQContent.sub_questions.length > 0 ? "case_study" : (currentQ?.type || "mcq"));
+  const rawAnswer = answers[qKey];
+  const currentAnswer = typeof rawAnswer === "object" && rawAnswer !== null && "choice" in rawAnswer ? rawAnswer.answer : rawAnswer;
 
   return (
     <div
@@ -1150,34 +1200,118 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
             zIndex: 10,
           }}
         >
-          {/* Question Meta Header */}
+          {/* Question Meta Header & Internal Choice Indicator */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                color: "var(--text-3)",
-                background: "var(--surface-sunken)",
-                padding: "3px 10px",
-                borderRadius: 100,
-                border: "1px solid var(--border)",
-              }}
-            >
-              Section {currentQ.section_id || "A"}{currentQ.sub_section_title ? ` • ${currentQ.sub_section_title}` : ""} • {currentQ.type.replace(/_/g, " ")} • {currentQ.marks || 1} Mark{(currentQ.marks || 1) > 1 ? "s" : ""}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  color: "var(--text-3)",
+                  background: "var(--surface-sunken)",
+                  padding: "3px 10px",
+                  borderRadius: 100,
+                  border: "1px solid var(--border)",
+                }}
+              >
+                Section {currentQ.section_id || "A"}{currentQ.sub_section_title ? ` • ${currentQ.sub_section_title}` : ""} • {currentQ.type.replace(/_/g, " ")} • {currentQ.marks || 1} Mark{(currentQ.marks || 1) > 1 ? "s" : ""}
+              </span>
+              {currentQ.or_choice && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--primary, #6366f1)",
+                    background: "rgba(99, 102, 241, 0.08)",
+                    border: "1px solid rgba(99, 102, 241, 0.25)",
+                    padding: "2px 8px",
+                    borderRadius: 100,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <Shuffle size={11} /> Internal Choice Available
+                </span>
+              )}
+            </div>
 
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
               Question {currentIndex + 1} of {questions.length}
             </span>
           </div>
 
+          {/* Internal Choice Switcher Tabs (Option A vs Option B) */}
+          {currentQ.or_choice && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 20,
+                padding: "4px",
+                borderRadius: "var(--radius-md)",
+                background: "var(--surface-sunken)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedChoices((prev) => ({ ...prev, [qKey]: "A" }))}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "none",
+                  background: activeChoice === "A" ? "var(--surface)" : "transparent",
+                  color: activeChoice === "A" ? "var(--primary, #6366f1)" : "var(--text-3)",
+                  fontWeight: activeChoice === "A" ? 700 : 500,
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  cursor: "pointer",
+                  boxShadow: activeChoice === "A" ? "var(--shadow-sm)" : "none",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <span>Option A (Main Question)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedChoices((prev) => ({ ...prev, [qKey]: "B" }))}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "none",
+                  background: activeChoice === "B" ? "var(--surface)" : "transparent",
+                  color: activeChoice === "B" ? "var(--primary, #6366f1)" : "var(--text-3)",
+                  fontWeight: activeChoice === "B" ? 700 : 500,
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  cursor: "pointer",
+                  boxShadow: activeChoice === "B" ? "var(--shadow-sm)" : "none",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <Shuffle size={13} />
+                <span>Option B (OR Alternative)</span>
+              </button>
+            </div>
+          )}
+
           {/* Question Interactive Content */}
-          {currentQ.type === "match_the_following" ? (
+          {activeQType === "match_the_following" ? (
             <MatchQuestionView
-              questionText={currentQ.text}
-              options={currentQ.options}
+              questionText={activeQContent.text}
+              options={activeQContent.options}
               userAnswer={currentAnswer}
               onSelectAnswer={handleSelectAnswer}
               isInteractive={true}
@@ -1195,11 +1329,16 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                   marginBottom: 16,
                 }}
               >
-                <MathText content={currentQ.text} />
+                {currentQ.or_choice && (
+                  <span style={{ color: "var(--primary, #6366f1)", fontWeight: 700, marginRight: 8, fontFamily: "var(--font-mono)" }}>
+                    [{activeChoice === "B" ? "Option B" : "Option A"}]
+                  </span>
+                )}
+                <MathText content={activeQContent.text} />
               </div>
 
               {/* Reading Comprehension / Case Study Passage Card */}
-              {currentQ.passage && (
+              {activeQContent.passage && (
                 <div
                   style={{
                     marginBottom: 20,
@@ -1217,15 +1356,15 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                     <span>Comprehension Passage / Case Study Context</span>
                   </div>
                   <div style={{ fontSize: "14px", lineHeight: 1.7, color: "var(--text)", whiteSpace: "pre-line" }}>
-                    <MathText content={currentQ.passage} />
+                    <MathText content={activeQContent.passage} />
                   </div>
                 </div>
               )}
 
               {/* Sub-Questions Interactive Inputs (for Case Study / Reading Passages) */}
-              {currentQ.sub_questions && currentQ.sub_questions.length > 0 ? (
+              {activeQContent.sub_questions && activeQContent.sub_questions.length > 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 20 }}>
-                  {currentQ.sub_questions.map((sub, sIdx) => {
+                  {activeQContent.sub_questions.map((sub: any, sIdx: number) => {
                     const subKey = sub.sub_no || String(sIdx + 1);
                     const subLabel = `(${subKey})`;
                     const subAnswer = typeof currentAnswer === "object" && currentAnswer !== null ? (currentAnswer[subKey] || "") : "";
@@ -1257,7 +1396,7 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                         {/* MCQ Sub-question options */}
                         {sub.options && sub.options.length > 0 && (
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 8, paddingLeft: 34 }}>
-                            {sub.options.map((opt) => {
+                            {sub.options.map((opt: any) => {
                               const isSelected = String(subAnswer).trim().toUpperCase() === String(opt.key).trim().toUpperCase();
                               return (
                                 <button
@@ -1289,7 +1428,7 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                                       alignItems: "center",
                                       justifyContent: "center",
                                       fontWeight: 700,
-                                      fontSize: "11px",
+                                      fontSize: 11,
                                       flexShrink: 0,
                                     }}
                                   >
@@ -1335,9 +1474,9 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
               ) : (
                 <>
                   {/* Options for Top-Level MCQ / True-False */}
-                  {currentQ.options && currentQ.options.length > 0 && (
+                  {activeQContent.options && activeQContent.options.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-                      {currentQ.options.map((opt) => {
+                      {activeQContent.options.map((opt: any) => {
                         const isSelected = String(currentAnswer).trim().toUpperCase() === String(opt.key).trim().toUpperCase();
                         return (
                           <button
@@ -1387,7 +1526,7 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                   )}
 
                   {/* Fill in blanks or One word Input */}
-                  {(currentQ.type === "fill_in_the_blanks" || currentQ.type === "one_word") && (
+                  {(activeQType === "fill_in_the_blanks" || activeQType === "one_word") && (
                     <div style={{ marginBottom: 20 }}>
                       <label className="gk-label">Type your answer here:</label>
                       <input
@@ -1402,7 +1541,7 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                   )}
 
                   {/* Short / Long / Case Study Answer Textarea */}
-                  {["short_answer", "long_answer", "case_study"].includes(currentQ.type) && (
+                  {["short_answer", "long_answer", "case_study"].includes(activeQType) && (
                     <div style={{ marginBottom: 20 }}>
                       <label className="gk-label">Your Response / Explanation:</label>
                       <textarea

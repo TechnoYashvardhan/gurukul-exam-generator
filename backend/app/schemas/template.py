@@ -57,6 +57,9 @@ class SubSection(BaseModel):
     case_study_config: list[CaseStudySubQConfig] | None = Field(
         None, description="Custom sub-question breakdown if type is case_study"
     )
+    internal_choice_count: int = Field(
+        default=0, ge=0, description="Number of questions in this sub-section with internal OR choice"
+    )
 
     @property
     def sub_section_marks(self) -> int:
@@ -105,6 +108,9 @@ class Section(BaseModel):
     )
     sub_sections: list[SubSection] | None = Field(
         None, description="Optional sub-sections / parts within this parent section"
+    )
+    internal_choice_count: int = Field(
+        default=0, ge=0, description="Number of questions in this section with internal OR choice"
     )
 
     @property

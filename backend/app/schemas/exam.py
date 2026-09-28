@@ -92,9 +92,42 @@ class SectionBlueprint(BaseModel):
     sub_section_id: str | None = None
     sub_section_title: str | None = None
     case_study_config: list[Any] | None = None
+    internal_choice_count: int = 0
 
 class ExamBlueprint(BaseModel):
     sections: list[SectionBlueprint]
+
+class QuestionChoice(BaseModel):
+    text: str = Field(default="", description="Alternative question prompt (Option B / OR Choice)")
+    passage: str | None = Field(default=None, description="Alternative passage/context if applicable")
+    sub_questions: list[SubQuestion] | None = None
+    options: list[MCQOption] | None = None
+    answer: str = Field(default="", description="Model answer for the alternative choice")
+    bloom_level: str | None = None
+    difficulty: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def lowercase_enums(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "bloom_level" in data and isinstance(data["bloom_level"], str):
+                data["bloom_level"] = data["bloom_level"].lower()
+            if "difficulty" in data and isinstance(data["difficulty"], str):
+                data["difficulty"] = data["difficulty"].lower()
+        return data
+
+    @model_validator(mode="after")
+    def validate_choice_options(self) -> "QuestionChoice":
+        if self.sub_questions:
+            self.options = None
+            return self
+        if self.options and len(self.options) > 0:
+            valid_keys = ["A", "B", "C", "D"]
+            if len(self.options) > 4:
+                self.options = self.options[:4]
+            for i, opt in enumerate(self.options):
+                opt.key = valid_keys[i] if i < len(valid_keys) else chr(65 + i)
+        return self
 
 class Question(BaseModel):
     section_id: str
@@ -110,6 +143,7 @@ class Question(BaseModel):
     marks: int
     bloom_level: str
     difficulty: str
+    or_choice: QuestionChoice | None = None
 
     @model_validator(mode="before")
     @classmethod
