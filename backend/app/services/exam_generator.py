@@ -417,8 +417,44 @@ def _shuffle_and_randomize_options(q: Question) -> Question:
     Guarantees a completely uniform distribution of correct keys (A, B, C, D)
     eliminating model positional bias or patterns (e.g. all B's or C's).
     """
+    valid_keys = ["A", "B", "C", "D"]
+
+    # If question has sub_questions (Case Study / Reading Comprehension), randomize each MCQ sub-question
+    if q.sub_questions and len(q.sub_questions) > 0:
+        for sub in q.sub_questions:
+            if sub.type in ["mcq", "match_the_following"] and sub.options and len(sub.options) >= 2:
+                raw_ans = str(sub.answer).strip().upper()
+                correct_text = None
+                for opt in sub.options:
+                    if opt.key.strip().upper() == raw_ans:
+                        correct_text = opt.text
+                        break
+                if correct_text is None:
+                    raw_ans_lower = str(sub.answer).strip().lower()
+                    for opt in sub.options:
+                        if opt.text and (opt.text.strip().lower() == raw_ans_lower or raw_ans_lower in opt.text.strip().lower()):
+                            correct_text = opt.text
+                            break
+                if correct_text is None:
+                    correct_text = sub.options[0].text
+
+                shuffled = list(sub.options)
+                random.shuffle(shuffled)
+
+                new_opts: list[MCQOption] = []
+                new_ans = "A"
+                for i, opt in enumerate(shuffled):
+                    k = valid_keys[i] if i < len(valid_keys) else chr(65 + i)
+                    new_opts.append(MCQOption(key=k, text=opt.text))
+                    if opt.text == correct_text:
+                        new_ans = k
+
+                sub.options = new_opts
+                sub.answer = new_ans
+        return q
+
+    # Top-level MCQ randomization
     if q.type in ["mcq", "match_the_following"] and q.options and len(q.options) >= 2:
-        valid_keys = ["A", "B", "C", "D"]
         raw_ans = str(q.answer).strip().upper()
 
         # 1. Identify which option text is currently the correct answer
@@ -499,8 +535,16 @@ SECTION RULES:
      {{"key": "D", "text": "1-(q), 2-(r), 3-(s), 4-(p)"}}
    ]
    and set "answer" to the single correct option key ("A", "B", "C", or "D").
-10. IF type is "short_answer", "long_answer", or "case_study": set "options" to null and set "answer" to a complete model answer.
-11. Keep question text concise and clear.
+10. IF type is "short_answer" or "long_answer": set "options" to null and set "answer" to a complete model answer.
+11. IF type is "case_study" (Reading Comprehension / Case-Based Passage / Extract):
+    - Set "text" to an introductory direction (e.g. "Read the following passage / case scenario carefully and answer the questions that follow:").
+    - In "passage", write a rich, authentic, high-quality narrative or factual case passage (250-450 words) based on the syllabus or subject.
+    - In "sub_questions", provide a structured list of sub-questions totaling {marks_per_q} marks with a balanced mix of:
+      * MCQs (type: "mcq", sub_no: "i", text: "...", options: [{{"key": "A", "text": "..."}}, {{"key": "B", "text": "..."}}, {{"key": "C", "text": "..."}}, {{"key": "D", "text": "..."}}], answer: "A", marks: 1)
+      * Fill in the blanks (type: "fill_in_the_blanks", sub_no: "ii", text: "... _____ ...", answer: "term", marks: 1)
+      * True/False (type: "true_false", sub_no: "iii", text: "...", options: [{{"key": "A", "text": "True"}}, {{"key": "B", "text": "False"}}], answer: "A", marks: 1)
+      * One Word / Inference (type: "one_word" or "short_answer", sub_no: "iv", text: "...", answer: "...", marks: 1 or 2)
+    - Set top-level "options" to null, and "answer" to a complete marking guide summarizing all sub-question solutions.
 
 MATHEMATICAL & SCIENTIFIC NOTATION RULES:
 - PLAIN NUMBERS, UNITS & HARDWARE / SYSTEM SPECS (CRITICAL):
@@ -517,10 +561,7 @@ MATHEMATICAL & SCIENTIFIC NOTATION RULES:
 - FRACTIONS & POWERS: Always write "$\\frac{{x+2}}{{x^2+1}}$", "$x^2 - 4x + 13 = 0$", "$e^{{2x}}$", "$\\sqrt{{14}}$". Never write raw ASCII like "(x+2)/(x^2+1)" or "x^2".
 - SUMMATIONS, INTEGRALS & LIMITS: Write "$\\sum_{{n=1}}^{{\\infty}} \\frac{{(-1)^{{n+1}} r^n}}{{n}}$", "$\\int_{{0}}^{{\\pi/2}} x \\sin x \\cos x \\, dx$", "$\\lim_{{x \\to 0}} \\frac{{x \\cos x - \\sin x}}{{x^3}}$".
 - VECTORS & TRIGONOMETRY: Write "$\\vec{{a}} \\times \\vec{{b}} = (-10, 4, 8)$", "$2\\operatorname{{cis}}(30^\\circ)$", "$\\sin 75^\\circ + \\sin 15^\\circ$", "$y \\ge 2x+1$".
-- Example MCQ Options: A: "$\\frac{{x+2}}{{x^2+1}} + \\frac{{2(x+1)}}{{(x^2+1)^2}}$", B: "$-\\frac{{1}}{{6}}$", C: "$\\begin{{pmatrix}} 1 & 0 \\\\ 0 & 1 \\end{{pmatrix}}$", D: "$\\frac{{\\sqrt{{6}}}}{{2}}$"
-- CURRENCY & WORD PROBLEMS: Write currency as plain text (e.g. "Rs. 200", "Rs. 15", or "$200"). NEVER place full English sentences or phrases inside math mode ($...$).
-- TALLY MARKS & STATISTICS: When writing tally marks, write clear descriptive notation like "卌 卌 || (two bundles of 5 and 2 single marks = 12)". Never output ambiguous pseudo-letters like "HH".
-- NEVER output placeholder phrases like "Option for..." or "Alternative concept" or "None of the above". Every single MCQ option MUST contain a real, distinct, complete mathematical or scientific value/concept.
+- NEVER output placeholder phrases like "Option for..." or "Alternative concept" or "None of the above". Every single option MUST contain a real, distinct, complete concept.
 
 STRICT OUTPUT RULES (VIOLATION WILL CAUSE SYSTEM FAILURE):
 - Return ONLY raw JSON. No markdown, no ```json fences, no ** bold markers.
@@ -535,6 +576,18 @@ REQUIRED JSON FORMAT
       "question_no": 1,
       "type": "{sec.type}",
       "text": "<full question text with clean formatting>",
+      "passage": "<comprehension or case study passage text if type is case_study, otherwise null>",
+      "sub_questions": [
+        {{
+          "sub_no": "i",
+          "type": "mcq",
+          "text": "<sub-question 1 text>",
+          "options": [{{"key": "A", "text": "..."}}, {{"key": "B", "text": "..."}}, {{"key": "C", "text": "..."}}, {{"key": "D", "text": "..."}}],
+          "answer": "A",
+          "marks": 1,
+          "bloom_level": "understand"
+        }}
+      ],
       "options": [{{"key": "A", "text": "..."}}, {{"key": "B", "text": "..."}}, {{"key": "C", "text": "..."}}, {{"key": "D", "text": "..."}}],
       "answer": "A",
       "marks": {marks_per_q},
@@ -571,10 +624,36 @@ REQUIRED JSON FORMAT
                         raw_text = item.get("text") or item.get("question") or item.get("topic") or "Question text"
                         item["text"] = _sanitize_exam_text(str(raw_text))
                         
+                        if "passage" in item and item["passage"]:
+                            item["passage"] = _sanitize_exam_text(str(item["passage"]))
+                        else:
+                            item["passage"] = None
+
+                        if "sub_questions" in item and isinstance(item["sub_questions"], list) and len(item["sub_questions"]) > 0:
+                            sanitized_subs = []
+                            for s_idx, sub in enumerate(item["sub_questions"]):
+                                if isinstance(sub, dict):
+                                    sub_clean = dict(sub)
+                                    sub_clean["sub_no"] = str(sub_clean.get("sub_no") or f"i" if s_idx == 0 else f"{s_idx+1}")
+                                    sub_clean["type"] = str(sub_clean.get("type") or "mcq").lower()
+                                    sub_clean["marks"] = max(1, int(sub_clean.get("marks", 1)))
+                                    sub_clean["bloom_level"] = str(sub_clean.get("bloom_level") or "understand").lower()
+                                    sub_clean["text"] = _sanitize_exam_text(str(sub_clean.get("text") or f"Sub-question {s_idx+1}"))
+                                    sub_clean["answer"] = _sanitize_exam_text(str(sub_clean.get("answer") or "A"))
+                                    if "options" in sub_clean and isinstance(sub_clean["options"], list):
+                                        for opt in sub_clean["options"]:
+                                            if isinstance(opt, dict) and "text" in opt:
+                                                opt["text"] = _sanitize_exam_text(str(opt["text"]))
+                                    sanitized_subs.append(sub_clean)
+                            item["sub_questions"] = sanitized_subs
+                            item["options"] = None
+                        else:
+                            item["sub_questions"] = None
+
                         raw_ans = item.get("answer") or ("A" if sec.type == "mcq" else "Model answer")
                         item["answer"] = _sanitize_exam_text(str(raw_ans))
                         
-                        if "options" in item and isinstance(item["options"], list):
+                        if "options" in item and isinstance(item["options"], list) and not item.get("sub_questions"):
                             for opt in item["options"]:
                                 if isinstance(opt, dict) and "text" in opt:
                                     opt["text"] = _sanitize_exam_text(str(opt["text"]))
@@ -589,6 +668,9 @@ REQUIRED JSON FORMAT
                 missing_idx = len(validated_questions)
                 bp_ref = sec.questions[missing_idx]
                 concept_clean = bp_ref.concept.replace("$", "")
+                fallback_passage = None
+                fallback_subs = None
+
                 if sec.type == "mcq":
                     opts = [
                         {"key": "A", "text": f"Directly proportional to the parameter"},
@@ -626,6 +708,61 @@ REQUIRED JSON FORMAT
                     opts = None
                     fallback_text = f"What single scientific term or principle describes {concept_clean} in {bp_ref.subtopic}?"
                     fallback_ans = concept_clean
+                elif sec.type == "case_study":
+                    opts = None
+                    fallback_text = f"Read the following case study carefully and answer the questions that follow:"
+                    fallback_passage = (
+                        f"{concept_clean} plays a central role in {bp_ref.subtopic}. Modern applications rely on "
+                        f"precise quantification of its foundational parameters to maintain operational stability. "
+                        f"When subjected to varying environmental conditions, the equilibrium state shifts proportionally, "
+                        f"requiring automated corrective mechanisms to preserve performance standards.\n\n"
+                        f"Experimental evaluations demonstrate that systematic adherence to standard protocols minimizes "
+                        f"deviations and optimizes overall system efficacy across diverse operating environments."
+                    )
+                    fallback_subs = [
+                        {
+                            "sub_no": "i",
+                            "type": "mcq",
+                            "text": f"What is the primary factor determining the stability of {concept_clean}?",
+                            "options": [
+                                {"key": "A", "text": "Precise quantification of foundational parameters"},
+                                {"key": "B", "text": "Complete absence of external monitoring"},
+                                {"key": "C", "text": "Randomized protocol adjustments"},
+                                {"key": "D", "text": "Uncontrolled environmental fluctuations"}
+                            ],
+                            "answer": "A",
+                            "marks": 1,
+                            "bloom_level": "understand"
+                        },
+                        {
+                            "sub_no": "ii",
+                            "type": "fill_in_the_blanks",
+                            "text": f"The shift in the equilibrium state of {concept_clean} occurs ______ with varying environmental conditions.",
+                            "options": None,
+                            "answer": "proportionally",
+                            "marks": 1,
+                            "bloom_level": "remember"
+                        },
+                        {
+                            "sub_no": "iii",
+                            "type": "true_false",
+                            "text": f"Systematic adherence to standard protocols optimizes overall system efficacy for {concept_clean}.",
+                            "options": [{"key": "A", "text": "True"}, {"key": "B", "text": "False"}],
+                            "answer": "A",
+                            "marks": 1,
+                            "bloom_level": "evaluate"
+                        },
+                        {
+                            "sub_no": "iv",
+                            "type": "short_answer",
+                            "text": f"Explain why automated corrective mechanisms are required during experimental evaluation of {concept_clean}.",
+                            "options": None,
+                            "answer": "To preserve performance standards and maintain operational stability during environmental shifts.",
+                            "marks": max(1, marks_per_q - 3),
+                            "bloom_level": "analyze"
+                        }
+                    ]
+                    fallback_ans = f"Sub-Q (i): A; Sub-Q (ii): proportionally; Sub-Q (iii): True; Sub-Q (iv): Automated mechanisms preserve performance standards during equilibrium shifts."
                 else:
                     opts = None
                     fallback_text = f"Analyze {concept_clean} in the context of {bp_ref.subtopic}. State the governing principles and mathematical relations."
@@ -636,7 +773,9 @@ REQUIRED JSON FORMAT
                     question_no=missing_idx + 1,
                     type=sec.type,
                     text=fallback_text,
-                    options=opts,
+                    passage=fallback_passage,
+                    sub_questions=[SubQuestion.model_validate(s) for s in fallback_subs] if fallback_subs else None,
+                    options=[MCQOption.model_validate(o) for o in opts] if opts else None,
                     answer=fallback_ans,
                     marks=marks_per_q,
                     bloom_level=bp_ref.bloom_level,

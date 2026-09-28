@@ -185,6 +185,7 @@ export default function GeneratePanel({
   // ── Inline Question Editing State & Handlers ──────────────────────────────
   const [editingQNum, setEditingQNum] = useState<number | null>(null);
   const [editQText, setEditQText] = useState("");
+  const [editQPassage, setEditQPassage] = useState<string>("");
   const [editQMarks, setEditQMarks] = useState(1);
   const [editQAnswer, setEditQAnswer] = useState("");
   const [editQOptions, setEditQOptions] = useState<{ key: string; text: string }[]>([]);
@@ -192,6 +193,7 @@ export default function GeneratePanel({
   function handleStartEdit(q: any) {
     setEditingQNum(q.question_no);
     setEditQText(q.text || "");
+    setEditQPassage(q.passage || "");
     setEditQMarks(q.marks || 1);
     setEditQAnswer(q.answer || "");
     setEditQOptions(q.options ? JSON.parse(JSON.stringify(q.options)) : []);
@@ -208,6 +210,7 @@ export default function GeneratePanel({
         return {
           ...q,
           text: editQText.trim(),
+          passage: editQPassage.trim() ? editQPassage.trim() : null,
           marks: editQMarks,
           answer: editQAnswer.trim(),
           options: editQOptions.length > 0 ? editQOptions : q.options,
@@ -378,16 +381,33 @@ export default function GeneratePanel({
               {/* Question Textarea */}
               <div className="gk-field" style={{ marginBottom: 12 }}>
                 <label className="gk-label" style={{ fontSize: "12px", fontWeight: 700 }}>
-                  Question Text:
+                  Question Instruction / Text:
                 </label>
                 <textarea
                   className="gk-input"
-                  rows={3}
+                  rows={2}
                   value={editQText}
                   onChange={(e) => setEditQText(e.target.value)}
                   style={{ width: "100%", fontSize: "13.5px", resize: "vertical" }}
                 />
               </div>
+
+              {/* Passage Editor (for Case Study / Reading Comprehension) */}
+              {(editQPassage !== "" || q.passage || q.type === "case_study") && (
+                <div className="gk-field" style={{ marginBottom: 12 }}>
+                  <label className="gk-label" style={{ fontSize: "12px", fontWeight: 700, color: "var(--accent)" }}>
+                    📖 Comprehension Passage / Case Study Context:
+                  </label>
+                  <textarea
+                    className="gk-input"
+                    rows={6}
+                    value={editQPassage}
+                    onChange={(e) => setEditQPassage(e.target.value)}
+                    placeholder="Enter comprehension passage, case study narrative, or context extract..."
+                    style={{ width: "100%", fontSize: "13px", lineHeight: 1.5, resize: "vertical" }}
+                  />
+                </div>
+              )}
 
               {/* Marks & Answer Grid */}
               <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12, marginBottom: 12 }}>
@@ -559,7 +579,101 @@ export default function GeneratePanel({
                 </div>
               </div>
 
-            {q.type !== "match_the_following" && q.options && q.options.length > 0 && (
+            {/* Reading Comprehension / Case Study Passage Box */}
+            {q.passage && (
+              <div
+                style={{
+                  marginTop: 12,
+                  marginBottom: 14,
+                  padding: "14px 18px",
+                  background: "var(--surface-sunken)",
+                  border: "1px solid var(--border)",
+                  borderLeft: "4px solid var(--accent)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, color: "var(--accent)", fontWeight: 700, fontSize: "11.5px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  <BookOpen size={14} />
+                  <span>Comprehension Passage / Case Study Context</span>
+                </div>
+                <div style={{ fontSize: "13.5px", lineHeight: 1.65, color: "var(--text)", whiteSpace: "pre-line" }}>
+                  <MathText content={q.passage} />
+                </div>
+              </div>
+            )}
+
+            {/* Sub-Questions Rendering (for Case Study / Reading Passages) */}
+            {q.sub_questions && q.sub_questions.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                {q.sub_questions.map((sub: any, sIdx: number) => {
+                  const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
+                  return (
+                    <div
+                      key={sIdx}
+                      style={{
+                        padding: "12px 14px",
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-sm)",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1 }}>
+                          <span style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--accent)", minWidth: 24, fontSize: "13px" }}>
+                            {subLabel}
+                          </span>
+                          <div style={{ fontSize: "13.5px", lineHeight: 1.5, flex: 1 }}>
+                            <MathText content={sub.text} />
+                          </div>
+                        </div>
+                        <span className="chip-badge chip-badge--gold" style={{ fontSize: "10.5px", flexShrink: 0 }}>
+                          {sub.marks} Mark{sub.marks > 1 ? "s" : ""}
+                        </span>
+                      </div>
+
+                      {/* Sub-question MCQ Options */}
+                      {sub.options && sub.options.length > 0 && (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 6, marginTop: 8, paddingLeft: 32 }}>
+                          {sub.options.map((sOpt: any) => (
+                            <div
+                              key={sOpt.key}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                fontSize: "12.5px",
+                                background: activeViewMode === "key" && sOpt.key === sub.answer ? "var(--forest-light)" : "var(--surface-sunken)",
+                                border: activeViewMode === "key" && sOpt.key === sub.answer ? "1px solid var(--forest)" : "1px solid var(--border)",
+                              }}
+                            >
+                              <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: activeViewMode === "key" && sOpt.key === sub.answer ? "var(--forest)" : "var(--text-3)", fontSize: "11.5px" }}>
+                                ({sOpt.key})
+                              </span>
+                              <span style={{ fontSize: "12.5px" }}>
+                                <MathText content={sOpt.text} />
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Sub-question Answer Key */}
+                      {activeViewMode === "key" && sub.answer && (
+                        <div style={{ marginTop: 8, marginLeft: 32, padding: "5px 10px", background: "var(--forest-light)", border: "1px solid var(--forest)", borderRadius: "4px", fontSize: "12px", display: "flex", alignItems: "center", gap: 6, color: "var(--forest)" }}>
+                          <CheckCircle size={13} />
+                          <span><strong>Model Answer:</strong> <MathText content={sub.answer} /></span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Standard Top-Level MCQ Options */}
+            {!q.sub_questions && q.type !== "match_the_following" && q.options && q.options.length > 0 && (
               <div className="mcq-options" style={{ marginTop: 12 }}>
                 {q.options.map((opt: any) => (
                   <div
@@ -601,6 +715,7 @@ export default function GeneratePanel({
               </div>
             )}
 
+            {/* Top-Level Answer Key */}
             {activeViewMode === "key" && q.answer && (
               <div
                 style={{

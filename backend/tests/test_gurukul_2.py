@@ -68,3 +68,110 @@ async def test_analyze_pyq_endpoint_validation_error():
             data={"text": "too short"},
         )
         assert res.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_sub_question_and_case_study_schema():
+    from app.schemas.exam import Question, SubQuestion, MCQOption
+
+    sub1 = SubQuestion(
+        sub_no="i",
+        type="mcq",
+        text="What is the central theme of the passage?",
+        options=[
+            MCQOption(key="A", text="Sustainable living"),
+            MCQOption(key="B", text="Industrial growth"),
+            MCQOption(key="C", text="Space exploration"),
+            MCQOption(key="D", text="Digital marketing"),
+        ],
+        answer="A",
+        marks=1,
+    )
+    sub2 = SubQuestion(
+        sub_no="ii",
+        type="fill_in_the_blanks",
+        text="The author describes eco-resilience as _____.",
+        answer="imperative",
+        marks=1,
+    )
+    sub3 = SubQuestion(
+        sub_no="iii",
+        type="short_answer",
+        text="Infer two reasons for the observed shifts.",
+        answer="1. Climatic variance 2. Policy adoption",
+        marks=2,
+    )
+
+    q = Question(
+        section_id="s1",
+        question_no=1,
+        type="case_study",
+        text="Read the following passage carefully and answer the questions that follow:",
+        passage="Global ecological transitions have stimulated widespread discourse on sustainable frameworks...",
+        sub_questions=[sub1, sub2, sub3],
+        answer="Comprehensive answer key for sub-questions (i)-(iii)",
+        marks=4,
+        bloom_level="analyze",
+        difficulty="medium",
+    )
+
+    assert q.passage is not None
+    assert len(q.sub_questions) == 3
+    assert q.sub_questions[0].type == "mcq"
+    assert q.sub_questions[0].answer == "A"
+    assert q.sub_questions[1].answer == "imperative"
+    assert q.options is None  # options is sanitized to None when sub_questions is present
+    assert sum(s.marks for s in q.sub_questions) == 4
+
+
+@pytest.mark.asyncio
+async def test_analyze_pyq_cbse_multi_tier():
+    transport = ASGITransport(app=app)
+    sample_cbse_paper = """
+    CBSE Senior School Certificate Examination 2025-26
+    ENGLISH CORE (Code No. 301)
+    Time Allowed: 3 hours                                Maximum Marks: 80
+    
+    General Instructions:
+    1. 15-minute prior reading time allotted.
+    2. The Question Paper contains THREE sections-READING, WRITING and LITERATURE.
+    3. Attempt questions based on specific instructions for each part.
+    
+    SECTION A: READING SKILLS (22 Marks)
+    1. Read the following passage carefully and answer the questions that follow. (12 Marks)
+       [Passage text here...]
+       (i) Which of the following best describes the author's tone? (1)
+       (ii) Complete the sentence: The primary factor is _____ (1)
+    2. Read the following factual passage carefully. (10 Marks)
+       [Passage text here...]
+       
+    SECTION B: CREATIVE WRITING SKILLS (18 Marks)
+    3. Notice writing (4 Marks)
+    4. Formal Invitation (4 Marks)
+    5. Letter to Editor (5 Marks)
+    6. Article Writing (5 Marks)
+    
+    SECTION C: LITERATURE (40 Marks)
+    7. Read the given extract and answer questions. (6 Marks)
+    8. Read the given prose extract. (4 Marks)
+    9. Short answer questions from Flamingo (5 x 2 = 10 Marks)
+    10. Short answer questions from Vistas (2 x 2 = 4 Marks)
+    11. Long answer question (5 Marks)
+    12. Long answer question (5 Marks)
+    13. Analytical question (6 Marks)
+    """
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.post(
+            "/api/v1/templates/analyze-pyq",
+            data={"text": sample_cbse_paper},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "success"
+        tpl = data["template"]
+        assert tpl["subject"] in ["English Core", "General Studies", "English"]
+        assert tpl["total_marks"] == 80
+        assert len(tpl["sections"]) >= 1
+        comp = sum(s["num_questions"] * s["marks_per_question"] for s in tpl["sections"])
+        assert comp == tpl["total_marks"]
+

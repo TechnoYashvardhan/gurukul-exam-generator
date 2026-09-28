@@ -55,8 +55,18 @@ export interface TemplateDetail extends TemplateSummary {
 
 // MCQ option for exam output
 export interface MCQOption {
-  key: "A" | "B" | "C" | "D";
+  key: "A" | "B" | "C" | "D" | string;
   text: string;
+}
+
+export interface SubQuestion {
+  sub_no: string;
+  type: QuestionType;
+  text: string;
+  options?: MCQOption[] | null;
+  answer: string;
+  marks: number;
+  bloom_level?: string;
 }
 
 export interface Question {
@@ -64,6 +74,8 @@ export interface Question {
   question_no: number;
   type: QuestionType;
   text: string;
+  passage?: string | null;
+  sub_questions?: SubQuestion[] | null;
   options: MCQOption[] | null;
   answer: string;
   marks: number;

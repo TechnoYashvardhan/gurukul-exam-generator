@@ -20,13 +20,18 @@ const ADMIN_TYPE_OPTIONS: { value: Section["type"]; label: string }[] = [
   { value: "true_false",          label: "True / False" },
   { value: "match_the_following",  label: "Match Following" },
   { value: "one_word",            label: "One Word" },
+  { value: "case_study",          label: "Case Study / Passage" },
 ];
 
 const TEACHER_TYPE_OPTIONS: { value: Section["type"]; label: string }[] = [
   { value: "mcq",          label: "MCQ" },
   { value: "short_answer", label: "Short Answer" },
   { value: "long_answer",  label: "Long Answer" },
-  { value: "case_study",   label: "Case Study" },
+  { value: "case_study",   label: "Case Study / Passage" },
+  { value: "fill_in_the_blanks", label: "Fill in Blanks" },
+  { value: "true_false",   label: "True / False" },
+  { value: "match_the_following", label: "Match Following" },
+  { value: "one_word",     label: "One Word" },
 ];
 
 function clamp(val: number, min: number, max: number) {

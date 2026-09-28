@@ -168,60 +168,82 @@ async def analyze_pyq_endpoint(
     llm = get_llm_client(settings.llm_provider)
 
     system_prompt = """You are the Chief Exam Architect and Curriculum Decompiler for Gurukul AI.
-Your job is to reverse-engineer a Previous Year Question (PYQ) paper or sample examination paper into a structured Exam Blueprint JSON.
+Your job is to reverse-engineer a Previous Year Question (PYQ) paper, CBSE/Board paper, or sample examination paper into a structured Exam Blueprint JSON.
 
 RULES:
-1. Extract:
-   - subject: e.g. "Physics", "Chemistry", "Mathematics", "English", "Biology", "Computer Science", etc.
-   - grade: e.g. "Grade 10", "Grade 12", "Class 11", etc.
+1. Extract metadata:
+   - subject: e.g. "English Core", "Physics", "Chemistry", "Mathematics", "Biology", "Computer Science", etc.
+   - grade: e.g. "Grade 12", "Grade 10", "Class 11", etc.
    - difficulty: "easy" | "medium" | "hard" | "extreme" (default to "medium")
-   - total_marks: Total marks of the exam (e.g. 70, 80, 100).
+   - total_marks: Total marks of the exam (e.g. 80, 70, 100, 50).
    - duration_minutes: Exam time in minutes (e.g. 180 for 3 hrs, 120 for 2 hrs, 90 for 1.5 hrs).
-   - heading_details: Title/Heading from paper (e.g. "CBSE Class 12 Physics Examination").
+   - heading_details: Title/Heading from paper (e.g. "CBSE Senior School Examination 2025-26 — English Core (Code 301)").
    - instructions: General instructions printed at top of paper.
    - sections: List of sections in the paper.
 
 2. FOR EACH SECTION:
    - id: "s1", "s2", "s3", ...
-   - title: e.g. "Section A — Multiple Choice Questions"
-   - type: one of ["mcq", "short_answer", "long_answer", "case_study", "fill_in_the_blanks", "true_false", "match_the_following", "one_word"]
-   - num_questions: number of questions in this section (integer >= 1)
-   - marks_per_question: marks per question (integer >= 1)
+   - title: e.g. "Section A — Reading Skills (Comprehension Passages)", "Section B — Creative Writing Skills", "Section C — Literature"
+   - type: one of ["case_study", "mcq", "short_answer", "long_answer", "fill_in_the_blanks", "true_false", "match_the_following", "one_word"]
+     * IMPORTANT: For Reading Comprehension Passages, Case-Based Paragraphs, or Literature Extracts with multiple sub-questions (MCQs, blanks, short answers), ALWAYS set type to "case_study".
+   - num_questions: number of lead questions/passages in this section (integer >= 1). For example, 2 reading passages = 2 questions.
+   - marks_per_question: average/total marks per passage or question (integer >= 1). For example, if Section A has 2 passages carrying 22 marks total, set num_questions: 2, marks_per_question: 11 (2 * 11 = 22).
    - instructions: section-specific instructions or null
-   - topic_query: if the section targets specific chapters/topics, specify them (e.g. "Unit 1: Electrostatics & Current Electricity"), otherwise null.
+   - topic_query: specific syllabus/chapter focus if mentioned, otherwise null.
 
 3. MATHEMATICAL INTEGRITY (CRITICAL):
    - For each section, section_marks = num_questions * marks_per_question.
    - The sum of all section_marks MUST EXACTLY equal total_marks!
+   - Ensure the total_marks matches the exam paper's stated total (e.g. 80, 70, 100).
 
 4. Return ONLY raw valid JSON. No markdown fences, no explanatory text.
 
 JSON FORMAT:
 {
-  "subject": "Physics",
+  "subject": "English Core",
   "grade": "Grade 12",
   "difficulty": "medium",
-  "total_marks": 70,
+  "total_marks": 80,
   "duration_minutes": 180,
-  "heading_details": "Senior School Examination — Physics",
-  "instructions": "All questions are compulsory. Use of calculators is not permitted.",
+  "heading_details": "CBSE Class 12 English Core Examination",
+  "instructions": "1. 15-minute reading time. 2. The paper is divided into three sections: Reading (22M), Writing (18M), Literature (40M). 3. Attempt all sections.",
   "sections": [
     {
       "id": "s1",
-      "title": "Section A — Multiple Choice Questions",
-      "type": "mcq",
-      "num_questions": 16,
-      "marks_per_question": 1,
-      "instructions": "Select the correct option for each question.",
-      "topic_query": null
+      "title": "Section A — Reading Skills",
+      "type": "case_study",
+      "num_questions": 2,
+      "marks_per_question": 11,
+      "instructions": "Read the passages carefully and answer the comprehension sub-questions.",
+      "topic_query": "Reading Comprehension, Factual & Analytical Passages"
+    },
+    {
+      "id": "s2",
+      "title": "Section B — Creative Writing Skills",
+      "type": "short_answer",
+      "num_questions": 4,
+      "marks_per_question": 4,
+      "instructions": "Creative writing tasks: Notice, Invitation, Letter, Report/Article.",
+      "topic_query": "Notice Writing, Formal Invitations, Letters to Editor, Article/Report"
+    },
+    {
+      "id": "s3",
+      "title": "Section C — Literature",
+      "type": "long_answer",
+      "num_questions": 7,
+      "marks_per_question": 6,
+      "instructions": "Reference to context extracts and analytical questions from prescribed texts.",
+      "topic_query": "Flamingo & Vistas Literature Texts"
     }
   ]
 }"""
 
     try:
+        # Pass up to 80,000 characters to ensure full 15+ page board papers are completely analyzed
+        paper_snippet = extracted_text[:80000]
         raw_res = await llm.generate(
             system_prompt=system_prompt,
-            user_message=f"SAMPLE PAPER / PYQ TEXT TO DECOMPILE:\n\n{extracted_text[:12000]}\n\nReverse-engineer and return ONLY valid JSON.",
+            user_message=f"SAMPLE PAPER / PYQ TEXT TO DECOMPILE:\n\n{paper_snippet}\n\nReverse-engineer and return ONLY valid JSON.",
             temperature=0.2,
             max_tokens=4096,
         )
@@ -231,19 +253,37 @@ JSON FORMAT:
         # Safe heuristic fallback
         parsed = {
             "subject": "General Studies",
-            "grade": "Grade 10",
+            "grade": "Grade 12",
             "difficulty": "medium",
-            "total_marks": 100,
+            "total_marks": 80,
             "duration_minutes": 180,
             "heading_details": "Decompiled Examination Blueprint",
             "instructions": "Attempt all sections.",
             "sections": [
                 {
                     "id": "s1",
-                    "title": "Section A — Multiple Choice Questions",
-                    "type": "mcq",
-                    "num_questions": 20,
-                    "marks_per_question": 1,
+                    "title": "Section A — Reading Skills / Case Studies",
+                    "type": "case_study",
+                    "num_questions": 2,
+                    "marks_per_question": 11,
+                    "instructions": "Read the passages and answer the sub-questions.",
+                    "topic_query": None,
+                },
+                {
+                    "id": "s2",
+                    "title": "Section B — Subjective Writing & Analysis",
+                    "type": "short_answer",
+                    "num_questions": 3,
+                    "marks_per_question": 6,
+                    "instructions": None,
+                    "topic_query": None,
+                },
+                {
+                    "id": "s3",
+                    "title": "Section C — Literature & Descriptive Questions",
+                    "type": "long_answer",
+                    "num_questions": 8,
+                    "marks_per_question": 5,
                     "instructions": None,
                     "topic_query": None,
                 }
@@ -269,9 +309,16 @@ JSON FORMAT:
             continue
         stype = str(s.get("type", "mcq")).lower()
         if stype not in valid_types:
-            stype = "mcq" if "mcq" in stype or "choice" in stype else "short_answer"
+            if "case" in stype or "passage" in stype or "reading" in stype or "comprehension" in stype:
+                stype = "case_study"
+            elif "mcq" in stype or "choice" in stype or "objective" in stype:
+                stype = "mcq"
+            elif "long" in stype or "essay" in stype:
+                stype = "long_answer"
+            else:
+                stype = "short_answer"
         
-        num_q = max(1, int(s.get("num_questions", 5)))
+        num_q = max(1, int(s.get("num_questions", 2)))
         mpq = max(1, int(s.get("marks_per_question", 1)))
         cleaned_sections.append(
             Section(
@@ -289,23 +336,63 @@ JSON FORMAT:
         cleaned_sections = [
             Section(
                 id="s1",
-                title="Section A — Multiple Choice Questions",
-                type="mcq",
-                num_questions=20,
-                marks_per_question=1,
+                title="Section A — Reading Skills / Case Study",
+                type="case_study",
+                num_questions=2,
+                marks_per_question=11,
                 instructions=None,
                 topic_query=None,
-            )
+            ),
+            Section(
+                id="s2",
+                title="Section B — Subjective Writing & Analysis",
+                type="short_answer",
+                num_questions=3,
+                marks_per_question=6,
+                instructions=None,
+                topic_query=None,
+            ),
+            Section(
+                id="s3",
+                title="Section C — Literature & Descriptive Questions",
+                type="long_answer",
+                num_questions=8,
+                marks_per_question=5,
+                instructions=None,
+                topic_query=None,
+            ),
         ]
 
     # Enforce mathematical consistency: total_marks == sum(section marks)
     computed_marks = sum(s.num_questions * s.marks_per_question for s in cleaned_sections)
-    total_marks = computed_marks if computed_marks > 0 else int(parsed.get("total_marks", 100))
+    target_total = int(parsed.get("total_marks", 0)) if isinstance(parsed, dict) and parsed.get("total_marks") else 0
 
-    duration_mins = max(10, int(parsed.get("duration_minutes", 180)))
-    subject_val = str(parsed.get("subject") or "General Studies").strip()
-    grade_val = str(parsed.get("grade") or "Grade 10").strip()
-    diff_val = str(parsed.get("difficulty") or "medium").lower()
+    if target_total > 0 and computed_marks != target_total:
+        diff = target_total - computed_marks
+        # Step 1: Attempt exact divisibility adjustment on any section
+        adjusted = False
+        for s in reversed(cleaned_sections):
+            if diff % s.num_questions == 0 and (s.marks_per_question + diff // s.num_questions) >= 1:
+                s.marks_per_question += diff // s.num_questions
+                total_marks = target_total
+                adjusted = True
+                break
+        
+        # Step 2: If indivisible, adjust question count of the last section to reconcile
+        if not adjusted:
+            last_sec = cleaned_sections[-1]
+            if diff > 0 and last_sec.marks_per_question > 0:
+                add_q = diff // last_sec.marks_per_question
+                if add_q > 0:
+                    last_sec.num_questions += add_q
+            total_marks = sum(s.num_questions * s.marks_per_question for s in cleaned_sections)
+    else:
+        total_marks = computed_marks if computed_marks > 0 else (target_total if target_total > 0 else 80)
+
+    duration_mins = max(10, int(parsed.get("duration_minutes", 180)) if isinstance(parsed, dict) and parsed.get("duration_minutes") else 180)
+    subject_val = str(parsed.get("subject") or "General Studies").strip() if isinstance(parsed, dict) else "General Studies"
+    grade_val = str(parsed.get("grade") or "Grade 12").strip() if isinstance(parsed, dict) else "Grade 12"
+    diff_val = str(parsed.get("difficulty") or "medium").lower() if isinstance(parsed, dict) else "medium"
     if diff_val not in ["easy", "medium", "hard", "extreme"]:
         diff_val = "medium"
 
@@ -315,8 +402,8 @@ JSON FORMAT:
         difficulty=diff_val,  # type: ignore
         total_marks=total_marks,
         duration_minutes=duration_mins,
-        heading_details=parsed.get("heading_details"),
-        instructions=parsed.get("instructions"),
+        heading_details=parsed.get("heading_details") if isinstance(parsed, dict) else None,
+        instructions=parsed.get("instructions") if isinstance(parsed, dict) else None,
         sections=cleaned_sections,
     )
 

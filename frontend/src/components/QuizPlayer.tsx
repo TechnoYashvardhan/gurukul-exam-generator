@@ -25,6 +25,7 @@ import {
   Maximize2,
   Lock,
   AlertOctagon,
+  BookOpen,
 } from "lucide-react";
 import Toast, { ToastVariant } from "./Toast";
 import MatchQuestionView from "./MatchQuestionView";
@@ -37,6 +38,11 @@ interface QuizPlayerProps {
 
 function formatAnswerDisplay(ans: any, options?: any[] | null) {
   if (ans === undefined || ans === null || ans === "") return "(No response provided)";
+  if (typeof ans === "object" && ans !== null) {
+    return Object.entries(ans)
+      .map(([k, v]) => `(${k}) ${v}`)
+      .join("; ");
+  }
   if (options && Array.isArray(options)) {
     const matched = options.find(
       (o) => String(o.key).trim().toUpperCase() === String(ans).trim().toUpperCase()
@@ -44,9 +50,6 @@ function formatAnswerDisplay(ans: any, options?: any[] | null) {
     if (matched) {
       return `(${matched.key}) ${matched.text}`;
     }
-  }
-  if (typeof ans === "object") {
-    return JSON.stringify(ans);
   }
   return String(ans);
 }
@@ -382,6 +385,20 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
       ...prev,
       [qKey]: ans,
     }));
+  };
+
+  const handleSelectSubAnswer = (subNo: string, val: string) => {
+    if (!currentQ) return;
+    const qKey = String(currentQ.question_no ?? currentIndex + 1);
+    setAnswers((prev) => {
+      const currentVal = prev[qKey];
+      const currentObj = typeof currentVal === "object" && currentVal !== null && !Array.isArray(currentVal) ? { ...currentVal } : {};
+      currentObj[subNo] = val;
+      return {
+        ...prev,
+        [qKey]: currentObj,
+      };
+    });
   };
 
   const handleRetake = async (targetExamId: string) => {
@@ -1175,92 +1192,230 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                   fontWeight: 600,
                   color: "var(--text-1)",
                   lineHeight: 1.6,
-                  marginBottom: 24,
+                  marginBottom: 16,
                 }}
               >
                 <MathText content={currentQ.text} />
               </div>
 
-              {/* Options for MCQ / True-False */}
-              {currentQ.options && currentQ.options.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-                  {currentQ.options.map((opt) => {
-                    const isSelected = String(currentAnswer).trim().toUpperCase() === String(opt.key).trim().toUpperCase();
+              {/* Reading Comprehension / Case Study Passage Card */}
+              {currentQ.passage && (
+                <div
+                  style={{
+                    marginBottom: 20,
+                    padding: "16px 20px",
+                    background: "var(--surface-sunken)",
+                    border: "1px solid var(--border)",
+                    borderLeft: "4px solid var(--accent)",
+                    borderRadius: "var(--radius-md)",
+                    maxHeight: "320px",
+                    overflowY: "auto",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, color: "var(--accent)", fontWeight: 700, fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    <BookOpen size={15} />
+                    <span>Comprehension Passage / Case Study Context</span>
+                  </div>
+                  <div style={{ fontSize: "14px", lineHeight: 1.7, color: "var(--text)", whiteSpace: "pre-line" }}>
+                    <MathText content={currentQ.passage} />
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Questions Interactive Inputs (for Case Study / Reading Passages) */}
+              {currentQ.sub_questions && currentQ.sub_questions.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 20 }}>
+                  {currentQ.sub_questions.map((sub, sIdx) => {
+                    const subKey = sub.sub_no || String(sIdx + 1);
+                    const subLabel = `(${subKey})`;
+                    const subAnswer = typeof currentAnswer === "object" && currentAnswer !== null ? (currentAnswer[subKey] || "") : "";
+
                     return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        onClick={() => handleSelectAnswer(opt.key)}
+                      <div
+                        key={sIdx}
                         style={{
-                          padding: "14px 18px",
-                          borderRadius: "var(--radius-lg)",
-                          border: isSelected ? "2px solid var(--forest)" : "1px solid var(--border)",
-                          background: isSelected ? "rgba(22, 101, 52, 0.08)" : "var(--surface-sunken)",
-                          color: "var(--text-1)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          textAlign: "left",
-                          cursor: "pointer",
-                          transition: "all 0.15s ease",
-                          boxShadow: isSelected ? "var(--shadow-sm)" : "none",
+                          padding: "16px 18px",
+                          background: "var(--surface-sunken)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-md)",
                         }}
                       >
-                        <span
-                          style={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: "50%",
-                            background: isSelected ? "var(--forest)" : "var(--surface)",
-                            color: isSelected ? "#fff" : "var(--text-2)",
-                            border: `1px solid ${isSelected ? "var(--forest)" : "var(--border)"}`,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: 700,
-                            fontSize: 12,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {opt.key}
-                        </span>
-                        <div style={{ flex: 1, fontSize: 14 }}>
-                          <MathText content={opt.text} />
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1 }}>
+                            <span style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--accent)", minWidth: 26, fontSize: "14px" }}>
+                              {subLabel}
+                            </span>
+                            <div style={{ fontSize: "14px", lineHeight: 1.5, fontWeight: 600, color: "var(--text-1)", flex: 1 }}>
+                              <MathText content={sub.text} />
+                            </div>
+                          </div>
+                          <span className="chip-badge chip-badge--gold" style={{ fontSize: "11px", flexShrink: 0 }}>
+                            {sub.marks} Mark{sub.marks > 1 ? "s" : ""}
+                          </span>
                         </div>
-                      </button>
+
+                        {/* MCQ Sub-question options */}
+                        {sub.options && sub.options.length > 0 && (
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 8, paddingLeft: 34 }}>
+                            {sub.options.map((opt) => {
+                              const isSelected = String(subAnswer).trim().toUpperCase() === String(opt.key).trim().toUpperCase();
+                              return (
+                                <button
+                                  key={opt.key}
+                                  type="button"
+                                  onClick={() => handleSelectSubAnswer(subKey, opt.key)}
+                                  style={{
+                                    padding: "10px 14px",
+                                    borderRadius: "var(--radius-md)",
+                                    border: isSelected ? "2px solid var(--forest)" : "1px solid var(--border)",
+                                    background: isSelected ? "rgba(22, 101, 52, 0.08)" : "var(--surface)",
+                                    color: "var(--text-1)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    textAlign: "left",
+                                    cursor: "pointer",
+                                    fontSize: "13px",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: 22,
+                                      height: 22,
+                                      borderRadius: "50%",
+                                      background: isSelected ? "var(--forest)" : "var(--surface-sunken)",
+                                      color: isSelected ? "#fff" : "var(--text-2)",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontWeight: 700,
+                                      fontSize: "11px",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    {opt.key}
+                                  </span>
+                                  <span style={{ flex: 1 }}>
+                                    <MathText content={opt.text} />
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Text / Blanks Sub-question Input */}
+                        {(!sub.options || sub.options.length === 0) && (
+                          <div style={{ paddingLeft: 34 }}>
+                            {sub.type === "short_answer" ? (
+                              <textarea
+                                className="gk-textarea"
+                                rows={3}
+                                placeholder="Type your response / inference here..."
+                                value={subAnswer}
+                                onChange={(e) => handleSelectSubAnswer(subKey, e.target.value)}
+                                style={{ fontSize: "13px" }}
+                              />
+                            ) : (
+                              <input
+                                type="text"
+                                className="gk-input"
+                                placeholder="Type answer / completed blank word..."
+                                value={subAnswer}
+                                onChange={(e) => handleSelectSubAnswer(subKey, e.target.value)}
+                                style={{ fontSize: "13.5px", padding: "8px 12px" }}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
-              )}
+              ) : (
+                <>
+                  {/* Options for Top-Level MCQ / True-False */}
+                  {currentQ.options && currentQ.options.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+                      {currentQ.options.map((opt) => {
+                        const isSelected = String(currentAnswer).trim().toUpperCase() === String(opt.key).trim().toUpperCase();
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => handleSelectAnswer(opt.key)}
+                            style={{
+                              padding: "14px 18px",
+                              borderRadius: "var(--radius-lg)",
+                              border: isSelected ? "2px solid var(--forest)" : "1px solid var(--border)",
+                              background: isSelected ? "rgba(22, 101, 52, 0.08)" : "var(--surface-sunken)",
+                              color: "var(--text-1)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
+                              textAlign: "left",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                              boxShadow: isSelected ? "var(--shadow-sm)" : "none",
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 26,
+                                height: 26,
+                                borderRadius: "50%",
+                                background: isSelected ? "var(--forest)" : "var(--surface)",
+                                color: isSelected ? "#fff" : "var(--text-2)",
+                                border: `1px solid ${isSelected ? "var(--forest)" : "var(--border)"}`,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontWeight: 700,
+                                fontSize: 12,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {opt.key}
+                            </span>
+                            <div style={{ flex: 1, fontSize: 14 }}>
+                              <MathText content={opt.text} />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-              {/* Fill in blanks or One word Input */}
-              {(currentQ.type === "fill_in_the_blanks" || currentQ.type === "one_word") && (
-                <div style={{ marginBottom: 20 }}>
-                  <label className="gk-label">Type your answer here:</label>
-                  <input
-                    type="text"
-                    className="gk-input"
-                    placeholder="Enter word or phrase..."
-                    value={currentAnswer}
-                    onChange={(e) => handleSelectAnswer(e.target.value)}
-                    style={{ fontSize: 15, padding: "12px 14px" }}
-                  />
-                </div>
-              )}
+                  {/* Fill in blanks or One word Input */}
+                  {(currentQ.type === "fill_in_the_blanks" || currentQ.type === "one_word") && (
+                    <div style={{ marginBottom: 20 }}>
+                      <label className="gk-label">Type your answer here:</label>
+                      <input
+                        type="text"
+                        className="gk-input"
+                        placeholder="Enter word or phrase..."
+                        value={typeof currentAnswer === "string" ? currentAnswer : ""}
+                        onChange={(e) => handleSelectAnswer(e.target.value)}
+                        style={{ fontSize: 15, padding: "12px 14px" }}
+                      />
+                    </div>
+                  )}
 
-              {/* Short / Long / Case Study Answer Textarea */}
-              {["short_answer", "long_answer", "case_study"].includes(currentQ.type) && (
-                <div style={{ marginBottom: 20 }}>
-                  <label className="gk-label">Your Response / Explanation:</label>
-                  <textarea
-                    className="gk-textarea"
-                    rows={5}
-                    placeholder="Type your explanation, steps, or derivations here..."
-                    value={currentAnswer}
-                    onChange={(e) => handleSelectAnswer(e.target.value)}
-                    style={{ fontSize: 14, lineHeight: 1.6 }}
-                  />
-                </div>
+                  {/* Short / Long / Case Study Answer Textarea */}
+                  {["short_answer", "long_answer", "case_study"].includes(currentQ.type) && (
+                    <div style={{ marginBottom: 20 }}>
+                      <label className="gk-label">Your Response / Explanation:</label>
+                      <textarea
+                        className="gk-textarea"
+                        rows={5}
+                        placeholder="Type your explanation, steps, or derivations here..."
+                        value={typeof currentAnswer === "string" ? currentAnswer : ""}
+                        onChange={(e) => handleSelectAnswer(e.target.value)}
+                        style={{ fontSize: 14, lineHeight: 1.6 }}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

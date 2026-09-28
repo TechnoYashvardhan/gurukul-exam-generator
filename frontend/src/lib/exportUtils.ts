@@ -253,14 +253,38 @@ export function downloadExamAsMarkdown(exam: GeneratedExam, includeAnswerKey: bo
     lines.push(`**Q${q.question_no}.** ${q.text}  *(${q.marks} Mark${q.marks > 1 ? "s" : ""})*`);
     lines.push("");
 
-    if (q.options && q.options.length > 0) {
+    if (q.passage) {
+      lines.push(`> 📖 **Comprehension Passage / Case Study Context:**`);
+      q.passage.split("\n").forEach((pLine: string) => {
+        lines.push(`> ${pLine}`);
+      });
+      lines.push("");
+    }
+
+    if (q.sub_questions && q.sub_questions.length > 0) {
+      q.sub_questions.forEach((sub: any, sIdx: number) => {
+        const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
+        lines.push(`**${subLabel}** ${sub.text}  *(${sub.marks} Mark${sub.marks > 1 ? "s" : ""})*`);
+        if (sub.options && sub.options.length > 0) {
+          sub.options.forEach((opt: any) => {
+            lines.push(`   - **(${opt.key})** ${opt.text}`);
+          });
+        }
+        if (includeAnswerKey && sub.answer) {
+          lines.push(`   > **Answer:** \`${sub.answer}\``);
+        }
+        lines.push("");
+      });
+    }
+
+    if (!q.sub_questions && q.options && q.options.length > 0) {
       q.options.forEach((opt) => {
         lines.push(`- **(${opt.key})** ${opt.text}`);
       });
       lines.push("");
     }
 
-    if (includeAnswerKey && q.answer) {
+    if (includeAnswerKey && q.answer && !q.sub_questions) {
       lines.push(`> **Correct Answer / Marking Scheme:** \`${q.answer}\``);
       lines.push("");
     }
@@ -970,8 +994,133 @@ export async function downloadExamAsDocx(exam: GeneratedExam, includeAnswerKey: 
       );
     }
 
-    // Question options
-    if (q.options && q.options.length > 0) {
+    // Comprehension Passage or Case Study Box
+    if (q.passage) {
+      const passageParas = q.passage
+        .split("\n")
+        .map((p: string) => p.trim())
+        .filter(Boolean)
+        .map(
+          (pText: string) =>
+            new Paragraph({
+              spacing: { after: 40 },
+              children: formatTextToDocxRuns(pText, { size: 19, color: "1e293b" }),
+            })
+        );
+
+      children.push(
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 4, color: "CBD5E1" },
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: "CBD5E1" },
+            left: { style: BorderStyle.SINGLE, size: 16, color: "EA580C" },
+            right: { style: BorderStyle.SINGLE, size: 4, color: "CBD5E1" },
+            insideHorizontal: { style: BorderStyle.NONE },
+            insideVertical: { style: BorderStyle.NONE },
+          },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  shading: { type: ShadingType.CLEAR, fill: "F8FAFC" },
+                  children: [
+                    new Paragraph({
+                      spacing: { before: 40, after: 40 },
+                      children: [
+                        new TextRun({
+                          text: "Comprehension Passage / Case Study Context:",
+                          bold: true,
+                          size: 19,
+                          font: "Calibri",
+                          color: "c2410c",
+                        }),
+                      ],
+                    }),
+                    ...passageParas,
+                  ],
+                }),
+              ],
+            }),
+          ],
+        })
+      );
+    }
+
+    // Sub-Questions (for Case Study / Reading Comprehension)
+    if (q.sub_questions && q.sub_questions.length > 0) {
+      q.sub_questions.forEach((sub: any, sIdx: number) => {
+        const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
+        children.push(
+          new Paragraph({
+            indent: { left: 360 },
+            spacing: { before: 80, after: 30 },
+            children: [
+              new TextRun({
+                text: `${subLabel} `,
+                bold: true,
+                size: 20,
+                font: "Calibri",
+                color: "0f172a",
+              }),
+              ...formatTextToDocxRuns(sub.text, { size: 20, color: "1e293b" }),
+              new TextRun({
+                text: `  [${sub.marks} Mark${sub.marks > 1 ? "s" : ""}]`,
+                bold: true,
+                size: 18,
+                font: "Calibri",
+                color: "b45309",
+              }),
+            ],
+          })
+        );
+
+        if (sub.options && sub.options.length > 0) {
+          sub.options.forEach((opt: any) => {
+            children.push(
+              new Paragraph({
+                indent: { left: 720 },
+                spacing: { after: 20 },
+                children: [
+                  new TextRun({
+                    text: `(${opt.key}) `,
+                    bold: true,
+                    size: 19,
+                    font: "Calibri",
+                    color: "475569",
+                  }),
+                  ...formatTextToDocxRuns(opt.text, { size: 19, color: "1e293b" }),
+                ],
+              })
+            );
+          });
+        }
+
+        if (includeAnswerKey && sub.answer) {
+          children.push(
+            new Paragraph({
+              indent: { left: 540 },
+              spacing: { before: 20, after: 60 },
+              shading: { type: ShadingType.CLEAR, fill: "ECFDF5" },
+              children: [
+                new TextRun({
+                  text: "  ✓ Answer: ",
+                  bold: true,
+                  size: 18,
+                  font: "Calibri",
+                  color: "047857",
+                }),
+                ...formatTextToDocxRuns(String(sub.answer), { size: 18, color: "065f46" }),
+              ],
+            })
+          );
+        }
+      });
+    }
+
+    // Top-level Question options
+    if (!q.sub_questions && q.options && q.options.length > 0) {
       q.options.forEach((opt: any) => {
         children.push(
           new Paragraph({
@@ -992,8 +1141,8 @@ export async function downloadExamAsDocx(exam: GeneratedExam, includeAnswerKey: 
       });
     }
 
-    // Answer key
-    if (includeAnswerKey && q.answer) {
+    // Top-level Answer key
+    if (includeAnswerKey && q.answer && !q.sub_questions) {
       children.push(
         new Paragraph({
           spacing: { before: 40, after: 100 },

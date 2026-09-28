@@ -281,8 +281,10 @@ async def submit_quiz_attempt(
         # Extract and sanitize user_ans_str
         user_ans_str = ""
         if user_ans is not None:
-            if isinstance(user_ans, (dict, list)):
-                user_ans_str = ""
+            if isinstance(user_ans, dict):
+                user_ans_str = "; ".join(f"({k}) {v}" for k, v in user_ans.items() if str(v).strip())
+            elif isinstance(user_ans, list):
+                user_ans_str = "; ".join(str(v) for v in user_ans if str(v).strip())
             else:
                 raw_val = str(user_ans).strip()
                 if raw_val.lower() not in ["", "null", "undefined", "none", "{}", "[]"]:
