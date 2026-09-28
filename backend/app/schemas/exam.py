@@ -89,12 +89,17 @@ class SectionBlueprint(BaseModel):
     type: str
     questions: list[QuestionBlueprint]
     topic_query: str | None = None
+    sub_section_id: str | None = None
+    sub_section_title: str | None = None
+    case_study_config: list[Any] | None = None
 
 class ExamBlueprint(BaseModel):
     sections: list[SectionBlueprint]
 
 class Question(BaseModel):
     section_id: str
+    sub_section_id: str | None = None
+    sub_section_title: str | None = None
     question_no: int
     type: str
     text: str

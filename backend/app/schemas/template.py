@@ -7,8 +7,73 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 
+class CaseStudySubQConfig(BaseModel):
+    """Configuration for a sub-question type breakdown in a Case Study / Reading Passage."""
+
+    type: Literal[
+        "mcq",
+        "short_answer",
+        "long_answer",
+        "case_study",
+        "fill_in_the_blanks",
+        "true_false",
+        "match_the_following",
+        "one_word",
+    ] = Field(..., description="Sub-question format")
+    count: int = Field(default=1, ge=1, description="Number of sub-questions of this type")
+    marks_per_sub: int = Field(default=1, ge=1, description="Marks awarded per sub-question")
+
+    @property
+    def total_marks(self) -> int:
+        return self.count * self.marks_per_sub
+
+
+class SubSection(BaseModel):
+    """A sub-section or part under a parent Section (e.g. 'Part I — Context Extracts', 'Part II — Short Answer')."""
+
+    id: str = Field(..., description="Unique sub-section identifier, e.g. 's1_p1'")
+    title: str = Field(..., description="Display title, e.g. 'Part I — Context Extracts'")
+    type: Literal[
+        "mcq",
+        "short_answer",
+        "long_answer",
+        "case_study",
+        "fill_in_the_blanks",
+        "true_false",
+        "match_the_following",
+        "one_word",
+    ] = Field(..., description="Question format for this sub-section")
+    num_questions: int = Field(default=1, ge=1, description="Number of questions in this sub-section")
+    marks_per_question: int = Field(default=1, ge=1, description="Marks awarded per question")
+    instructions: str | None = Field(
+        None, description="Optional per-sub-section instructions"
+    )
+    bloom_level: str | None = Field(
+        None, description="Optional Bloom's level override for this sub-section"
+    )
+    topic_query: str | None = Field(
+        None, description="Optional focused topic/chapter query for this sub-section"
+    )
+    case_study_config: list[CaseStudySubQConfig] | None = Field(
+        None, description="Custom sub-question breakdown if type is case_study"
+    )
+
+    @property
+    def sub_section_marks(self) -> int:
+        if self.type == "case_study" and self.case_study_config and len(self.case_study_config) > 0:
+            marks_per_case = sum(c.count * c.marks_per_sub for c in self.case_study_config)
+            return self.num_questions * marks_per_case
+        return self.num_questions * self.marks_per_question
+
+    @model_validator(mode="after")
+    def sync_sub_marks(self) -> "SubSection":
+        if self.type == "case_study" and self.case_study_config and len(self.case_study_config) > 0:
+            self.marks_per_question = sum(c.count * c.marks_per_sub for c in self.case_study_config)
+        return self
+
+
 class Section(BaseModel):
-    """One section of an exam (e.g., 'Section A — MCQ')."""
+    """One section of an exam (e.g., 'Section A — MCQ' or 'Section C — Literature')."""
 
     id: str = Field(..., description="Unique section identifier, e.g. 's1'")
     title: str = Field(..., description="Display title, e.g. 'Section A — Multiple Choice'")
@@ -22,10 +87,10 @@ class Section(BaseModel):
         "match_the_following",
         "one_word",
     ] = Field(
-        ..., description="Question format for this section"
+        ..., description="Question format for this section (if not split into sub-sections)"
     )
-    num_questions: int = Field(..., ge=1, description="Number of questions in this section")
-    marks_per_question: int = Field(..., ge=1, description="Marks awarded per question")
+    num_questions: int = Field(default=1, ge=1, description="Number of questions in this section")
+    marks_per_question: int = Field(default=1, ge=1, description="Marks awarded per question")
     instructions: str | None = Field(
         None, description="Optional per-section instructions shown on the paper"
     )
@@ -33,12 +98,38 @@ class Section(BaseModel):
         None, description="Optional Bloom's taxonomy override for this specific section"
     )
     topic_query: str | None = Field(
-        None, description="Optional focused chapter/topic query for this section (e.g. 'Chapter 1: Kinematics & Laws of Motion')"
+        None, description="Optional focused chapter/topic query for this section"
+    )
+    case_study_config: list[CaseStudySubQConfig] | None = Field(
+        None, description="Custom sub-question breakdown if section type is case_study"
+    )
+    sub_sections: list[SubSection] | None = Field(
+        None, description="Optional sub-sections / parts within this parent section"
     )
 
     @property
     def section_marks(self) -> int:
+        if self.sub_sections and len(self.sub_sections) > 0:
+            return sum(sub.sub_section_marks for sub in self.sub_sections)
+        if self.type == "case_study" and self.case_study_config and len(self.case_study_config) > 0:
+            marks_per_case = sum(c.count * c.marks_per_sub for c in self.case_study_config)
+            return self.num_questions * marks_per_case
         return self.num_questions * self.marks_per_question
+
+    @model_validator(mode="after")
+    def sync_marks_per_question(self) -> "Section":
+        if self.sub_sections and len(self.sub_sections) > 0:
+            tot_m = sum(sub.sub_section_marks for sub in self.sub_sections)
+            tot_q = sum(sub.num_questions for sub in self.sub_sections)
+            if tot_q > 0 and tot_m % tot_q == 0:
+                self.num_questions = tot_q
+                self.marks_per_question = tot_m // tot_q
+            else:
+                self.num_questions = 1
+                self.marks_per_question = tot_m
+        elif self.type == "case_study" and self.case_study_config and len(self.case_study_config) > 0:
+            self.marks_per_question = sum(c.count * c.marks_per_sub for c in self.case_study_config)
+        return self
 
 
 class ExamTemplate(BaseModel):

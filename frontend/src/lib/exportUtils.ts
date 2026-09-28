@@ -231,6 +231,9 @@ export function downloadExamAsMarkdown(exam: GeneratedExam, includeAnswerKey: bo
 
   exam.questions.forEach((q, idx) => {
     const isFirstInSec = idx === 0 || q.section_id !== exam.questions[idx - 1].section_id;
+    const isFirstInSubSec =
+      isFirstInSec ||
+      (q.sub_section_title && q.sub_section_title !== exam.questions[idx - 1]?.sub_section_title);
     const secIndex = uniqueSecIds.indexOf(q.section_id);
     const secLetter = String.fromCharCode(65 + (secIndex >= 0 ? secIndex : 0));
     const sectionMeta = exam.sections?.find((s) => s.id === q.section_id);
@@ -247,6 +250,11 @@ export function downloadExamAsMarkdown(exam: GeneratedExam, includeAnswerKey: bo
       if (sectionMeta?.instructions) {
         lines.push(`_${sectionMeta.instructions}_`);
       }
+      lines.push("");
+    }
+
+    if (isFirstInSubSec && !isFirstInSec && q.sub_section_title) {
+      lines.push(`### 📑 ${q.sub_section_title}`);
       lines.push("");
     }
 
@@ -802,6 +810,27 @@ export async function downloadExamAsDocx(exam: GeneratedExam, includeAnswerKey: 
           })
         );
       }
+    }
+
+    const isFirstInSubSec =
+      isFirstInSec ||
+      (q.sub_section_title && q.sub_section_title !== exam.questions[idx - 1]?.sub_section_title);
+
+    if (isFirstInSubSec && !isFirstInSec && q.sub_section_title) {
+      children.push(
+        new Paragraph({
+          spacing: { before: 160, after: 60 },
+          children: [
+            new TextRun({
+              text: `${q.sub_section_title.toUpperCase()}`,
+              bold: true,
+              size: 20,
+              font: "Calibri",
+              color: "4338ca",
+            }),
+          ],
+        })
+      );
     }
 
     // Question statement & content

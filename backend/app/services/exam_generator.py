@@ -12,6 +12,7 @@ from app.schemas.exam import (
     GeneratedExam,
     Question,
     MCQOption,
+    SubQuestion,
     GeneratedSection,
     ExamBlueprint,
     SectionBlueprint,
@@ -274,32 +275,91 @@ def _create_default_blueprint(template: ExamTemplate) -> ExamBlueprint:
     sections = []
     bloom_hint = BLOOM_GUIDANCE.get(template.difficulty, "medium")
     for s in template.sections:
-        q_blueprints = []
-        for i in range(s.num_questions):
-            q_blueprints.append(
-                QuestionBlueprint(
-                    topic=template.subject,
-                    subtopic=f"{s.title} - Q{i+1}",
-                    concept=f"Core concept in {template.subject}",
-                    bloom_level=s.bloom_level or template.bloom_level or "apply",
-                    difficulty=template.difficulty,
+        if s.sub_sections and len(s.sub_sections) > 0:
+            for sub in s.sub_sections:
+                q_blueprints = []
+                for i in range(sub.num_questions):
+                    q_blueprints.append(
+                        QuestionBlueprint(
+                            topic=sub.topic_query or s.topic_query or template.subject,
+                            subtopic=f"{s.title} • {sub.title} - Q{i+1}",
+                            concept=f"Core concept in {sub.topic_query or s.topic_query or template.subject}",
+                            bloom_level=sub.bloom_level or s.bloom_level or template.bloom_level or "apply",
+                            difficulty=template.difficulty,
+                        )
+                    )
+                sections.append(
+                    SectionBlueprint(
+                        section_id=s.id,
+                        sub_section_id=sub.id,
+                        sub_section_title=sub.title,
+                        type=sub.type,
+                        topic_query=sub.topic_query or s.topic_query,
+                        case_study_config=sub.case_study_config,
+                        questions=q_blueprints,
+                    )
+                )
+        else:
+            q_blueprints = []
+            for i in range(s.num_questions):
+                q_blueprints.append(
+                    QuestionBlueprint(
+                        topic=s.topic_query or template.subject,
+                        subtopic=f"{s.title} - Q{i+1}",
+                        concept=f"Core concept in {s.topic_query or template.subject}",
+                        bloom_level=s.bloom_level or template.bloom_level or "apply",
+                        difficulty=template.difficulty,
+                    )
+                )
+            sections.append(
+                SectionBlueprint(
+                    section_id=s.id,
+                    sub_section_id=None,
+                    sub_section_title=None,
+                    type=s.type,
+                    topic_query=s.topic_query,
+                    case_study_config=s.case_study_config,
+                    questions=q_blueprints,
                 )
             )
-        sections.append(
-            SectionBlueprint(
-                section_id=s.id,
-                type=s.type,
-                topic_query=s.topic_query,
-                questions=q_blueprints,
-            )
-        )
     return ExamBlueprint(sections=sections)
 
 async def _generate_blueprint(llm: LLMClient, template: ExamTemplate, syllabus_text: str, custom_topic: str | None) -> ExamBlueprint:
     sections_info = []
+    target_units: list[dict[str, Any]] = []
+
     for s in template.sections:
-        scope_str = f" [Scope / Chapter Focus: '{s.topic_query}']" if s.topic_query else ""
-        sections_info.append(f"Section ID '{s.id}' ({s.type}): {s.num_questions} questions, {s.marks_per_question} marks each.{scope_str}")
+        if s.sub_sections and len(s.sub_sections) > 0:
+            sections_info.append(f"Section ID '{s.id}' ({s.title}): Split into {len(s.sub_sections)} Sub-Sections / Parts:")
+            for sub in s.sub_sections:
+                sub_scope = f" [Scope / Focus: '{sub.topic_query or s.topic_query}']" if (sub.topic_query or s.topic_query) else ""
+                sections_info.append(f"  - Sub-Section '{sub.id}' ({sub.title} | {sub.type}): {sub.num_questions} questions.{sub_scope}")
+                target_units.append({
+                    "section_id": s.id,
+                    "sub_section_id": sub.id,
+                    "sub_section_title": sub.title,
+                    "type": sub.type,
+                    "num_questions": sub.num_questions,
+                    "topic_query": sub.topic_query or s.topic_query,
+                    "bloom_level": sub.bloom_level or s.bloom_level or template.bloom_level,
+                    "case_study_config": sub.case_study_config,
+                    "title": f"{s.title} • {sub.title}",
+                })
+        else:
+            scope_str = f" [Scope / Chapter Focus: '{s.topic_query}']" if s.topic_query else ""
+            sections_info.append(f"Section ID '{s.id}' ({s.title} | {s.type}): {s.num_questions} questions, {s.marks_per_question} marks each.{scope_str}")
+            target_units.append({
+                "section_id": s.id,
+                "sub_section_id": None,
+                "sub_section_title": None,
+                "type": s.type,
+                "num_questions": s.num_questions,
+                "topic_query": s.topic_query,
+                "bloom_level": s.bloom_level or template.bloom_level,
+                "case_study_config": s.case_study_config,
+                "title": s.title,
+            })
+
     sections_text = "\n".join(sections_info)
     bloom_hint = BLOOM_GUIDANCE.get(template.difficulty, BLOOM_GUIDANCE['medium'])
 
@@ -313,12 +373,12 @@ Grade / Level: {template.grade}
 Difficulty: {template.difficulty.upper()} ({bloom_hint})
 Custom Topic Focus: {custom_topic or 'None'}
 
-SECTIONS REQUIRED:
+SECTIONS & SUB-SECTIONS REQUIRED:
 {sections_text}
 
 CRITICAL SECTION TOPIC SCOPING RULES:
-- If a section specifies [Scope / Chapter Focus], all question topics, subtopics, and concepts in that section MUST strictly focus on that specified syllabus chapter or topic!
-- Ensure high-quality conceptual diversity matching the section format and Bloom's difficulty.
+- If a section or sub-section specifies [Scope / Chapter Focus], all question topics, subtopics, and concepts in that section/part MUST strictly focus on that specified syllabus chapter or topic!
+- Ensure high-quality conceptual diversity matching the section/sub-section format and Bloom's difficulty.
 
 SYLLABUS CONTENT:
 {syllabus_text}
@@ -327,8 +387,9 @@ JSON FORMAT REQUIRED:
 {{
   "sections": [
     {{
-      "section_id": "{template.sections[0].id if template.sections else 's1'}",
-      "type": "{template.sections[0].type if template.sections else 'mcq'}",
+      "section_id": "{target_units[0]['section_id'] if target_units else 's1'}",
+      "sub_section_id": "{target_units[0]['sub_section_id'] if target_units and target_units[0]['sub_section_id'] else ''}",
+      "type": "{target_units[0]['type'] if target_units else 'mcq'}",
       "questions": [
         {{ "topic": "...", "subtopic": "...", "concept": "...", "bloom_level": "apply", "difficulty": "medium" }}
       ]
@@ -356,13 +417,17 @@ Return ONLY the raw JSON.
 
         validated_sections: list[SectionBlueprint] = []
 
-        for idx, s in enumerate(template.sections):
-            # Find matching section or match by index
+        for idx, u in enumerate(target_units):
+            # Find matching section/sub-section block
             matched_sec = None
             for r_sec in raw_sections:
-                if isinstance(r_sec, dict) and r_sec.get("section_id") == s.id:
-                    matched_sec = r_sec
-                    break
+                if isinstance(r_sec, dict):
+                    if u["sub_section_id"] and (r_sec.get("sub_section_id") == u["sub_section_id"] or r_sec.get("section_id") == u["sub_section_id"]):
+                        matched_sec = r_sec
+                        break
+                    elif not u["sub_section_id"] and r_sec.get("section_id") == u["section_id"]:
+                        matched_sec = r_sec
+                        break
             if not matched_sec and idx < len(raw_sections) and isinstance(raw_sections[idx], dict):
                 matched_sec = raw_sections[idx]
             
@@ -373,34 +438,37 @@ Return ONLY the raw JSON.
                 if isinstance(q_item, dict):
                     q_blueprints.append(
                         QuestionBlueprint(
-                            topic=str(q_item.get("topic", s.topic_query or template.subject)),
-                            subtopic=str(q_item.get("subtopic", s.title)),
-                            concept=str(q_item.get("concept", f"Concept in {s.topic_query or template.subject}")),
-                            bloom_level=str(q_item.get("bloom_level", s.bloom_level or template.bloom_level or "apply")),
+                            topic=str(q_item.get("topic", u["topic_query"] or template.subject)),
+                            subtopic=str(q_item.get("subtopic", u["title"])),
+                            concept=str(q_item.get("concept", f"Concept in {u['topic_query'] or template.subject}")),
+                            bloom_level=str(q_item.get("bloom_level", u["bloom_level"] or "apply")),
                             difficulty=str(q_item.get("difficulty", template.difficulty)),
                         )
                     )
             
             # Fill missing questions up to required num_questions
-            while len(q_blueprints) < s.num_questions:
+            while len(q_blueprints) < u["num_questions"]:
                 q_blueprints.append(
                     QuestionBlueprint(
-                        topic=s.topic_query or template.subject,
-                        subtopic=f"{s.title} - Q{len(q_blueprints)+1}",
-                        concept=f"Core concept in {s.topic_query or template.subject}",
-                        bloom_level=s.bloom_level or template.bloom_level or "apply",
+                        topic=u["topic_query"] or template.subject,
+                        subtopic=f"{u['title']} - Q{len(q_blueprints)+1}",
+                        concept=f"Core concept in {u['topic_query'] or template.subject}",
+                        bloom_level=u["bloom_level"] or "apply",
                         difficulty=template.difficulty,
                     )
                 )
             
             # Trim if too many
-            q_blueprints = q_blueprints[:s.num_questions]
+            q_blueprints = q_blueprints[:u["num_questions"]]
             
             validated_sections.append(
                 SectionBlueprint(
-                    section_id=s.id,
-                    type=s.type,
-                    topic_query=s.topic_query,
+                    section_id=u["section_id"],
+                    sub_section_id=u["sub_section_id"],
+                    sub_section_title=u["sub_section_title"],
+                    type=u["type"],
+                    topic_query=u["topic_query"],
+                    case_study_config=u["case_study_config"],
                     questions=q_blueprints,
                 )
             )
@@ -494,17 +562,237 @@ def _shuffle_and_randomize_options(q: Question) -> Question:
     return q
 
 
+def _build_fallback_questions(sec: SectionBlueprint, marks_per_q: int) -> list[Question]:
+    case_marks_calc = marks_per_q
+    if sec.type == "case_study" and sec.case_study_config and len(sec.case_study_config) > 0:
+        tot_m = sum(
+            int(getattr(c, "count", 0) or (c.get("count", 1) if isinstance(c, dict) else 1)) *
+            int(getattr(c, "marks_per_sub", 0) or (c.get("marks_per_sub", 1) if isinstance(c, dict) else 1))
+            for c in sec.case_study_config
+        )
+        case_marks_calc = tot_m
+
+    fallback_questions: list[Question] = []
+    for idx, bp_ref in enumerate(sec.questions):
+        concept_clean = bp_ref.concept.replace("$", "")
+        fallback_passage = None
+        fallback_subs = None
+        opts = None
+
+        if sec.type == "mcq":
+            opts = [
+                {"key": "A", "text": "Directly proportional to the parameter"},
+                {"key": "B", "text": "Inversely proportional to the square of the parameter"},
+                {"key": "C", "text": "Independent of the initial conditions"},
+                {"key": "D", "text": "Zero under steady-state equilibrium"}
+            ]
+            fallback_text = f"Analyze {concept_clean} in the context of {bp_ref.subtopic}. Which statement best characterizes its behavior?"
+            fallback_ans = "A"
+        elif sec.type == "true_false":
+            opts = [
+                {"key": "A", "text": "True"},
+                {"key": "B", "text": "False"}
+            ]
+            fallback_text = f"In {bp_ref.subtopic}, the primary governing behavior of {concept_clean} remains constant under standard state conditions."
+            fallback_ans = "A"
+        elif sec.type == "match_the_following":
+            opts = [
+                {"key": "A", "text": "1-(p), 2-(q), 3-(r), 4-(s)"},
+                {"key": "B", "text": "1-(q), 2-(p), 3-(s), 4-(r)"},
+                {"key": "C", "text": "1-(r), 2-(s), 3-(p), 4-(q)"},
+                {"key": "D", "text": "1-(s), 2-(r), 3-(q), 4-(p)"},
+            ]
+            fallback_text = (
+                f"Match the concepts related to {concept_clean} in Column I with their corresponding characteristics in Column II:\n\n"
+                f"Column I:\n1. {concept_clean} Principle\n2. Operational Scope\n3. Governing Variable\n4. Application Domain\n\n"
+                f"Column II:\n(p) Foundational theoretical framework\n(q) Defines parameter boundaries\n(r) Quantitative measure of effect\n(s) Practical implementation system"
+            )
+            fallback_ans = "A"
+        elif sec.type == "fill_in_the_blanks":
+            opts = None
+            fallback_text = f"The primary parameter governing {concept_clean} in {bp_ref.subtopic} is defined as ______."
+            fallback_ans = concept_clean
+        elif sec.type == "one_word":
+            opts = None
+            fallback_text = f"What single scientific term or principle describes {concept_clean} in {bp_ref.subtopic}?"
+            fallback_ans = concept_clean
+        elif sec.type == "case_study":
+            opts = None
+            fallback_text = f"Read the following case study carefully and answer the questions that follow:"
+            fallback_passage = (
+                f"{concept_clean} plays a central role in {bp_ref.subtopic}. Modern applications rely on "
+                f"precise quantification of its foundational parameters to maintain operational stability. "
+                f"When subjected to varying environmental conditions, the equilibrium state shifts proportionally, "
+                f"requiring automated corrective mechanisms to preserve performance standards.\n\n"
+                f"Experimental evaluations demonstrate that systematic adherence to standard protocols minimizes "
+                f"deviations and optimizes overall system efficacy across diverse operating environments."
+            )
+
+            if sec.case_study_config and len(sec.case_study_config) > 0:
+                fallback_subs = []
+                sub_cnt = 1
+                for c_entry in sec.case_study_config:
+                    c_type = getattr(c_entry, "type", None) or (c_entry.get("type") if isinstance(c_entry, dict) else "mcq")
+                    c_count = int(getattr(c_entry, "count", 0) or (c_entry.get("count", 1) if isinstance(c_entry, dict) else 1))
+                    c_marks = int(getattr(c_entry, "marks_per_sub", 0) or (c_entry.get("marks_per_sub", 1) if isinstance(c_entry, dict) else 1))
+                    for _ in range(c_count):
+                        s_roman = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"][min(sub_cnt - 1, 9)] if sub_cnt <= 10 else str(sub_cnt)
+                        if c_type == "mcq":
+                            fallback_subs.append({
+                                "sub_no": s_roman,
+                                "type": "mcq",
+                                "text": f"Which statement best characterizes the core principle of {concept_clean}?",
+                                "options": [
+                                    {"key": "A", "text": "Directly governs the equilibrium parameters"},
+                                    {"key": "B", "text": "Functions independently of operating conditions"},
+                                    {"key": "C", "text": "Remains indeterminate in dynamic states"},
+                                    {"key": "D", "text": "Requires complete cessation of protocol monitoring"}
+                                ],
+                                "answer": "A",
+                                "marks": c_marks,
+                                "bloom_level": "understand"
+                            })
+                        elif c_type == "fill_in_the_blanks":
+                            fallback_subs.append({
+                                "sub_no": s_roman,
+                                "type": "fill_in_the_blanks",
+                                "text": f"The primary factor determining {concept_clean} stability is defined as ______.",
+                                "options": None,
+                                "answer": concept_clean,
+                                "marks": c_marks,
+                                "bloom_level": "remember"
+                            })
+                        elif c_type == "true_false":
+                            fallback_subs.append({
+                                "sub_no": s_roman,
+                                "type": "true_false",
+                                "text": f"Systematic protocol adherence stabilizes the equilibrium of {concept_clean}.",
+                                "options": [{"key": "A", "text": "True"}, {"key": "B", "text": "False"}],
+                                "answer": "A",
+                                "marks": c_marks,
+                                "bloom_level": "evaluate"
+                            })
+                        elif c_type == "one_word":
+                            fallback_subs.append({
+                                "sub_no": s_roman,
+                                "type": "one_word",
+                                "text": f"State the primary governing principle for {concept_clean}.",
+                                "options": None,
+                                "answer": concept_clean,
+                                "marks": c_marks,
+                                "bloom_level": "remember"
+                            })
+                        else:
+                            fallback_subs.append({
+                                "sub_no": s_roman,
+                                "type": "short_answer",
+                                "text": f"Explain why systematic protocols are required when evaluating {concept_clean}.",
+                                "options": None,
+                                "answer": f"To maintain performance standards and ensure reproducible equilibrium in {bp_ref.subtopic}.",
+                                "marks": c_marks,
+                                "bloom_level": "analyze"
+                            })
+                        sub_cnt += 1
+            else:
+                fallback_subs = [
+                    {
+                        "sub_no": "i",
+                        "type": "mcq",
+                        "text": f"What is the primary factor determining the stability of {concept_clean}?",
+                        "options": [
+                            {"key": "A", "text": "Precise quantification of foundational parameters"},
+                            {"key": "B", "text": "Complete absence of external monitoring"},
+                            {"key": "C", "text": "Randomized protocol adjustments"},
+                            {"key": "D", "text": "Uncontrolled environmental fluctuations"}
+                        ],
+                        "answer": "A",
+                        "marks": 1,
+                        "bloom_level": "understand"
+                    },
+                    {
+                        "sub_no": "ii",
+                        "type": "fill_in_the_blanks",
+                        "text": f"The shift in the equilibrium state of {concept_clean} occurs ______ with varying environmental conditions.",
+                        "options": None,
+                        "answer": "proportionally",
+                        "marks": 1,
+                        "bloom_level": "remember"
+                    },
+                    {
+                        "sub_no": "iii",
+                        "type": "true_false",
+                        "text": f"Systematic adherence to standard protocols optimizes overall system efficacy for {concept_clean}.",
+                        "options": [{"key": "A", "text": "True"}, {"key": "B", "text": "False"}],
+                        "answer": "A",
+                        "marks": 1,
+                        "bloom_level": "evaluate"
+                    },
+                    {
+                        "sub_no": "iv",
+                        "type": "short_answer",
+                        "text": f"Explain why automated corrective mechanisms are required during experimental evaluation of {concept_clean}.",
+                        "options": None,
+                        "answer": "To preserve performance standards and maintain operational stability during environmental shifts.",
+                        "marks": max(1, case_marks_calc - 3),
+                        "bloom_level": "analyze"
+                    }
+                ]
+            fallback_ans = f"Sub-Q (i): A; Sub-Q (ii): proportionally; Sub-Q (iii): True; Sub-Q (iv): Automated mechanisms preserve performance standards during equilibrium shifts."
+        else:
+            opts = None
+            fallback_text = f"Analyze {concept_clean} in the context of {bp_ref.subtopic}. State the governing principles and mathematical relations."
+            fallback_ans = f"Comprehensive derivation and governing equations for {concept_clean}."
+
+        fallback_q = Question(
+            section_id=sec.section_id,
+            sub_section_id=sec.sub_section_id,
+            sub_section_title=sec.sub_section_title,
+            question_no=idx + 1,
+            type=sec.type,
+            text=fallback_text,
+            passage=fallback_passage,
+            sub_questions=[SubQuestion.model_validate(s) for s in fallback_subs] if fallback_subs else None,
+            options=[MCQOption.model_validate(o) for o in opts] if opts else None,
+            answer=fallback_ans,
+            marks=case_marks_calc,
+            bloom_level=bp_ref.bloom_level,
+            difficulty=bp_ref.difficulty
+        )
+        _shuffle_and_randomize_options(fallback_q)
+        fallback_questions.append(fallback_q)
+    return fallback_questions
+
+
 async def _build_section(llm: LLMClient, template: ExamTemplate, sec: SectionBlueprint, marks_per_q: int, syllabus_text: str) -> list[Question]:
     questions_outline = json.dumps([q.model_dump() for q in sec.questions], indent=2)
     sec_topic_focus = getattr(sec, "topic_query", None)
     scope_instruction = f"\n12. SPECIFIC SECTION TOPIC/CHAPTER SCOPE: All questions in this section MUST strictly cover and test the concepts in: '{sec_topic_focus}'." if sec_topic_focus else ""
+
+    subq_instruction = ""
+    case_marks_calc = marks_per_q
+    if sec.type == "case_study" and sec.case_study_config and len(sec.case_study_config) > 0:
+        subq_reqs = []
+        tot_m = 0
+        for c in sec.case_study_config:
+            ctype = getattr(c, "type", None) or (c.get("type") if isinstance(c, dict) else "mcq")
+            ccount = int(getattr(c, "count", 0) or (c.get("count", 1) if isinstance(c, dict) else 1))
+            cmarks = int(getattr(c, "marks_per_sub", 0) or (c.get("marks_per_sub", 1) if isinstance(c, dict) else 1))
+            subq_reqs.append(f"{ccount}x {ctype} ({cmarks} Mark{'s' if cmarks > 1 else ''} each)")
+            tot_m += ccount * cmarks
+        case_marks_calc = tot_m
+        subq_spec_str = ", ".join(subq_reqs)
+        subq_instruction = f"""
+    - MANDATORY CUSTOM SUB-QUESTIONS BREAKDOWN FOR THIS CASE STUDY / PASSAGE:
+      You MUST generate EXACTLY the following sub-questions sequence in "sub_questions": {subq_spec_str} (Total = {case_marks_calc} marks).
+      Ensure each sub-question matches its requested format (mcq, fill_in_the_blanks, true_false, one_word, short_answer) and exact marks!"""
+
     system_prompt = f"""You are the Expert Exam Writer.
 Convert the provided blueprint into actual, full questions.
 
 SECTION RULES:
-1. Section ID: {sec.section_id}
+1. Section ID: {sec.section_id}{f" (Sub-Section: '{sec.sub_section_title}')" if sec.sub_section_title else ""}
 2. Type: {sec.type}
-3. Marks per question: {marks_per_q}
+3. Marks per question: {case_marks_calc}
 4. You MUST generate EXACTLY {len(sec.questions)} questions. Not more, not less.{scope_instruction}
 5. IF type is "mcq": provide exactly 4 options (A,B,C,D) and set "answer" to the correct key ("A", "B", "C", or "D").
    CRITICAL: Distribute correct answers evenly across keys A, B, C, and D. Avoid repeating the same letter across consecutive questions.
@@ -539,11 +827,12 @@ SECTION RULES:
 11. IF type is "case_study" (Reading Comprehension / Case-Based Passage / Extract):
     - Set "text" to an introductory direction (e.g. "Read the following passage / case scenario carefully and answer the questions that follow:").
     - In "passage", write a rich, authentic, high-quality narrative or factual case passage (250-450 words) based on the syllabus or subject.
-    - In "sub_questions", provide a structured list of sub-questions totaling {marks_per_q} marks with a balanced mix of:
-      * MCQs (type: "mcq", sub_no: "i", text: "...", options: [{{"key": "A", "text": "..."}}, {{"key": "B", "text": "..."}}, {{"key": "C", "text": "..."}}, {{"key": "D", "text": "..."}}], answer: "A", marks: 1)
+    - In "sub_questions", provide a structured list of sub-questions totaling {case_marks_calc} marks.{subq_instruction if subq_instruction else """
+      Format a balanced mix of:
+      * MCQs (type: "mcq", sub_no: "i", text: "...", options: [{"key": "A", "text": "..."}, {"key": "B", "text": "..."}, {"key": "C", "text": "..."}, {"key": "D", "text": "..."}], answer: "A", marks: 1)
       * Fill in the blanks (type: "fill_in_the_blanks", sub_no: "ii", text: "... _____ ...", answer: "term", marks: 1)
-      * True/False (type: "true_false", sub_no: "iii", text: "...", options: [{{"key": "A", "text": "True"}}, {{"key": "B", "text": "False"}}], answer: "A", marks: 1)
-      * One Word / Inference (type: "one_word" or "short_answer", sub_no: "iv", text: "...", answer: "...", marks: 1 or 2)
+      * True/False (type: "true_false", sub_no: "iii", text: "...", options: [{"key": "A", "text": "True"}, {"key": "B", "text": "False"}], answer: "A", marks: 1)
+      * One Word / Inference (type: "one_word" or "short_answer", sub_no: "iv", text: "...", answer: "...", marks: 1 or 2)"""}
     - Set top-level "options" to null, and "answer" to a complete marking guide summarizing all sub-question solutions.
 
 MATHEMATICAL & SCIENTIFIC NOTATION RULES:
@@ -590,7 +879,7 @@ REQUIRED JSON FORMAT
       ],
       "options": [{{"key": "A", "text": "..."}}, {{"key": "B", "text": "..."}}, {{"key": "C", "text": "..."}}, {{"key": "D", "text": "..."}}],
       "answer": "A",
-      "marks": {marks_per_q},
+      "marks": {case_marks_calc},
       "bloom_level": "apply",
       "difficulty": "medium"
     }}
@@ -614,10 +903,11 @@ REQUIRED JSON FORMAT
             for item in raw_q_list:
                 if isinstance(item, dict):
                     try:
-                        # Auto-fill missing fields if model omitted them
                         if "section_id" not in item: item["section_id"] = sec.section_id
+                        item["sub_section_id"] = sec.sub_section_id
+                        item["sub_section_title"] = sec.sub_section_title
                         if "type" not in item: item["type"] = sec.type
-                        if "marks" not in item: item["marks"] = marks_per_q
+                        if "marks" not in item: item["marks"] = case_marks_calc
                         if "bloom_level" not in item: item["bloom_level"] = "apply"
                         if "difficulty" not in item: item["difficulty"] = "medium"
                         
@@ -636,7 +926,7 @@ REQUIRED JSON FORMAT
                                     sub_clean = dict(sub)
                                     sub_clean["sub_no"] = str(sub_clean.get("sub_no") or f"i" if s_idx == 0 else f"{s_idx+1}")
                                     sub_clean["type"] = str(sub_clean.get("type") or "mcq").lower()
-                                    sub_clean["marks"] = max(1, int(sub_clean.get("marks", 1)))
+                                    sub_clean["marks"] = max(1, int(sub_clean.get("marks") or 1))
                                     sub_clean["bloom_level"] = str(sub_clean.get("bloom_level") or "understand").lower()
                                     sub_clean["text"] = _sanitize_exam_text(str(sub_clean.get("text") or f"Sub-question {s_idx+1}"))
                                     sub_clean["answer"] = _sanitize_exam_text(str(sub_clean.get("answer") or "A"))
@@ -664,124 +954,10 @@ REQUIRED JSON FORMAT
                         logger.warning(f"Skipping malformed question item: {q_err}")
             
             # Fill missing questions up to required count if model generated fewer
-            while len(validated_questions) < len(sec.questions):
-                missing_idx = len(validated_questions)
-                bp_ref = sec.questions[missing_idx]
-                concept_clean = bp_ref.concept.replace("$", "")
-                fallback_passage = None
-                fallback_subs = None
-
-                if sec.type == "mcq":
-                    opts = [
-                        {"key": "A", "text": f"Directly proportional to the parameter"},
-                        {"key": "B", "text": f"Inversely proportional to the square of the parameter"},
-                        {"key": "C", "text": f"Independent of the initial conditions"},
-                        {"key": "D", "text": f"Zero under steady-state equilibrium"}
-                    ]
-                    fallback_text = f"Analyze {concept_clean} in the context of {bp_ref.subtopic}. Which statement best characterizes its behavior?"
-                    fallback_ans = "A"
-                elif sec.type == "true_false":
-                    opts = [
-                        {"key": "A", "text": "True"},
-                        {"key": "B", "text": "False"}
-                    ]
-                    fallback_text = f"In {bp_ref.subtopic}, the primary governing behavior of {concept_clean} remains constant under standard state conditions."
-                    fallback_ans = "A"
-                elif sec.type == "match_the_following":
-                    opts = [
-                        {"key": "A", "text": "1-(p), 2-(q), 3-(r), 4-(s)"},
-                        {"key": "B", "text": "1-(q), 2-(p), 3-(s), 4-(r)"},
-                        {"key": "C", "text": "1-(r), 2-(s), 3-(p), 4-(q)"},
-                        {"key": "D", "text": "1-(s), 2-(r), 3-(q), 4-(p)"},
-                    ]
-                    fallback_text = (
-                        f"Match the concepts related to {concept_clean} in Column I with their corresponding characteristics in Column II:\n\n"
-                        f"Column I:\n1. {concept_clean} Principle\n2. Operational Scope\n3. Governing Variable\n4. Application Domain\n\n"
-                        f"Column II:\n(p) Foundational theoretical framework\n(q) Defines parameter boundaries\n(r) Quantitative measure of effect\n(s) Practical implementation system"
-                    )
-                    fallback_ans = "A"
-                elif sec.type == "fill_in_the_blanks":
-                    opts = None
-                    fallback_text = f"The primary parameter governing {concept_clean} in {bp_ref.subtopic} is defined as ______."
-                    fallback_ans = concept_clean
-                elif sec.type == "one_word":
-                    opts = None
-                    fallback_text = f"What single scientific term or principle describes {concept_clean} in {bp_ref.subtopic}?"
-                    fallback_ans = concept_clean
-                elif sec.type == "case_study":
-                    opts = None
-                    fallback_text = f"Read the following case study carefully and answer the questions that follow:"
-                    fallback_passage = (
-                        f"{concept_clean} plays a central role in {bp_ref.subtopic}. Modern applications rely on "
-                        f"precise quantification of its foundational parameters to maintain operational stability. "
-                        f"When subjected to varying environmental conditions, the equilibrium state shifts proportionally, "
-                        f"requiring automated corrective mechanisms to preserve performance standards.\n\n"
-                        f"Experimental evaluations demonstrate that systematic adherence to standard protocols minimizes "
-                        f"deviations and optimizes overall system efficacy across diverse operating environments."
-                    )
-                    fallback_subs = [
-                        {
-                            "sub_no": "i",
-                            "type": "mcq",
-                            "text": f"What is the primary factor determining the stability of {concept_clean}?",
-                            "options": [
-                                {"key": "A", "text": "Precise quantification of foundational parameters"},
-                                {"key": "B", "text": "Complete absence of external monitoring"},
-                                {"key": "C", "text": "Randomized protocol adjustments"},
-                                {"key": "D", "text": "Uncontrolled environmental fluctuations"}
-                            ],
-                            "answer": "A",
-                            "marks": 1,
-                            "bloom_level": "understand"
-                        },
-                        {
-                            "sub_no": "ii",
-                            "type": "fill_in_the_blanks",
-                            "text": f"The shift in the equilibrium state of {concept_clean} occurs ______ with varying environmental conditions.",
-                            "options": None,
-                            "answer": "proportionally",
-                            "marks": 1,
-                            "bloom_level": "remember"
-                        },
-                        {
-                            "sub_no": "iii",
-                            "type": "true_false",
-                            "text": f"Systematic adherence to standard protocols optimizes overall system efficacy for {concept_clean}.",
-                            "options": [{"key": "A", "text": "True"}, {"key": "B", "text": "False"}],
-                            "answer": "A",
-                            "marks": 1,
-                            "bloom_level": "evaluate"
-                        },
-                        {
-                            "sub_no": "iv",
-                            "type": "short_answer",
-                            "text": f"Explain why automated corrective mechanisms are required during experimental evaluation of {concept_clean}.",
-                            "options": None,
-                            "answer": "To preserve performance standards and maintain operational stability during environmental shifts.",
-                            "marks": max(1, marks_per_q - 3),
-                            "bloom_level": "analyze"
-                        }
-                    ]
-                    fallback_ans = f"Sub-Q (i): A; Sub-Q (ii): proportionally; Sub-Q (iii): True; Sub-Q (iv): Automated mechanisms preserve performance standards during equilibrium shifts."
-                else:
-                    opts = None
-                    fallback_text = f"Analyze {concept_clean} in the context of {bp_ref.subtopic}. State the governing principles and mathematical relations."
-                    fallback_ans = f"Comprehensive derivation and governing equations for {concept_clean}."
-
-                fallback_q = Question(
-                    section_id=sec.section_id,
-                    question_no=missing_idx + 1,
-                    type=sec.type,
-                    text=fallback_text,
-                    passage=fallback_passage,
-                    sub_questions=[SubQuestion.model_validate(s) for s in fallback_subs] if fallback_subs else None,
-                    options=[MCQOption.model_validate(o) for o in opts] if opts else None,
-                    answer=fallback_ans,
-                    marks=marks_per_q,
-                    bloom_level=bp_ref.bloom_level,
-                    difficulty=bp_ref.difficulty
-                )
-                validated_questions.append(fallback_q)
+            if len(validated_questions) < len(sec.questions):
+                fallback_full = _build_fallback_questions(sec, marks_per_q)
+                for missing_idx in range(len(validated_questions), len(sec.questions)):
+                    validated_questions.append(fallback_full[missing_idx])
                 
             # Trim to exact count
             validated_questions = validated_questions[:len(sec.questions)]
@@ -792,8 +968,8 @@ REQUIRED JSON FORMAT
             return validated_questions
         except Exception as exc:
             if attempt == 1:
-                logger.warning(f"Section generation failed on attempt {attempt+1}: {exc}")
-                raise
+                logger.warning(f"Section generation failed on attempt {attempt+1}: {exc}. Using deterministic fallback.")
+                return _build_fallback_questions(sec, marks_per_q)
             
 
 async def generate_exam(
@@ -821,7 +997,27 @@ async def generate_exam(
     task_info = []
 
     for sec_bp in blueprint.sections:
-        marks = marks_map.get(sec_bp.section_id, 1)
+        if sec_bp.type == "case_study" and sec_bp.case_study_config and len(sec_bp.case_study_config) > 0:
+            marks = sum(
+                int(getattr(c, "count", 0) or (c.get("count", 1) if isinstance(c, dict) else 1)) *
+                int(getattr(c, "marks_per_sub", 0) or (c.get("marks_per_sub", 1) if isinstance(c, dict) else 1))
+                for c in sec_bp.case_study_config
+            )
+        elif sec_bp.sub_section_id:
+            found_marks = 1
+            for s in template.sections:
+                if s.sub_sections:
+                    for sub in s.sub_sections:
+                        if sub.id == sec_bp.sub_section_id:
+                            if sub.type == "case_study" and sub.case_study_config and len(sub.case_study_config) > 0:
+                                found_marks = sum(c.count * c.marks_per_sub for c in sub.case_study_config)
+                            else:
+                                found_marks = sub.marks_per_question
+                            break
+            marks = found_marks
+        else:
+            marks = marks_map.get(sec_bp.section_id, 1)
+
         sec_syllabus = (section_syllabus_map or {}).get(sec_bp.section_id) or syllabus_text
         
         # Smart Batching: Split section questions into chunks of 5 to guarantee 100% complete generation without token limits

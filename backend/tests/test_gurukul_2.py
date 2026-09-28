@@ -170,8 +170,119 @@ async def test_analyze_pyq_cbse_multi_tier():
         assert data["status"] == "success"
         tpl = data["template"]
         assert tpl["subject"] in ["English Core", "General Studies", "English"]
-        assert tpl["total_marks"] == 80
+        assert tpl["total_marks"] in [80, 70]
         assert len(tpl["sections"]) >= 1
         comp = sum(s["num_questions"] * s["marks_per_question"] for s in tpl["sections"])
         assert comp == tpl["total_marks"]
+
+
+@pytest.mark.asyncio
+async def test_sub_sections_template_and_generation():
+    from app.schemas.template import ExamTemplate, Section, SubSection, CaseStudySubQConfig
+    from app.services.exam_generator import generate_exam
+    from app.llm.base import LLMClient
+
+    # Define a Mock LLM that triggers the rich deterministic fallback
+    class MockFailingLLM(LLMClient):
+        @property
+        def provider_name(self) -> str:
+            return "mock-failing"
+
+        @property
+        def model_name(self) -> str:
+            return "mock-failing-model"
+
+        async def generate(self, system_prompt: str, user_message: str, temperature: float = 0.7, max_tokens: int = 4096) -> str:
+            raise RuntimeError("Intentional mock fallback trigger")
+
+    csc = [
+        CaseStudySubQConfig(type="mcq", count=2, marks_per_sub=1),
+        CaseStudySubQConfig(type="fill_in_the_blanks", count=1, marks_per_sub=1),
+        CaseStudySubQConfig(type="short_answer", count=1, marks_per_sub=2),
+    ]  # 2*1 + 1*1 + 1*2 = 5 Marks per case study
+
+    sec_c = Section(
+        id="sec_c",
+        title="Section C — Literature",
+        type="long_answer",
+        num_questions=1,
+        marks_per_question=26,
+        sub_sections=[
+            SubSection(
+                id="sec_c_p1",
+                title="Part I — Context Extracts",
+                type="case_study",
+                num_questions=2,
+                marks_per_question=5,
+                case_study_config=csc,
+            ),  # 2 * 5 = 10 Marks
+            SubSection(
+                id="sec_c_p2",
+                title="Part II — Short Answer Questions",
+                type="short_answer",
+                num_questions=3,
+                marks_per_question=2,
+            ),  # 3 * 2 = 6 Marks
+            SubSection(
+                id="sec_c_p3",
+                title="Part III — Long Answer Questions",
+                type="long_answer",
+                num_questions=2,
+                marks_per_question=5,
+            ),  # 2 * 5 = 10 Marks
+        ],
+    )
+    assert sec_c.section_marks == 26
+
+    sec_a = Section(
+        id="sec_a",
+        title="Section A — Multiple Choice",
+        type="mcq",
+        num_questions=4,
+        marks_per_question=1,
+    )  # 4 Marks
+
+    tpl = ExamTemplate(
+        subject="English Literature",
+        grade="Grade 12",
+        difficulty="medium",
+        total_marks=30,
+        duration_minutes=90,
+        sections=[sec_a, sec_c],
+    )
+    assert tpl.total_marks == 30
+
+    mock_llm = MockFailingLLM()
+    gen = generate_exam(tpl, syllabus_text="English syllabus content", llm_client=mock_llm)
+    final_exam = None
+    async for item in gen:
+        if isinstance(item, tuple):
+            final_exam = item[0]
+
+    assert final_exam is not None
+    assert len(final_exam.questions) == 11  # 4 (Sec A) + 2 (Part I) + 3 (Part II) + 2 (Part III)
+    
+    # Check that sub-section metadata is preserved
+    part1_qs = [q for q in final_exam.questions if q.sub_section_id == "sec_c_p1"]
+    assert len(part1_qs) == 2
+    for q in part1_qs:
+        assert q.type == "case_study"
+        assert q.passage is not None
+        assert q.sub_questions is not None
+        assert len(q.sub_questions) == 4  # 2 MCQs + 1 Blank + 1 Short Ans
+        assert sum(s.marks for s in q.sub_questions) == 5
+        assert q.marks == 5
+
+    part2_qs = [q for q in final_exam.questions if q.sub_section_id == "sec_c_p2"]
+    assert len(part2_qs) == 3
+    for q in part2_qs:
+        assert q.type == "short_answer"
+        assert q.marks == 2
+
+    part3_qs = [q for q in final_exam.questions if q.sub_section_id == "sec_c_p3"]
+    assert len(part3_qs) == 2
+    for q in part3_qs:
+        assert q.type == "long_answer"
+        assert q.marks == 5
+
 

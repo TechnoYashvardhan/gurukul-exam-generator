@@ -38,6 +38,7 @@ import { useAuth } from "./AuthProvider";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
 import MatchQuestionView from "./MatchQuestionView";
+import { calculateSectionTotalMarks } from "./SectionCard";
 import {
   downloadExamAsJson,
   downloadExamAsDocx,
@@ -319,6 +320,9 @@ export default function GeneratePanel({
     const uniqueSecIds = Array.from(new Set(questions.map((q) => q.section_id)));
     return questions.map((q, idx) => {
       const isFirstInSec = idx === 0 || q.section_id !== questions[idx - 1].section_id;
+      const isFirstInSubSec =
+        isFirstInSec ||
+        (q.sub_section_title && q.sub_section_title !== questions[idx - 1]?.sub_section_title);
       const secIndex = uniqueSecIds.indexOf(q.section_id);
       const secLetter = String.fromCharCode(65 + (secIndex >= 0 ? secIndex : 0));
       const sectionMeta = sections?.find((s) => s.id === q.section_id);
@@ -350,6 +354,27 @@ export default function GeneratePanel({
               {secInstructions && (
                 <div className="exam-section-header__instructions">{secInstructions}</div>
               )}
+            </div>
+          )}
+
+          {isFirstInSubSec && q.sub_section_title && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginTop: isFirstInSec ? 10 : 18,
+                marginBottom: 12,
+                padding: "7px 12px",
+                background: "rgba(99, 102, 241, 0.08)",
+                borderLeft: "4px solid var(--primary, #6366f1)",
+                borderRadius: "0 6px 6px 0",
+              }}
+            >
+              <Layers size={14} style={{ color: "var(--primary, #6366f1)" }} />
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)" }}>
+                {q.sub_section_title}
+              </span>
             </div>
           )}
 
@@ -1229,38 +1254,55 @@ export default function GeneratePanel({
                     Sections Planned ({selectedTemplateDetail.sections.length})
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {selectedTemplateDetail.sections.map((sec, i) => (
-                      <div
-                        key={sec.id || i}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          fontSize: "12.5px",
-                          padding: "8px 10px",
-                          borderRadius: "var(--radius-sm)",
-                          background: "var(--surface-2)",
-                          border: "1px solid var(--border)",
-                        }}
-                      >
-                        <span style={{ fontWeight: 600, color: "var(--text)" }}>
-                          {sec.title || `Section ${String.fromCharCode(65 + i)}`}
-                        </span>
-                        <span
+                    {selectedTemplateDetail.sections.map((sec, i) => {
+                      const totalSecMarks = calculateSectionTotalMarks(sec);
+                      return (
+                        <div
+                          key={sec.id || i}
                           style={{
-                            fontSize: "11px",
-                            fontWeight: 600,
-                            color: "var(--text-2)",
-                            background: "var(--surface)",
-                            padding: "2px 6px",
-                            borderRadius: "4px",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 4,
+                            fontSize: "12.5px",
+                            padding: "8px 10px",
+                            borderRadius: "var(--radius-sm)",
+                            background: "var(--surface-2)",
                             border: "1px solid var(--border)",
                           }}
                         >
-                          {sec.num_questions} Qs • {sec.marks_per_question * sec.num_questions}M
-                        </span>
-                      </div>
-                    ))}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontWeight: 600, color: "var(--text)" }}>
+                              {sec.title || `Section ${String.fromCharCode(65 + i)}`}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: "11px",
+                                fontWeight: 600,
+                                color: "var(--text-2)",
+                                background: "var(--surface)",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                border: "1px solid var(--border)",
+                              }}
+                            >
+                              {sec.sub_sections && sec.sub_sections.length > 0
+                                ? `${sec.sub_sections.length} Parts • ${totalSecMarks}M`
+                                : `${sec.num_questions} Qs • ${totalSecMarks}M`}
+                            </span>
+                          </div>
+                          {sec.sub_sections && sec.sub_sections.length > 0 && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4, paddingLeft: 8, borderLeft: "2px solid rgba(255,255,255,0.1)" }}>
+                              {sec.sub_sections.map((sub, sIdx) => (
+                                <div key={sub.id || sIdx} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-3)" }}>
+                                  <span>{sub.title || `Part ${sIdx + 1}`}</span>
+                                  <span>{sub.num_questions} Qs</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

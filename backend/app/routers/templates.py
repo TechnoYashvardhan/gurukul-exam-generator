@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.db import User, Template as TemplateORM
-from app.schemas.template import ExamTemplate, SaveTemplateRequest, Section
+from app.schemas.template import ExamTemplate, SaveTemplateRequest, Section, SubSection, CaseStudySubQConfig
 from app.services.auth import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -183,16 +183,21 @@ RULES:
 
 2. FOR EACH SECTION:
    - id: "s1", "s2", "s3", ...
-   - title: e.g. "Section A — Reading Skills (Comprehension Passages)", "Section B — Creative Writing Skills", "Section C — Literature"
+   - title: e.g. "Section A — Reading Skills", "Section B — Creative Writing Skills", "Section C — Literature"
    - type: one of ["case_study", "mcq", "short_answer", "long_answer", "fill_in_the_blanks", "true_false", "match_the_following", "one_word"]
-     * IMPORTANT: For Reading Comprehension Passages, Case-Based Paragraphs, or Literature Extracts with multiple sub-questions (MCQs, blanks, short answers), ALWAYS set type to "case_study".
-   - num_questions: number of lead questions/passages in this section (integer >= 1). For example, 2 reading passages = 2 questions.
-   - marks_per_question: average/total marks per passage or question (integer >= 1). For example, if Section A has 2 passages carrying 22 marks total, set num_questions: 2, marks_per_question: 11 (2 * 11 = 22).
-   - instructions: section-specific instructions or null
+     * IMPORTANT: For Reading Comprehension Passages, Case-Based Paragraphs, or Literature Extracts with multiple sub-questions, ALWAYS set type to "case_study".
+     * If type is "case_study", you can provide "case_study_config": [{"type": "mcq", "count": 3, "marks_per_sub": 1}, {"type": "fill_in_the_blanks", "count": 2, "marks_per_sub": 1}, ...]
+   - If a section contains multiple distinct parts (e.g. Part I Context Extracts, Part II Short Answer, Part III Long Answer), you can provide "sub_sections": [
+       {"id": "s3_p1", "title": "Part I — Context Extracts", "type": "case_study", "num_questions": 2, "marks_per_question": 6, "case_study_config": [...]},
+       {"id": "s3_p2", "title": "Part II — Short Answer Questions", "type": "short_answer", "num_questions": 5, "marks_per_question": 2},
+       {"id": "s3_p3", "title": "Part III — Long Answer Questions", "type": "long_answer", "num_questions": 3, "marks_per_question": 6}
+     ]
+   - num_questions: number of lead questions/passages in this section (integer >= 1).
+   - marks_per_question: marks per question (integer >= 1).
+   - instructions: section-specific instructions or null.
    - topic_query: specific syllabus/chapter focus if mentioned, otherwise null.
 
 3. MATHEMATICAL INTEGRITY (CRITICAL):
-   - For each section, section_marks = num_questions * marks_per_question.
    - The sum of all section_marks MUST EXACTLY equal total_marks!
    - Ensure the total_marks matches the exam paper's stated total (e.g. 80, 70, 100).
 
@@ -214,6 +219,12 @@ JSON FORMAT:
       "type": "case_study",
       "num_questions": 2,
       "marks_per_question": 11,
+      "case_study_config": [
+        {"type": "mcq", "count": 4, "marks_per_sub": 1},
+        {"type": "fill_in_the_blanks", "count": 3, "marks_per_sub": 1},
+        {"type": "true_false", "count": 2, "marks_per_sub": 1},
+        {"type": "short_answer", "count": 1, "marks_per_sub": 2}
+      ],
       "instructions": "Read the passages carefully and answer the comprehension sub-questions.",
       "topic_query": "Reading Comprehension, Factual & Analytical Passages"
     },
@@ -318,8 +329,68 @@ JSON FORMAT:
             else:
                 stype = "short_answer"
         
-        num_q = max(1, int(s.get("num_questions", 2)))
-        mpq = max(1, int(s.get("marks_per_question", 1)))
+        num_q = max(1, int(s.get("num_questions") or 1))
+        mpq = max(1, int(s.get("marks_per_question") or 1))
+
+        # Parse case_study_config if present
+        clean_csc: list[CaseStudySubQConfig] | None = None
+        if "case_study_config" in s and isinstance(s["case_study_config"], list) and len(s["case_study_config"]) > 0:
+            clean_csc = []
+            for item in s["case_study_config"]:
+                if isinstance(item, dict):
+                    c_t = str(item.get("type", "mcq")).lower()
+                    if c_t not in valid_types:
+                        c_t = "mcq"
+                    clean_csc.append(
+                        CaseStudySubQConfig(
+                            type=c_t,  # type: ignore
+                            count=max(1, int(item.get("count") or 1)),
+                            marks_per_sub=max(1, int(item.get("marks_per_sub") or 1)),
+                        )
+                    )
+            if clean_csc and mpq:
+                csc_tot = sum(c.count * c.marks_per_sub for c in clean_csc)
+                if csc_tot != mpq:
+                    clean_csc = [CaseStudySubQConfig(type="mcq", count=mpq, marks_per_sub=1)]
+
+        # Parse sub_sections if present
+        clean_sub_sections: list[SubSection] | None = None
+        if "sub_sections" in s and isinstance(s["sub_sections"], list) and len(s["sub_sections"]) > 0:
+            clean_sub_sections = []
+            for sub_i, sub_item in enumerate(s["sub_sections"]):
+                if isinstance(sub_item, dict):
+                    sub_t = str(sub_item.get("type", "short_answer")).lower()
+                    if sub_t not in valid_types:
+                        sub_t = "short_answer"
+                    sub_clean_csc: list[CaseStudySubQConfig] | None = None
+                    if "case_study_config" in sub_item and isinstance(sub_item["case_study_config"], list):
+                        sub_clean_csc = []
+                        for sub_c in sub_item["case_study_config"]:
+                            if isinstance(sub_c, dict):
+                                sc_t = str(sub_c.get("type", "mcq")).lower()
+                                if sc_t not in valid_types:
+                                    sc_t = "mcq"
+                                sub_clean_csc.append(
+                                    CaseStudySubQConfig(
+                                        type=sc_t,  # type: ignore
+                                        count=max(1, int(sub_c.get("count") or 1)),
+                                        marks_per_sub=max(1, int(sub_c.get("marks_per_sub") or 1)),
+                                    )
+                                )
+                    clean_sub_sections.append(
+                        SubSection(
+                            id=str(sub_item.get("id") or f"{s.get('id', f's{idx+1}')}_p{sub_i+1}"),
+                            title=str(sub_item.get("title") or f"Part {sub_i+1}"),
+                            type=sub_t,  # type: ignore
+                            num_questions=max(1, int(sub_item.get("num_questions") or 1)),
+                            marks_per_question=max(1, int(sub_item.get("marks_per_question") or 1)),
+                            instructions=sub_item.get("instructions"),
+                            bloom_level=sub_item.get("bloom_level"),
+                            topic_query=sub_item.get("topic_query"),
+                            case_study_config=sub_clean_csc,
+                        )
+                    )
+
         cleaned_sections.append(
             Section(
                 id=str(s.get("id") or f"s{idx+1}"),
@@ -329,6 +400,8 @@ JSON FORMAT:
                 marks_per_question=mpq,
                 instructions=s.get("instructions"),
                 topic_query=s.get("topic_query"),
+                case_study_config=clean_csc,
+                sub_sections=clean_sub_sections,
             )
         )
 
@@ -364,28 +437,29 @@ JSON FORMAT:
         ]
 
     # Enforce mathematical consistency: total_marks == sum(section marks)
-    computed_marks = sum(s.num_questions * s.marks_per_question for s in cleaned_sections)
+    computed_marks = sum(s.section_marks for s in cleaned_sections)
     target_total = int(parsed.get("total_marks", 0)) if isinstance(parsed, dict) and parsed.get("total_marks") else 0
 
     if target_total > 0 and computed_marks != target_total:
         diff = target_total - computed_marks
-        # Step 1: Attempt exact divisibility adjustment on any section
+        # Step 1: Attempt exact divisibility adjustment on any flat section
         adjusted = False
         for s in reversed(cleaned_sections):
-            if diff % s.num_questions == 0 and (s.marks_per_question + diff // s.num_questions) >= 1:
-                s.marks_per_question += diff // s.num_questions
-                total_marks = target_total
-                adjusted = True
-                break
+            if not s.sub_sections and not s.case_study_config:
+                if diff % s.num_questions == 0 and (s.marks_per_question + diff // s.num_questions) >= 1:
+                    s.marks_per_question += diff // s.num_questions
+                    total_marks = target_total
+                    adjusted = True
+                    break
         
         # Step 2: If indivisible, adjust question count of the last section to reconcile
         if not adjusted:
             last_sec = cleaned_sections[-1]
-            if diff > 0 and last_sec.marks_per_question > 0:
+            if not last_sec.sub_sections and not last_sec.case_study_config and diff > 0 and last_sec.marks_per_question > 0:
                 add_q = diff // last_sec.marks_per_question
                 if add_q > 0:
                     last_sec.num_questions += add_q
-            total_marks = sum(s.num_questions * s.marks_per_question for s in cleaned_sections)
+            total_marks = sum(s.section_marks for s in cleaned_sections)
     else:
         total_marks = computed_marks if computed_marks > 0 else (target_total if target_total > 0 else 80)
 

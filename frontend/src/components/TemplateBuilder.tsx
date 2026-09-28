@@ -25,7 +25,7 @@ import {
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import RichTextEditor from "./RichTextEditor";
 import MarksBar from "./MarksBar";
-import SectionCard from "./SectionCard";
+import SectionCard, { calculateSectionTotalMarks } from "./SectionCard";
 import Toast, { type ToastVariant } from "./Toast";
 
 // ── Props ────────────────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ export default function TemplateBuilder({
   const validSections = sections.filter(Boolean);
 
   const computedMarks = validSections.reduce(
-    (acc, s) => acc + s.num_questions * s.marks_per_question,
+    (acc, s) => acc + calculateSectionTotalMarks(s),
     0
   );
 

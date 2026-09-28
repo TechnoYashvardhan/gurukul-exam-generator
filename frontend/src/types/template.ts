@@ -11,6 +11,24 @@ export type QuestionType =
   | "one_word";
 export type Difficulty = "easy" | "medium" | "hard" | "extreme";
 
+export interface CaseStudySubQConfig {
+  type: QuestionType;
+  count: number;
+  marks_per_sub: number;
+}
+
+export interface SubSection {
+  id: string;
+  title: string;
+  type: QuestionType;
+  num_questions: number;
+  marks_per_question: number;
+  instructions?: string | null;
+  bloom_level?: string | null;
+  topic_query?: string | null;
+  case_study_config?: CaseStudySubQConfig[] | null;
+}
+
 export interface Section {
   id: string;
   title: string;
@@ -20,6 +38,8 @@ export interface Section {
   instructions: string | null;
   bloom_level?: string | null;
   topic_query?: string | null;
+  case_study_config?: CaseStudySubQConfig[] | null;
+  sub_sections?: SubSection[] | null;
 }
 
 export interface ExamTemplate {
@@ -71,6 +91,8 @@ export interface SubQuestion {
 
 export interface Question {
   section_id: string;
+  sub_section_id?: string | null;
+  sub_section_title?: string | null;
   question_no: number;
   type: QuestionType;
   text: string;

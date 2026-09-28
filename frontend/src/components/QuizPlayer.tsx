@@ -1165,7 +1165,7 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                 border: "1px solid var(--border)",
               }}
             >
-              Section {currentQ.section_id || "A"} • {currentQ.type.replace(/_/g, " ")} • {currentQ.marks || 1} Mark{(currentQ.marks || 1) > 1 ? "s" : ""}
+              Section {currentQ.section_id || "A"}{currentQ.sub_section_title ? ` • ${currentQ.sub_section_title}` : ""} • {currentQ.type.replace(/_/g, " ")} • {currentQ.marks || 1} Mark{(currentQ.marks || 1) > 1 ? "s" : ""}
             </span>
 
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
