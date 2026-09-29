@@ -683,6 +683,7 @@ export default function GeneratePanel({
             {/* Reading Comprehension / Case Study Passage Box */}
             {q.passage && (
               <div
+                className="exam-passage-box"
                 style={{
                   marginTop: 12,
                   marginBottom: 14,
@@ -693,11 +694,11 @@ export default function GeneratePanel({
                   borderRadius: "var(--radius-sm)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, color: "var(--accent)", fontWeight: 700, fontSize: "11.5px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                <div className="exam-passage-title" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, color: "var(--accent)", fontWeight: 700, fontSize: "11.5px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   <BookOpen size={14} />
                   <span>Comprehension Passage / Case Study Context</span>
                 </div>
-                <div style={{ fontSize: "13.5px", lineHeight: 1.65, color: "var(--text)", whiteSpace: "pre-line" }}>
+                <div className="exam-passage-text" style={{ fontSize: "13.5px", lineHeight: 1.65, color: "var(--text)", whiteSpace: "pre-line" }}>
                   <MathText content={q.passage} />
                 </div>
               </div>
@@ -706,6 +707,7 @@ export default function GeneratePanel({
             {/* Visual Chart / Figure Rendering */}
             {q.chart_image_url && (
               <div
+                className="exam-chart-box"
                 style={{
                   marginTop: 12,
                   marginBottom: 14,
@@ -726,12 +728,13 @@ export default function GeneratePanel({
 
             {/* Sub-Questions Rendering (for Case Study / Reading Passages) */}
             {q.sub_questions && q.sub_questions.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+              <div className="exam-sub-questions-list" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
                 {q.sub_questions.map((sub: any, sIdx: number) => {
                   const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
                   return (
                     <div
                       key={sIdx}
+                      className="exam-sub-question"
                       style={{
                         padding: "12px 14px",
                         background: "var(--surface)",
@@ -741,24 +744,25 @@ export default function GeneratePanel({
                     >
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1 }}>
-                          <span style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--accent)", minWidth: 24, fontSize: "13px" }}>
+                          <span className="exam-sub-num" style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--accent)", minWidth: 24, fontSize: "13px" }}>
                             {subLabel}
                           </span>
-                          <div style={{ fontSize: "13.5px", lineHeight: 1.5, flex: 1 }}>
+                          <div className="exam-sub-text" style={{ fontSize: "13.5px", lineHeight: 1.5, flex: 1 }}>
                             <MathText content={sub.text} />
                           </div>
                         </div>
-                        <span className="chip-badge chip-badge--gold" style={{ fontSize: "10.5px", flexShrink: 0 }}>
+                        <span className="exam-sub-marks chip-badge chip-badge--gold" style={{ fontSize: "10.5px", flexShrink: 0 }}>
                           {sub.marks} Mark{sub.marks > 1 ? "s" : ""}
                         </span>
                       </div>
 
                       {/* Sub-question MCQ Options */}
                       {sub.options && sub.options.length > 0 && (
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 6, marginTop: 8, paddingLeft: 32 }}>
+                        <div className="exam-sub-options-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 6, marginTop: 8, paddingLeft: 32 }}>
                           {sub.options.map((sOpt: any) => (
                             <div
                               key={sOpt.key}
+                              className="exam-sub-option"
                               style={{
                                 display: "flex",
                                 alignItems: "center",
@@ -783,7 +787,7 @@ export default function GeneratePanel({
 
                       {/* Sub-question Answer Key */}
                       {activeViewMode === "key" && sub.answer && (
-                        <div style={{ marginTop: 8, marginLeft: 32, padding: "5px 10px", background: "var(--forest-light)", border: "1px solid var(--forest)", borderRadius: "4px", fontSize: "12px", display: "flex", alignItems: "center", gap: 6, color: "var(--forest)" }}>
+                        <div className="exam-sub-answer" style={{ marginTop: 8, marginLeft: 32, padding: "5px 10px", background: "var(--forest-light)", border: "1px solid var(--forest)", borderRadius: "4px", fontSize: "12px", display: "flex", alignItems: "center", gap: 6, color: "var(--forest)" }}>
                           <CheckCircle size={13} />
                           <span><strong>Model Answer:</strong> <MathText content={sub.answer} /></span>
                         </div>
@@ -840,6 +844,7 @@ export default function GeneratePanel({
             {/* Top-Level Answer Key */}
             {activeViewMode === "key" && q.answer && (
               <div
+                className="question-card__answer"
                 style={{
                   marginTop: 12,
                   padding: "10px 14px",
@@ -862,6 +867,7 @@ export default function GeneratePanel({
             {/* Internal Choice ("OR" Question) Academic Display */}
             {q.or_choice && (
               <div
+                className="exam-or-choice-wrap"
                 style={{
                   marginTop: 18,
                   paddingTop: 14,
@@ -869,6 +875,7 @@ export default function GeneratePanel({
                 }}
               >
                 <div
+                  className="exam-or-divider"
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -899,6 +906,7 @@ export default function GeneratePanel({
                 {/* OR Choice Passage (if any) */}
                 {q.or_choice.passage && (
                   <div
+                    className="exam-or-box exam-passage-box"
                     style={{
                       marginBottom: 12,
                       padding: "12px 16px",
@@ -908,11 +916,11 @@ export default function GeneratePanel({
                       borderRadius: "var(--radius-sm)",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--primary, #6366f1)", fontWeight: 700, fontSize: "11px", textTransform: "uppercase" }}>
+                    <div className="exam-passage-title" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--primary, #6366f1)", fontWeight: 700, fontSize: "11px", textTransform: "uppercase" }}>
                       <BookOpen size={13} />
                       <span>Alternative Passage / Case Context</span>
                     </div>
-                    <div style={{ fontSize: "13px", lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-line" }}>
+                    <div className="exam-passage-text" style={{ fontSize: "13px", lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-line" }}>
                       <MathText content={q.or_choice.passage} />
                     </div>
                   </div>
@@ -921,6 +929,7 @@ export default function GeneratePanel({
                 {/* OR Choice Visual Chart */}
                 {q.or_choice.chart_image_url && (
                   <div
+                    className="exam-chart-box"
                     style={{
                       marginTop: 10,
                       marginBottom: 12,
@@ -949,12 +958,13 @@ export default function GeneratePanel({
 
                 {/* OR Choice Sub-Questions (if any) */}
                 {q.or_choice.sub_questions && q.or_choice.sub_questions.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10, marginBottom: 10 }}>
+                  <div className="exam-sub-questions-list" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10, marginBottom: 10 }}>
                     {q.or_choice.sub_questions.map((sub: any, sIdx: number) => {
                       const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
                       return (
                         <div
                           key={sIdx}
+                          className="exam-sub-question"
                           style={{
                             padding: "10px 12px",
                             background: "var(--surface)",
@@ -964,23 +974,24 @@ export default function GeneratePanel({
                         >
                           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
                             <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1 }}>
-                              <span style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--primary, #6366f1)", minWidth: 24, fontSize: "12.5px" }}>
+                              <span className="exam-sub-num" style={{ fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--primary, #6366f1)", minWidth: 24, fontSize: "12.5px" }}>
                                 {subLabel}
                               </span>
-                              <div style={{ fontSize: "13px", lineHeight: 1.5, flex: 1 }}>
+                              <div className="exam-sub-text" style={{ fontSize: "13px", lineHeight: 1.5, flex: 1 }}>
                                 <MathText content={sub.text} />
                               </div>
                             </div>
-                            <span className="chip-badge chip-badge--gold" style={{ fontSize: "10px", flexShrink: 0 }}>
+                            <span className="exam-sub-marks chip-badge chip-badge--gold" style={{ fontSize: "10px", flexShrink: 0 }}>
                               {sub.marks} Mark{sub.marks > 1 ? "s" : ""}
                             </span>
                           </div>
 
                           {sub.options && sub.options.length > 0 && (
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 6, marginTop: 8, paddingLeft: 32 }}>
+                            <div className="exam-sub-options-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 6, marginTop: 8, paddingLeft: 32 }}>
                               {sub.options.map((sOpt: any) => (
                                 <div
                                   key={sOpt.key}
+                                  className="exam-sub-option"
                                   style={{
                                     display: "flex",
                                     alignItems: "center",
@@ -1004,7 +1015,7 @@ export default function GeneratePanel({
                           )}
 
                           {activeViewMode === "key" && sub.answer && (
-                            <div style={{ marginTop: 8, marginLeft: 32, padding: "5px 10px", background: "var(--forest-light)", border: "1px solid var(--forest)", borderRadius: "4px", fontSize: "11.5px", display: "flex", alignItems: "center", gap: 6, color: "var(--forest)" }}>
+                            <div className="exam-sub-answer" style={{ marginTop: 8, marginLeft: 32, padding: "5px 10px", background: "var(--forest-light)", border: "1px solid var(--forest)", borderRadius: "4px", fontSize: "11.5px", display: "flex", alignItems: "center", gap: 6, color: "var(--forest)" }}>
                               <CheckCircle size={12} />
                               <span><strong>Model Answer:</strong> <MathText content={sub.answer} /></span>
                             </div>

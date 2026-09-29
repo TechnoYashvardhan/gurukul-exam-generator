@@ -2362,46 +2362,55 @@ body {
     padding: 0;
   }
 
-  /* Traditional Indian Exam Format (Print) */
+  /* Traditional Indian Board Exam Format (Print) */
   .exam-result {
-    font-family: "Times New Roman", Times, serif !important;
-    box-shadow: none;
-    border: none;
-    background: white !important;
+    font-family: "Times New Roman", Times, Georgia, serif !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
     padding: 0 !important;
-    color: black !important;
+    color: #000000 !important;
+    font-size: 10.5pt !important;
+    line-height: 1.35 !important;
   }
 
   .exam-result__header {
     text-align: center !important;
-    margin-bottom: 12px !important;
+    margin-bottom: 6px !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
   }
 
   .exam-result__institution {
     font-weight: bold !important;
-    font-size: 13pt !important;
-    line-height: 1.3 !important;
+    font-size: 13.5pt !important;
+    line-height: 1.25 !important;
     text-align: center !important;
-    margin-bottom: 6px !important;
+    margin-bottom: 3px !important;
+    color: #000000 !important;
   }
 
   .exam-result__institution p {
-    margin: 2px 0 !important;
-    line-height: 1.3 !important;
+    margin: 1px 0 !important;
+    line-height: 1.25 !important;
     text-align: center !important;
+    color: #000000 !important;
   }
 
   .exam-result__meta {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    font-size: 10.5pt !important;
+    font-size: 10pt !important;
     font-weight: bold !important;
-    color: black !important;
-    margin-top: 8px !important;
-    padding: 4px 0 !important;
-    border-top: 1.5px solid black !important;
-    border-bottom: 1.5px solid black !important;
+    color: #000000 !important;
+    margin-top: 4px !important;
+    margin-bottom: 6px !important;
+    padding: 3px 0 !important;
+    border-top: 1.5px solid #000000 !important;
+    border-bottom: 1.5px solid #000000 !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
   }
 
   .exam-result__divider {
@@ -2409,32 +2418,36 @@ body {
   }
 
   .exam-result__instructions-box {
-    margin: 10px 0 14px !important;
+    margin: 6px 0 10px !important;
     padding: 0 !important;
     border: none !important;
     background: transparent !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
   }
 
   .exam-result__instructions-title {
     font-weight: bold !important;
-    margin-bottom: 3px !important;
+    margin-bottom: 2px !important;
     font-size: 10.5pt !important;
     text-decoration: underline !important;
+    color: #000000 !important;
   }
 
   .exam-result__instructions-content {
-    font-size: 10pt !important;
-    line-height: 1.35 !important;
+    font-size: 9.5pt !important;
+    line-height: 1.3 !important;
+    color: #000000 !important;
   }
 
   .exam-result__instructions-content ol,
   .exam-result__instructions-content ul {
-    margin: 3px 0 4px 18px !important;
+    margin: 2px 0 3px 18px !important;
     padding: 0 !important;
   }
 
   .exam-result__instructions-content li {
-    margin-bottom: 2px !important;
+    margin-bottom: 1px !important;
   }
 
   .exam-result__instructions-content p {
@@ -2442,12 +2455,13 @@ body {
     display: inline !important;
   }
 
+  /* Section Header: Clean centered uppercase divider */
   .exam-section-header {
-    margin: 16px 0 8px !important;
-    padding: 4px 0 !important;
+    margin: 14px 0 6px !important;
+    padding: 3px 0 !important;
     background: transparent !important;
     border: none !important;
-    border-bottom: 1.5px solid black !important;
+    border-bottom: 1.5px solid #000000 !important;
     border-radius: 0 !important;
     text-align: center !important;
     page-break-after: avoid !important;
@@ -2458,40 +2472,57 @@ body {
     font-size: 11.5pt !important;
     font-weight: bold !important;
     text-transform: uppercase !important;
-    color: black !important;
+    color: #000000 !important;
     display: block !important;
     text-align: center !important;
     letter-spacing: 0.04em !important;
   }
 
   .exam-section-header__instructions {
-    font-size: 9.5pt !important;
-    color: black !important;
+    font-size: 9pt !important;
+    color: #000000 !important;
     font-style: italic !important;
-    margin-top: 2px !important;
+    margin-top: 1px !important;
   }
 
-  .question-card {
-    page-break-inside: avoid;
-    break-inside: avoid;
-    padding: 0 !important;
-    margin-bottom: 10px !important;
+  .exam-subsection-divider {
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    color: #000000 !important;
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
+    padding: 4px 0 !important;
+    margin: 8px 0 4px !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Question Card: Allow natural flow, NO forced page breaks */
+  .question-card {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    padding: 0 !important;
+    margin-bottom: 8px !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
 
   .question-card__header {
     display: flex !important;
     align-items: flex-start !important;
-    gap: 8px !important;
-    margin-bottom: 0 !important;
+    gap: 6px !important;
+    margin-bottom: 2px !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   .question-card__text {
     font-size: 10.5pt !important;
-    line-height: 1.4 !important;
-    color: black !important;
+    line-height: 1.35 !important;
+    color: #000000 !important;
     flex: 1 !important;
     margin: 0 !important;
   }
@@ -2501,18 +2532,18 @@ body {
     font-weight: bold !important;
     background: transparent !important;
     border: none !important;
-    color: black !important;
+    color: #000000 !important;
     padding: 0 !important;
     margin: 0 !important;
-    min-width: 32px !important;
+    min-width: 22px !important;
   }
 
   .question-card__marks {
-    font-size: 10pt !important;
+    font-size: 9.5pt !important;
     font-weight: bold !important;
     background: transparent !important;
     border: none !important;
-    color: black !important;
+    color: #000000 !important;
     padding: 0 !important;
     margin: 0 0 0 auto !important;
     white-space: nowrap !important;
@@ -2530,43 +2561,193 @@ body {
     display: none !important;
   }
 
+  /* Reading Comprehension & Case Study Passages */
+  .exam-passage-box {
+    margin: 4px 0 6px 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-left: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .exam-passage-title {
+    display: none !important;
+  }
+
+  .exam-passage-text {
+    font-size: 10pt !important;
+    line-height: 1.35 !important;
+    color: #000000 !important;
+    text-align: justify !important;
+    margin: 3px 0 6px !important;
+  }
+
+  /* Visual Charts & Figures in Print */
+  .exam-chart-box {
+    margin: 6px auto !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    text-align: center !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .exam-chart-box img {
+    max-height: 200px !important;
+    max-width: 90% !important;
+    height: auto !important;
+    object-fit: contain !important;
+    border: none !important;
+    margin: 0 auto !important;
+  }
+
+  /* Sub-Questions Container & Compact Line Items */
+  .exam-sub-questions-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    margin-top: 4px !important;
+  }
+
+  .exam-sub-question {
+    margin: 3px 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .exam-sub-num {
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    color: #000000 !important;
+    min-width: 20px !important;
+  }
+
+  .exam-sub-text {
+    font-size: 10pt !important;
+    line-height: 1.3 !important;
+    color: #000000 !important;
+  }
+
+  .exam-sub-marks {
+    font-size: 9pt !important;
+    font-weight: bold !important;
+    background: transparent !important;
+    border: none !important;
+    color: #000000 !important;
+    padding: 0 !important;
+  }
+
+  .exam-sub-marks::before {
+    content: "[ ";
+  }
+
+  .exam-sub-marks::after {
+    content: " ]";
+  }
+
+  /* MCQ Options for Sub-Questions & Top-Level Questions */
+  .exam-sub-options-grid,
   .mcq-options {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     column-gap: 20px !important;
-    row-gap: 3px !important;
-    margin: 4px 0 6px 32px !important;
+    row-gap: 2px !important;
+    margin: 2px 0 4px 20px !important;
+    padding: 0 !important;
+    border: none !important;
   }
 
+  .exam-sub-option,
   .mcq-option {
     padding: 0 !important;
-    font-size: 10.5pt !important;
+    margin: 0 !important;
+    font-size: 9.5pt !important;
+    line-height: 1.25 !important;
     background: transparent !important;
     border: none !important;
-    color: black !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: #000000 !important;
     display: flex !important;
     align-items: baseline !important;
-    gap: 6px !important;
+    gap: 5px !important;
+  }
+
+  .mcq-option span:first-child,
+  .exam-sub-option span:first-child {
+    font-weight: bold !important;
+    background: transparent !important;
+    color: #000000 !important;
+    border-radius: 0 !important;
+    width: auto !important;
+    height: auto !important;
+  }
+
+  /* Internal Choice ("OR") Clean Academic Formatting */
+  .exam-or-divider {
+    margin: 6px 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    text-align: center !important;
+    font-weight: bold !important;
+    font-size: 10pt !important;
+    color: #000000 !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .exam-or-divider div {
+    display: none !important;
+  }
+
+  .exam-or-divider span {
+    background: transparent !important;
+    border: none !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    font-weight: bold !important;
+  }
+
+  .exam-or-box {
+    margin: 4px 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-left: none !important;
   }
 
   /* Hide answers by default and in exam paper mode */
   .question-card__answer,
+  .exam-sub-answer,
   .print-exam-only .question-card__answer,
-  .exam-result--exam .question-card__answer {
+  .print-exam-only .exam-sub-answer,
+  .exam-result--exam .question-card__answer,
+  .exam-result--exam .exam-sub-answer {
     display: none !important;
   }
 
   /* Show answers ONLY when printing Answer Key */
   .print-key-only .question-card__answer,
-  .exam-result--key .question-card__answer {
+  .print-key-only .exam-sub-answer,
+  .exam-result--key .question-card__answer,
+  .exam-result--key .exam-sub-answer {
     display: block !important;
-    padding: 4px 0 !important;
-    margin: 4px 0 0 35px !important;
-    font-size: 11pt !important;
+    padding: 2px 0 !important;
+    margin: 2px 0 0 20px !important;
+    font-size: 9.5pt !important;
     font-weight: bold !important;
     border: none !important;
     background: transparent !important;
-    color: black !important;
+    color: #000000 !important;
   }
 
   /* Remove MCQ answer highlights when printing exam paper */
@@ -2575,7 +2756,7 @@ body {
     font-weight: normal !important;
     background: transparent !important;
     border: none !important;
-    color: black !important;
+    color: #000000 !important;
   }
 
   /* ── Math & KaTeX Print Typography ── */
@@ -2589,13 +2770,13 @@ body {
   }
 
   .katex {
-    font-size: 1.08em !important;
-    color: black !important;
+    font-size: 1.05em !important;
+    color: #000000 !important;
     text-rendering: optimizeLegibility !important;
   }
 
   .katex-display {
-    margin: 0.4em 0 !important;
+    margin: 0.3em 0 !important;
   }
 
   .katex .frac-line {
@@ -2929,7 +3110,11 @@ body {
   }
 
   .section-card,
-  .question-item,
+  .question-item {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
   .quiz-breakdown-card,
   .match-workbench,
   .match-grid-container {
