@@ -322,6 +322,35 @@ export default function GeneratePanel({
     }, 150);
   };
 
+  const toRoman = (num: number): string => {
+    const romanMap: [number, string][] = [
+      [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]
+    ];
+    let res = "";
+    for (const [val, sym] of romanMap) {
+      while (num >= val) {
+        res += sym;
+        num -= val;
+      }
+    }
+    return res;
+  };
+
+  const formatSubQuestionLabel = (subNo?: string | number, idx: number = 0): string => {
+    if (subNo) {
+      const s = String(subNo).trim();
+      if (/^[ivxIVX]+$/i.test(s)) {
+        return s.toUpperCase() + ".";
+      }
+      const parsed = parseInt(s, 10);
+      if (!isNaN(parsed) && parsed > 0 && parsed <= 20) {
+        return toRoman(parsed) + ".";
+      }
+      return s.endsWith(".") ? s : s + ".";
+    }
+    return toRoman(idx + 1) + ".";
+  };
+
   const renderQuestions = (questions: any[], sections?: any[] | null) => {
     const uniqueSecIds = Array.from(new Set(questions.map((q) => q.section_id)));
     return questions.map((q, idx) => {
@@ -648,6 +677,9 @@ export default function GeneratePanel({
                   </div>
                 ) : (
                   <div className="question-card__text" style={{ fontSize: "14px", lineHeight: 1.6 }}>
+                    {q.or_choice && !q.text?.trim().startsWith("A.") && !q.text?.trim().startsWith("(A)") && !q.passage && (
+                      <strong style={{ marginRight: 6, color: "var(--primary, #6366f1)" }}>A. </strong>
+                    )}
                     <MathText content={q.text} />
                   </div>
                 )}
@@ -730,7 +762,7 @@ export default function GeneratePanel({
             {q.sub_questions && q.sub_questions.length > 0 && (
               <div className="exam-sub-questions-list" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
                 {q.sub_questions.map((sub: any, sIdx: number) => {
-                  const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
+                  const subLabel = formatSubQuestionLabel(sub.sub_no, sIdx);
                   return (
                     <div
                       key={sIdx}
@@ -950,8 +982,8 @@ export default function GeneratePanel({
 
                 {/* OR Choice Question Text */}
                 <div style={{ fontSize: "14px", lineHeight: 1.6, marginBottom: 10, paddingLeft: 4 }}>
-                  <span style={{ fontWeight: 700, color: "var(--primary, #6366f1)", marginRight: 8, fontFamily: "var(--font-mono)" }}>
-                    [ Option B ]
+                  <span className="exam-or-label" style={{ fontWeight: 800, color: "var(--primary, #6366f1)", marginRight: 8, fontFamily: "var(--font-mono)" }}>
+                    B.
                   </span>
                   <MathText content={q.or_choice.text} />
                 </div>
@@ -960,7 +992,7 @@ export default function GeneratePanel({
                 {q.or_choice.sub_questions && q.or_choice.sub_questions.length > 0 && (
                   <div className="exam-sub-questions-list" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10, marginBottom: 10 }}>
                     {q.or_choice.sub_questions.map((sub: any, sIdx: number) => {
-                      const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
+                      const subLabel = formatSubQuestionLabel(sub.sub_no, sIdx);
                       return (
                         <div
                           key={sIdx}

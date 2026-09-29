@@ -138,6 +138,12 @@ export function formatMathText(raw: string): string {
   text = text.replace(/(?<!\\)\$([A-Z]+[0-9]+)\b/g, (_, g1) => "\\$" + g1);
   text = text.replace(/(?<!\\)\b([A-Z]+)\$([0-9]+)\b/g, (_, g1, g2) => g1 + "\\$" + g2);
 
+  // 11. Format authentic Board Stimulus Box tags: [ADVERTISEMENT]...[/ADVERTISEMENT] or [BOX]...[/BOX]
+  text = text.replace(/\[(?:ADVERTISEMENT|BOX)\]([\s\S]*?)\[\/(?:ADVERTISEMENT|BOX)\]/gi, (_, inner) => {
+    const lines = inner.trim().split("\n");
+    return "\n\n> " + lines.join("\n> ") + "\n\n";
+  });
+
   // 5. Matrix conversion: [[1,2],[3,4]] -> \begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}
   text = convertMatrixToLatex(text);
 

@@ -187,11 +187,24 @@ RULES:
    - type: one of ["case_study", "mcq", "short_answer", "long_answer", "fill_in_the_blanks", "true_false", "match_the_following", "one_word"]
      * IMPORTANT: For Reading Comprehension Passages, Case-Based Paragraphs, or Literature Extracts with multiple sub-questions, ALWAYS set type to "case_study".
      * If type is "case_study", you can provide "case_study_config": [{"type": "mcq", "count": 3, "marks_per_sub": 1}, {"type": "fill_in_the_blanks", "count": 2, "marks_per_sub": 1}, ...]
-   - If a section contains multiple distinct parts (e.g. Part I Context Extracts, Part II Short Answer, Part III Long Answer), you can provide "sub_sections": [
-       {"id": "s3_p1", "title": "Part I — Context Extracts", "type": "case_study", "num_questions": 2, "marks_per_question": 6, "case_study_config": [...]},
-       {"id": "s3_p2", "title": "Part II — Short Answer Questions", "type": "short_answer", "num_questions": 5, "marks_per_question": 2},
-       {"id": "s3_p3", "title": "Part III — Long Answer Questions", "type": "long_answer", "num_questions": 3, "marks_per_question": 6}
-     ]
+   - If questions within a section have DIFFERENT mark values or distinct parts, YOU MUST USE "sub_sections" so that every question has its exact marks!
+     For example, in CBSE English Core (80 Marks):
+     * Section A (22 Marks):
+       - Sub-section 1: Q1 Unseen Passage (12 Marks, case_study)
+       - Sub-section 2: Q2 Case-Based Passage with charts/graphs (10 Marks, case_study)
+     * Section B (18 Marks):
+       - Sub-section 1: Q3 Notice Writing (4 Marks, short_answer, internal_choice_count=1)
+       - Sub-section 2: Q4 Formal/Informal Invitation or Reply (4 Marks, short_answer, internal_choice_count=1)
+       - Sub-section 3: Q5 Letter to Editor / Application for Job (5 Marks, long_answer, internal_choice_count=1)
+       - Sub-section 4: Q6 Article / Report Writing (5 Marks, long_answer, internal_choice_count=1)
+     * Section C (40 Marks):
+       - Sub-section 1: Q7 Poetry Extract from Flamingo (6 Marks, case_study, internal_choice_count=1)
+       - Sub-section 2: Q8 Prose Extract from Vistas (4 Marks, case_study, internal_choice_count=1)
+       - Sub-section 3: Q9 Prose Extract from Flamingo (6 Marks, case_study, internal_choice_count=1)
+       - Sub-section 4: Q10 Short Answer Questions from Flamingo (10 Marks: 5 questions x 2 marks, short_answer)
+       - Sub-section 5: Q11 Short Answer Questions from Vistas (4 Marks: 2 questions x 2 marks, short_answer)
+       - Sub-section 6: Q12 Long Answer Question from Flamingo (5 Marks, long_answer, internal_choice_count=1)
+       - Sub-section 7: Q13 Long Answer Question from Vistas (5 Marks, long_answer, internal_choice_count=1)
    - num_questions: number of lead questions/passages in this section (integer >= 1).
    - marks_per_question: marks per question (integer >= 1).
    - internal_choice_count: number of questions with internal OR choices (e.g. 0, 1, 2).
@@ -211,8 +224,8 @@ JSON FORMAT:
   "difficulty": "medium",
   "total_marks": 80,
   "duration_minutes": 180,
-  "heading_details": "CBSE Class 12 English Core Examination",
-  "instructions": "1. 15-minute reading time. 2. The paper is divided into three sections: Reading (22M), Writing (18M), Literature (40M). 3. Attempt all sections.",
+  "heading_details": "CBSE Senior School Examination 2025-26 — English Core (Code 301)",
+  "instructions": "1. 15-minute reading time. 2. The paper is divided into three sections: Section A Reading (22M), Section B Writing (18M), Section C Literature (40M). 3. All questions are compulsory. Internal choice is provided in several questions.",
   "sections": [
     {
       "id": "s1",
@@ -220,14 +233,35 @@ JSON FORMAT:
       "type": "case_study",
       "num_questions": 2,
       "marks_per_question": 11,
-      "case_study_config": [
-        {"type": "mcq", "count": 4, "marks_per_sub": 1},
-        {"type": "fill_in_the_blanks", "count": 3, "marks_per_sub": 1},
-        {"type": "true_false", "count": 2, "marks_per_sub": 1},
-        {"type": "short_answer", "count": 1, "marks_per_sub": 2}
+      "sub_sections": [
+        {
+          "id": "s1_q1",
+          "title": "Question 1 — Unseen Discursive / Factual Passage",
+          "type": "case_study",
+          "num_questions": 1,
+          "marks_per_question": 12,
+          "case_study_config": [
+            {"type": "mcq", "count": 6, "marks_per_sub": 1},
+            {"type": "fill_in_the_blanks", "count": 2, "marks_per_sub": 1},
+            {"type": "true_false", "count": 2, "marks_per_sub": 1},
+            {"type": "short_answer", "count": 1, "marks_per_sub": 2}
+          ]
+        },
+        {
+          "id": "s1_q2",
+          "title": "Question 2 — Case-Based Analytical Passage (with Statistical / Chart Data)",
+          "type": "case_study",
+          "num_questions": 1,
+          "marks_per_question": 10,
+          "case_study_config": [
+            {"type": "mcq", "count": 4, "marks_per_sub": 1},
+            {"type": "fill_in_the_blanks", "count": 2, "marks_per_sub": 1},
+            {"type": "true_false", "count": 2, "marks_per_sub": 1},
+            {"type": "short_answer", "count": 1, "marks_per_sub": 2}
+          ]
+        }
       ],
-      "instructions": "Read the passages carefully and answer the comprehension sub-questions.",
-      "topic_query": "Reading Comprehension, Factual & Analytical Passages"
+      "instructions": "Read the passages carefully and answer the comprehension sub-questions."
     },
     {
       "id": "s2",
@@ -235,17 +269,30 @@ JSON FORMAT:
       "type": "short_answer",
       "num_questions": 4,
       "marks_per_question": 4,
-      "instructions": "Creative writing tasks: Notice, Invitation, Letter, Report/Article.",
-      "topic_query": "Notice Writing, Formal Invitations, Letters to Editor, Article/Report"
+      "sub_sections": [
+        {"id": "s2_q3", "title": "Question 3 — Notice Writing (50 words)", "type": "short_answer", "num_questions": 1, "marks_per_question": 4, "internal_choice_count": 1},
+        {"id": "s2_q4", "title": "Question 4 — Formal / Informal Invitation or Reply (50 words)", "type": "short_answer", "num_questions": 1, "marks_per_question": 4, "internal_choice_count": 1},
+        {"id": "s2_q5", "title": "Question 5 — Letter to Editor / Job Application with Biodata (120-150 words)", "type": "long_answer", "num_questions": 1, "marks_per_question": 5, "internal_choice_count": 1},
+        {"id": "s2_q6", "title": "Question 6 — Article / Report Writing (120-150 words)", "type": "long_answer", "num_questions": 1, "marks_per_question": 5, "internal_choice_count": 1}
+      ],
+      "instructions": "Attempt all questions adhering to specified word limits. Provide internal choice for each question."
     },
     {
       "id": "s3",
-      "title": "Section C — Literature",
+      "title": "Section C — Literature Textbook and Supplementary Reading Text",
       "type": "long_answer",
       "num_questions": 7,
       "marks_per_question": 6,
-      "instructions": "Reference to context extracts and analytical questions from prescribed texts.",
-      "topic_query": "Flamingo & Vistas Literature Texts"
+      "sub_sections": [
+        {"id": "s3_q7", "title": "Question 7 — Poetry Extract (Flamingo)", "type": "case_study", "num_questions": 1, "marks_per_question": 6, "internal_choice_count": 1},
+        {"id": "s3_q8", "title": "Question 8 — Prose Extract (Vistas)", "type": "case_study", "num_questions": 1, "marks_per_question": 4, "internal_choice_count": 1},
+        {"id": "s3_q9", "title": "Question 9 — Prose Extract (Flamingo)", "type": "case_study", "num_questions": 1, "marks_per_question": 6, "internal_choice_count": 1},
+        {"id": "s3_q10", "title": "Question 10 — Short Answer Questions (Flamingo: Answer any 5 of 6, 40-50 words)", "type": "short_answer", "num_questions": 5, "marks_per_question": 2},
+        {"id": "s3_q11", "title": "Question 11 — Short Answer Questions (Vistas: Answer any 2 of 3, 40-50 words)", "type": "short_answer", "num_questions": 2, "marks_per_question": 2},
+        {"id": "s3_q12", "title": "Question 12 — Long Answer Question (Flamingo: 120-150 words)", "type": "long_answer", "num_questions": 1, "marks_per_question": 5, "internal_choice_count": 1},
+        {"id": "s3_q13", "title": "Question 13 — Long Answer Question (Vistas: 120-150 words)", "type": "long_answer", "num_questions": 1, "marks_per_question": 5, "internal_choice_count": 1}
+      ],
+      "instructions": "Answer questions based on prescribed NCERT texts Flamingo and Vistas."
     }
   ]
 }"""

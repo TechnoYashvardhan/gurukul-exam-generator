@@ -166,10 +166,13 @@ class ExamTemplate(BaseModel):
     def validate_marks(self) -> "ExamTemplate":
         computed = sum(s.section_marks for s in self.sections)
         if computed != self.total_marks:
-            raise ValueError(
-                f"Section marks sum to {computed} but total_marks={self.total_marks}. "
-                "Adjust num_questions, marks_per_question, or total_marks so they match."
-            )
+            if computed > 0:
+                self.total_marks = computed
+            else:
+                raise ValueError(
+                    f"Section marks sum to {computed} but total_marks={self.total_marks}. "
+                    "Adjust num_questions, marks_per_question, or total_marks so they match."
+                )
         return self
 
 

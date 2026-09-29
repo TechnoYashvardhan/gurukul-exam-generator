@@ -896,16 +896,46 @@ SECTION RULES:
      {{"key": "D", "text": "1-(q), 2-(r), 3-(s), 4-(p)"}}
    ]
    and set "answer" to the single correct option key ("A", "B", "C", or "D").
-10. IF type is "short_answer" or "long_answer": set "options" to null and set "answer" to a complete model answer.
-11. IF type is "case_study" (Reading Comprehension / Case-Based Passage / Extract):
-    - Set "text" to an introductory direction (e.g. "Read the following passage / case scenario carefully and answer the questions that follow:").
-    - In "passage", write a rich, authentic, high-quality narrative or factual case passage (250-450 words) based on the syllabus or subject.
-    - In "sub_questions", provide a structured list of sub-questions totaling {case_marks_calc} marks.{subq_instruction if subq_instruction else """
-      Format a balanced mix of:
-      * MCQs (type: "mcq", sub_no: "i", text: "...", options: [{"key": "A", "text": "..."}, {"key": "B", "text": "..."}, {"key": "C", "text": "..."}, {"key": "D", "text": "..."}], answer: "A", marks: 1)
-      * Fill in the blanks (type: "fill_in_the_blanks", sub_no: "ii", text: "... _____ ...", answer: "term", marks: 1)
-      * True/False (type: "true_false", sub_no: "iii", text: "...", options: [{"key": "A", "text": "True"}, {"key": "B", "text": "False"}], answer: "A", marks: 1)
-      * One Word / Inference (type: "one_word" or "short_answer", sub_no: "iv", text: "...", answer: "...", marks: 1 or 2)"""}
+10. IF type is "short_answer" or "long_answer":
+    - Set "options" to null and set "answer" to a complete model answer with marking criteria.
+    - If the subject is English, Social Science, or Humanities:
+      * For Short Writing Tasks (Notice, 4M): End with the explicit instruction "Put your notice in a box."
+      * For Formal Letters / Articles / Reports (5M): Include 4-5 bulleted guidance cues formatted as:
+        "Draft the letter/article using your own ideas as well as the cues given:
+        • [Cue 1: Foundational/contextual aspect]
+        • [Cue 2: Socio-economic/practical challenge]
+        • [Cue 3: Impact on youth/community]
+        • [Cue 4: Forward-looking measures or recommendations]"
+      * For Job Applications (5M): Include an authentic mock newspaper advertisement block:
+        "[ADVERTISEMENT]
+        Join [Company / Agency Name]
+        We are looking for dynamic individuals for the post of [Job Title]:
+        • [Skill / Qualification 1]
+        • [Skill / Qualification 2]
+        • [Skill / Qualification 3]
+        Educational Requirements: [Degree / Qualifications]
+        Experience: [Required experience or 'Not mandatory, but prior exposure is an advantage']
+        Contact: [Company Name, Address, City]
+        [/ADVERTISEMENT]
+        Write a letter expressing your interest in the position. Include your bio-data along with the application."
+      * For Literature Cluster Questions (e.g. Q10 "Answer any 5 of 6", Q11 "Answer any 2 of 3"):
+        In "text", provide the exact instructions: "Answer any five of the following six questions in 40 50 words each:" (or "Answer any two of the following three questions in 40 -50 words each:").
+        Provide the sub-questions in "sub_questions" numbered with Roman numerals (I, II, III, IV, V, VI), each specifying the prescribed chapter/poem in parentheses at the end, e.g. "(The Last Lesson)", "(Deep Water)".
+
+11. IF type is "case_study" (Reading Comprehension / Literature Extract / Case Scenario):
+    - Set "text" to an introductory direction (e.g. "Read the following passage carefully and answer the questions that follow:" or "Read the following extracts and solve ANY ONE of the given two, (A) or (B).").
+    - In "passage", write a rich, authentic, high-quality narrative, literature extract, or factual case passage (250-450 words) based on the syllabus.
+      * For Literature: Use REAL textbook extracts from prescribed texts (e.g. NCERT Flamingo/Vistas for English Core: 'My Mother at Sixty-six', 'Aunt Jennifer's Tigers', 'The Rattrap', 'The Third Level', 'Going Places', 'The Enemy'). NEVER make up fake poetry.
+      * Include source attribution at the bottom if appropriate: "Source: [Title] by [Author] / [Word Count] words" or "Created for academic usage / [Word Count] words".
+    - In "sub_questions", provide a structured list of sub-questions totaling {case_marks_calc} marks.
+      Use uppercase Roman numerals for "sub_no": "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X".
+      Ensure high cognitive diversity matching authentic Board examinations:{subq_instruction if subq_instruction else """
+      * Factual / Detail Retrieval MCQs (1 Mark, 4 options A, B, C, D)
+      * Context completion with reason: "Complete the following with a suitable reason: The writer refers to ... in order to tell the reader that ____." (1 Mark)
+      * Negative reasoning / Inverse MCQs: "The author emphasizes ... in all of the following ways EXCEPT —" (1 Mark, 4 options)
+      * Vocabulary / Idiom in context: "Which one of the following statements best explains the phrase '...'?" (1 Mark, 4 options)
+      * Analytical short inference: Short 40-word question testing interpretation or character intent (2 Marks)
+      * Combinatorial MCQs: e.g. "Select the most suitable option: A. 1 and 5, B. 2 and 4, C. 1, 2 and 3, D. 3, 4 and 5" (1 Mark)"""}
     - Set top-level "options" to null, and "answer" to a complete marking guide summarizing all sub-question solutions.
 
 MATHEMATICAL & SCIENTIFIC NOTATION RULES:

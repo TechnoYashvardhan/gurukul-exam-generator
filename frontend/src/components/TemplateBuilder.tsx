@@ -338,7 +338,12 @@ export default function TemplateBuilder({
             <button
               className="gk-btn gk-btn--primary gk-btn--sm"
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || computedMarks !== totalMarks}
+              title={
+                computedMarks !== totalMarks
+                  ? `Section marks (${computedMarks}) must match total marks (${totalMarks}). Click 'Sync Total' to match.`
+                  : "Save blueprint template"
+              }
             >
               {saving ? (
                 <span
