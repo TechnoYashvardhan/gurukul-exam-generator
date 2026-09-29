@@ -40,6 +40,8 @@ import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
 import MatchQuestionView from "./MatchQuestionView";
 import { calculateSectionTotalMarks } from "./SectionCard";
+import { ProgressBar, ProgressTracker } from "./ProgressBar";
+import { useProgressSimulation, type ProgressStage } from "@/hooks/useProgressSimulation";
 import {
   downloadExamAsJson,
   downloadExamAsDocx,
@@ -47,6 +49,20 @@ import {
   getCleanExamTitle,
 } from "@/lib/exportUtils";
 import type { View } from "./Sidebar";
+
+const EXAM_GEN_STAGES: ProgressStage[] = [
+  { name: "Architecting Blueprint & Prompt...", targetProgress: 20 },
+  { name: "Synthesizing Questions & Passages...", targetProgress: 50 },
+  { name: "Validating Marking Schemes & LaTeX...", targetProgress: 80 },
+  { name: "Finalizing Examination Paper...", targetProgress: 95 },
+];
+
+const EXAM_GEN_TIPS = [
+  "Gurukul AI balances Bloom's Taxonomy across factual, analytical, and higher-order thinking.",
+  "Reading passages include factual MCQs, inference questions, vocabulary context, and inverse exceptions.",
+  "Creative writing tasks include word limits, boxed stimulus layouts, and format rubrics.",
+  "Prescribed NCERT literature questions include internal choices and cross-chapter analytical prompts.",
+];
 
 interface GeneratePanelProps {
   docs?: DocumentSummary[];
@@ -96,6 +112,15 @@ export default function GeneratePanel({
   const [published, setPublished] = useState(false);
   const [publishedInfo, setPublishedInfo] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
+
+  // Live progressive simulation tracker for exam generation
+  const examSim = useProgressSimulation({
+    active: generating,
+    stages: EXAM_GEN_STAGES,
+    externalStatus: progressMsg,
+    tips: EXAM_GEN_TIPS,
+    autoAdvanceSeconds: 4,
+  });
 
   // Resolve active docs list and selection
   const docs = propDocs !== undefined ? propDocs : internalDocs;
@@ -1693,25 +1718,17 @@ export default function GeneratePanel({
 
               {/* Synthesis Button & Integrated Progress */}
               {generating ? (
-                <div
-                  style={{
-                    padding: "18px",
-                    borderRadius: "var(--radius-md)",
-                    background: "var(--surface-sunken)",
-                    border: "1.5px solid var(--accent-mid)",
-                    textAlign: "center",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
-                    <span className="spin" style={{ width: 18, height: 18, border: "2px solid var(--accent)", borderTopColor: "transparent", borderRadius: "50%", display: "inline-block" }} />
-                    <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--accent)" }}>
-                      Synthesizing Questions...
-                    </span>
-                  </div>
-                  <p style={{ fontSize: "12.5px", color: "var(--text-2)", margin: 0 }}>
-                    {progressMsg}
-                  </p>
-                </div>
+                <ProgressTracker
+                  title="Synthesizing Examination Paper"
+                  subtitle="Architecting sections, passages, questions, and marking scheme..."
+                  stages={EXAM_GEN_STAGES}
+                  stageIndex={examSim.stageIndex}
+                  progress={examSim.progress}
+                  statusMessage={examSim.currentStatusMessage}
+                  formattedTime={examSim.formattedTime}
+                  tip={examSim.currentTip}
+                  variant="card"
+                />
               ) : (
                 <button
                   className="gk-btn gk-btn--primary"

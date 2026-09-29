@@ -24,6 +24,33 @@ import {
   X,
 } from "lucide-react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { ProgressBar, ProgressTracker } from "./ProgressBar";
+import { useProgressSimulation, type ProgressStage } from "@/hooks/useProgressSimulation";
+
+const UPLOAD_STAGES: ProgressStage[] = [
+  { name: "Uploading PDF bytes & validating...", targetProgress: 30 },
+  { name: "Extracting text & semantic chunking...", targetProgress: 65 },
+  { name: "Generating vector embeddings & indexing...", targetProgress: 90 },
+  { name: "Saving to Knowledge Base...", targetProgress: 98 },
+];
+
+const WEB_FETCH_STAGES: ProgressStage[] = [
+  { name: "Searching academic web sources...", targetProgress: 35 },
+  { name: "Curating syllabus context & extracts...", targetProgress: 75 },
+  { name: "Synthesizing comprehensive study notes...", targetProgress: 95 },
+];
+
+const PDF_EXTRACT_STAGES: ProgressStage[] = [
+  { name: "Parsing document structure...", targetProgress: 40 },
+  { name: "Extracting syllabus topics & key concepts...", targetProgress: 85 },
+  { name: "Formatting context...", targetProgress: 98 },
+];
+
+const UPLOAD_TIPS = [
+  "Uploaded PDFs are split into semantic chunks for contextual RAG retrieval.",
+  "Vector embeddings ensure exact questions are aligned to your uploaded syllabus.",
+  "Multiple PDFs can be bundled into a single unified knowledge source.",
+];
 
 interface LibraryUploadProps {
   onUploaded: (doc: DocumentSummary) => void;
@@ -67,6 +94,28 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
     filename: string;
     wordCount: number;
   } | null>(null);
+
+  // Progressive simulation trackers
+  const uploadSim = useProgressSimulation({
+    active: uploading,
+    stages: UPLOAD_STAGES,
+    tips: UPLOAD_TIPS,
+    autoAdvanceSeconds: 3,
+  });
+
+  const webFetchSim = useProgressSimulation({
+    active: fetching,
+    stages: WEB_FETCH_STAGES,
+    tips: UPLOAD_TIPS,
+    autoAdvanceSeconds: 3,
+  });
+
+  const extractSim = useProgressSimulation({
+    active: extractingWeb || extractingCustom,
+    stages: PDF_EXTRACT_STAGES,
+    tips: UPLOAD_TIPS,
+    autoAdvanceSeconds: 2.5,
+  });
 
   async function handleExtractTopicPdfs(incoming: FileList | File[], targetTab: "web" | "custom") {
     const list = Array.from(incoming).filter((f) => f.name.toLowerCase().endsWith(".pdf"));
@@ -442,31 +491,35 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
                 </div>
               )}
 
-              {/* Action button */}
-              <button
-                type="button"
-                className="gk-btn gk-btn--primary gk-btn--full"
-                onClick={handleUploadQueued}
-                disabled={uploading}
-                style={{ height: 42, justifyContent: "center", marginTop: 4 }}
-              >
-                {uploading ? (
-                  <>
-                    <span
-                      className="spin"
-                      style={{ display: "inline-block", width: 16, height: 16, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", marginRight: 8 }}
-                    />
-                    Extracting text & vector indexing {queuedFiles.length} file{queuedFiles.length > 1 ? "s" : ""}…
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={16} />
-                    {queuedFiles.length > 1
-                      ? `✨ Merge & Ingest ${queuedFiles.length} PDFs into Granth Library`
-                      : "Upload & Ingest PDF into Granth Library"}
-                  </>
-                )}
-              </button>
+              {/* Action button / ProgressTracker */}
+              {uploading ? (
+                <div style={{ marginTop: 12 }}>
+                  <ProgressTracker
+                    title={queuedFiles.length > 1 ? `Merging & Ingesting ${queuedFiles.length} PDFs` : "Ingesting PDF into Granth Library"}
+                    subtitle="Extracting text, chunking, and computing vector embeddings..."
+                    stages={UPLOAD_STAGES}
+                    stageIndex={uploadSim.stageIndex}
+                    progress={uploadSim.progress}
+                    statusMessage={uploadSim.currentStatusMessage}
+                    formattedTime={uploadSim.formattedTime}
+                    tip={uploadSim.currentTip}
+                    variant="card"
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="gk-btn gk-btn--primary gk-btn--full"
+                  onClick={handleUploadQueued}
+                  disabled={uploading}
+                  style={{ height: 42, justifyContent: "center", marginTop: 4 }}
+                >
+                  <Sparkles size={16} />
+                  {queuedFiles.length > 1
+                    ? `✨ Merge & Ingest ${queuedFiles.length} PDFs into Granth Library`
+                    : "Upload & Ingest PDF into Granth Library"}
+                </button>
+              )}
             </div>
           ) : (
             <div
@@ -481,19 +534,18 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
               onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
             >
               {uploading ? (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                  <div className="lotus-loader__petals" style={{ width: 44, height: 44 }}>
-                    {[...Array(8)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="lotus-loader__petal"
-                        style={{ "--r": `${i * 45}deg` } as React.CSSProperties}
-                      />
-                    ))}
-                  </div>
-                  <p style={{ fontSize: 14, color: "var(--text-2)", fontStyle: "italic", fontFamily: "var(--font-heading)" }}>
-                    Extracting text & computing vector embeddings…
-                  </p>
+                <div style={{ width: "100%", padding: "12px" }}>
+                  <ProgressTracker
+                    title="Ingesting PDF into Granth Library"
+                    subtitle="Extracting text, chunking, and computing vector embeddings..."
+                    stages={UPLOAD_STAGES}
+                    stageIndex={uploadSim.stageIndex}
+                    progress={uploadSim.progress}
+                    statusMessage={uploadSim.currentStatusMessage}
+                    formattedTime={uploadSim.formattedTime}
+                    tip={uploadSim.currentTip}
+                    variant="card"
+                  />
                 </div>
               ) : (
                 <>
@@ -645,9 +697,15 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
                 }}
               />
               {extractingWeb ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)" }}>
-                  <span className="spin" style={{ width: 14, height: 14, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%" }} />
-                  <span>Extracting topics & syllabus from PDF(s)...</span>
+                <div style={{ width: "100%", padding: "4px 0" }}>
+                  <ProgressBar
+                    progress={extractSim.progress}
+                    size="sm"
+                    color="gradient"
+                    showLabel={true}
+                    label={extractSim.currentStatusMessage}
+                    showPercentage={true}
+                  />
                 </div>
               ) : (
                 <>
@@ -676,26 +734,28 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
             )}
           </div>
 
-          <button
-            className="gk-btn gk-btn--gold gk-btn--full"
-            onClick={handleWebFetch}
-            disabled={fetching}
-            style={{ height: 40, justifyContent: "center" }}
-          >
-            {fetching ? (
-              <>
-                <span
-                  className="spin"
-                  style={{ display: "inline-block", width: 16, height: 16, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%" }}
-                />
-                Fetching & indexing syllabus…
-              </>
-            ) : (
-              <>
-                <Globe size={16} /> Fetch & Index from Web
-              </>
-            )}
-          </button>
+          {fetching ? (
+            <ProgressTracker
+              title="Curating Academic Knowledge"
+              subtitle="Searching academic sources and synthesizing syllabus context..."
+              stages={WEB_FETCH_STAGES}
+              stageIndex={webFetchSim.stageIndex}
+              progress={webFetchSim.progress}
+              statusMessage={webFetchSim.currentStatusMessage}
+              formattedTime={webFetchSim.formattedTime}
+              tip={webFetchSim.currentTip}
+              variant="card"
+            />
+          ) : (
+            <button
+              className="gk-btn gk-btn--gold gk-btn--full"
+              onClick={handleWebFetch}
+              disabled={fetching}
+              style={{ height: 40, justifyContent: "center" }}
+            >
+              <Globe size={16} /> Fetch & Index from Web
+            </button>
+          )}
         </div>
       )}
 
@@ -848,9 +908,15 @@ export default function LibraryUpload({ onUploaded }: LibraryUploadProps) {
                 }}
               />
               {extractingCustom ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)" }}>
-                  <span className="spin" style={{ width: 14, height: 14, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%" }} />
-                  <span>Extracting topics & title from PDF(s)...</span>
+                <div style={{ width: "100%", padding: "4px 0" }}>
+                  <ProgressBar
+                    progress={extractSim.progress}
+                    size="sm"
+                    color="gradient"
+                    showLabel={true}
+                    label={extractSim.currentStatusMessage}
+                    showPercentage={true}
+                  />
                 </div>
               ) : (
                 <>

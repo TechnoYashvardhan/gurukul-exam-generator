@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { DocumentSummary } from "@/types/document";
 import { documentsApi } from "@/lib/api";
 import { Clock, Settings, CheckCircle, XCircle, FileText, Globe, X, Check, Layers } from "lucide-react";
+import { ProgressBar } from "./ProgressBar";
 
 interface DocumentCardProps {
   doc: DocumentSummary;
@@ -119,7 +120,18 @@ export default function DocumentCard({
       </div>
 
       {/* Status + date */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
+      {(!isReady && doc.status !== "error") && (
+        <div style={{ marginTop: 8, marginBottom: 4 }}>
+          <ProgressBar
+            progress={doc.status === "processing" ? 70 : 30}
+            size="sm"
+            color="gradient"
+            animated={true}
+          />
+        </div>
+      )}
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
         <span className={`doc-card__status ${status.cls}`}>
           {status.icon}
           {status.label}

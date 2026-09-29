@@ -30,6 +30,20 @@ import {
 } from "lucide-react";
 import Toast, { ToastVariant } from "./Toast";
 import MatchQuestionView from "./MatchQuestionView";
+import { ProgressBar, ProgressTracker } from "./ProgressBar";
+import { useProgressSimulation, type ProgressStage } from "@/hooks/useProgressSimulation";
+
+const QUIZ_EVAL_STAGES: ProgressStage[] = [
+  { name: "Verifying responses & timestamps...", targetProgress: 25 },
+  { name: "Auto-evaluating objective & subjective answers...", targetProgress: 60 },
+  { name: "Calculating section-wise scorecard & grade...", targetProgress: 85 },
+  { name: "Finalizing performance analytics...", targetProgress: 98 },
+];
+
+const QUIZ_EVAL_TIPS = [
+  "Gurukul AI evaluates student answers against comprehensive model answers and marking rubrics.",
+  "Detailed question-by-question explanations will be available in your review report.",
+];
 
 interface QuizPlayerProps {
   quizId?: string;
@@ -67,6 +81,14 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
+
+  // Progressive simulation for quiz evaluation
+  const evalSim = useProgressSimulation({
+    active: submitting,
+    stages: QUIZ_EVAL_STAGES,
+    tips: QUIZ_EVAL_TIPS,
+    autoAdvanceSeconds: 2.5,
+  });
 
   // ── Kavach Anti-Cheating & Proctoring Guardian State ──────────────────
   const [warningsCount, setWarningsCount] = useState<number>(0);
@@ -1630,6 +1652,21 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
           </button>
         )}
       </div>
+
+      {/* Evaluation Progress Modal */}
+      {submitting && (
+        <ProgressTracker
+          title="Submitting & Evaluating Quiz"
+          subtitle="Analyzing responses against rubric and computing final score..."
+          stages={QUIZ_EVAL_STAGES}
+          stageIndex={evalSim.stageIndex}
+          progress={evalSim.progress}
+          statusMessage={evalSim.currentStatusMessage}
+          formattedTime={evalSim.formattedTime}
+          tip={evalSim.currentTip}
+          variant="modal"
+        />
+      )}
     </div>
   );
 }

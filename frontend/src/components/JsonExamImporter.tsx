@@ -21,6 +21,7 @@ import MathText from "./MathText";
 import Toast, { ToastVariant } from "./Toast";
 import PublishQuizModal from "./PublishQuizModal";
 import MatchQuestionView from "./MatchQuestionView";
+import { ProgressBar } from "./ProgressBar";
 import { generationApi, adminApi } from "@/lib/api";
 import { SAMPLE_EXAM_JSON, downloadExamAsJson, downloadSampleTemplateJson, getCleanExamTitle } from "@/lib/exportUtils";
 
@@ -483,31 +484,36 @@ export default function JsonExamImporter({ onExamSaved, role = "teacher" }: Json
 
           {/* Generate Button */}
           <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
-            <button
-              type="button"
-              className="gk-btn gk-btn--primary"
-              disabled={isProcessing || !parsedExam || !!validationError}
-              onClick={handleGenerateFromImport}
-              style={{
-                height: 42,
-                padding: "0 22px",
-                fontSize: 14,
-                fontWeight: 600,
-                boxShadow: "0 4px 14px rgba(217, 119, 6, 0.25)",
-              }}
-            >
-              {isProcessing ? (
-                <>
-                  <span className="spin" style={{ width: 16, height: 16, border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", marginRight: 8 }} />
-                  Rendering Exam Paper...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={16} />
-                  Generate & Render Question Paper
-                </>
-              )}
-            </button>
+            {isProcessing ? (
+              <div style={{ width: "100%", marginTop: 8 }}>
+                <ProgressBar
+                  progress={85}
+                  size="md"
+                  color="gradient"
+                  animated={true}
+                  showLabel={true}
+                  label="Parsing JSON & rendering question paper..."
+                  showPercentage={true}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="gk-btn gk-btn--primary"
+                disabled={isProcessing || !parsedExam || !!validationError}
+                onClick={handleGenerateFromImport}
+                style={{
+                  height: 42,
+                  padding: "0 22px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  boxShadow: "0 4px 14px rgba(217, 119, 6, 0.25)",
+                }}
+              >
+                <Sparkles size={16} />
+                Generate & Render Question Paper
+              </button>
+            )}
           </div>
         </div>
       ) : (

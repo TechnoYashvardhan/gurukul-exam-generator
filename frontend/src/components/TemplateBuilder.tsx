@@ -27,6 +27,21 @@ import RichTextEditor from "./RichTextEditor";
 import MarksBar from "./MarksBar";
 import SectionCard, { calculateSectionTotalMarks } from "./SectionCard";
 import Toast, { type ToastVariant } from "./Toast";
+import { ProgressBar, ProgressTracker } from "./ProgressBar";
+import { useProgressSimulation, type ProgressStage } from "@/hooks/useProgressSimulation";
+
+const PYQ_DECOMPILE_STAGES: ProgressStage[] = [
+  { name: "Extracting Text & Reading Structure...", targetProgress: 25 },
+  { name: "Reverse-Engineering Sections & Mark Splits...", targetProgress: 55 },
+  { name: "Mapping Bloom's Taxonomy & Sub-Questions...", targetProgress: 80 },
+  { name: "Synthesizing Blueprint Specification...", targetProgress: 95 },
+];
+
+const PYQ_DECOMPILE_TIPS = [
+  "Gurukul AI decompiles sample papers into mathematically consistent section blueprints.",
+  "Complex case studies with multiple sub-questions are mapped with individual marks per sub-question.",
+  "Internal choice configurations ('OR' questions) are extracted and preserved.",
+];
 
 // ── Props ────────────────────────────────────────────────────────────────────
 interface TemplateBuilderProps {
@@ -121,6 +136,14 @@ export default function TemplateBuilder({
   const [pyqFile, setPyqFile] = useState<File | null>(null);
   const [pyqText, setPyqText] = useState("");
   const [decompiling, setDecompiling] = useState(false);
+
+  // Progressive simulation for AI PYQ Decompiler
+  const pyqSim = useProgressSimulation({
+    active: decompiling,
+    stages: PYQ_DECOMPILE_STAGES,
+    tips: PYQ_DECOMPILE_TIPS,
+    autoAdvanceSeconds: 3.5,
+  });
 
   // Filter out any corrupted data from localStorage
   const validSections = sections.filter(Boolean);
@@ -816,129 +839,124 @@ export default function TemplateBuilder({
               )}
             </div>
 
-            {/* Dropzone & Upload area */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
-                <label className="gk-label" style={{ marginBottom: 8, display: "block" }}>
-                  1. Upload Sample Paper PDF (Optional if pasting text)
-                </label>
-                <div
-                  style={{
-                    border: "2px dashed var(--border)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "24px 16px",
-                    textAlign: "center",
-                    background: "var(--surface-sunken)",
-                    cursor: "pointer",
-                    transition: "border-color 0.2s ease",
-                  }}
-                  onClick={() => document.getElementById("pyq-file-input")?.click()}
-                >
-                  <input
-                    id="pyq-file-input"
-                    type="file"
-                    accept=".pdf,application/pdf"
-                    style={{ display: "none" }}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) setPyqFile(f);
+            {/* Modal Body: ProgressTracker when decompiling, else Input Form */}
+            {decompiling ? (
+              <ProgressTracker
+                title="Reverse-Engineering Exam Blueprint"
+                subtitle="Decompiling structure, marks, and question types from sample paper..."
+                stages={PYQ_DECOMPILE_STAGES}
+                stageIndex={pyqSim.stageIndex}
+                progress={pyqSim.progress}
+                statusMessage={pyqSim.currentStatusMessage}
+                formattedTime={pyqSim.formattedTime}
+                tip={pyqSim.currentTip}
+                variant="card"
+              />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div>
+                  <label className="gk-label" style={{ marginBottom: 8, display: "block" }}>
+                    1. Upload Sample Paper PDF (Optional if pasting text)
+                  </label>
+                  <div
+                    style={{
+                      border: "2px dashed var(--border)",
+                      borderRadius: "var(--radius-md)",
+                      padding: "24px 16px",
+                      textAlign: "center",
+                      background: "var(--surface-sunken)",
+                      cursor: "pointer",
+                      transition: "border-color 0.2s ease",
                     }}
-                  />
-                  {pyqFile ? (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--forest)" }}>
-                      <FileIcon size={22} />
-                      <div style={{ textAlign: "left" }}>
-                        <div style={{ fontWeight: 700, fontSize: "13.5px" }}>{pyqFile.name}</div>
-                        <div style={{ fontSize: "11.5px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}>
-                          {(pyqFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to analyze
+                    onClick={() => document.getElementById("pyq-file-input")?.click()}
+                  >
+                    <input
+                      id="pyq-file-input"
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) setPyqFile(f);
+                      }}
+                    />
+                    {pyqFile ? (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--forest)" }}>
+                        <FileIcon size={22} />
+                        <div style={{ textAlign: "left" }}>
+                          <div style={{ fontWeight: 700, fontSize: "13.5px" }}>{pyqFile.name}</div>
+                          <div style={{ fontSize: "11.5px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}>
+                            {(pyqFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to analyze
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="gk-btn gk-btn--ghost gk-btn--sm"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setPyqFile(null);
+                          }}
+                          style={{ marginLeft: 12, padding: "4px 8px" }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                        <UploadCloud size={32} style={{ color: "var(--accent)", opacity: 0.8 }} />
+                        <div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text)" }}>
+                          Drag & Drop or Click to Select Sample Paper PDF
+                        </div>
+                        <div style={{ fontSize: "11.5px", color: "var(--text-3)" }}>
+                          Supports Board PYQs, unit tests, mock papers (up to 30 MB)
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className="gk-btn gk-btn--ghost gk-btn--sm"
-                        onClick={(ev) => {
-                          ev.stopPropagation();
-                          setPyqFile(null);
-                        }}
-                        style={{ marginLeft: 12, padding: "4px 8px" }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                      <UploadCloud size={32} style={{ color: "var(--accent)", opacity: 0.8 }} />
-                      <div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text)" }}>
-                        Drag & Drop or Click to Select Sample Paper PDF
-                      </div>
-                      <div style={{ fontSize: "11.5px", color: "var(--text-3)" }}>
-                        Supports Board PYQs, unit tests, mock papers (up to 30 MB)
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                </div>
+
+                {/* Paste text area */}
+                <div>
+                  <label className="gk-label" htmlFor="pyq-text-input" style={{ marginBottom: 8, display: "block" }}>
+                    2. Or Paste Question Paper Text / Instructions
+                  </label>
+                  <textarea
+                    id="pyq-text-input"
+                    className="gk-textarea"
+                    rows={5}
+                    placeholder="Paste question paper headers, general instructions, section breakdowns, or question text..."
+                    value={pyqText}
+                    onChange={(e) => setPyqText(e.target.value)}
+                    style={{ fontSize: "13px", fontFamily: "var(--font-mono)" }}
+                  />
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
+                  <button
+                    type="button"
+                    className="gk-btn gk-btn--secondary"
+                    onClick={() => setShowDecompilerModal(false)}
+                    disabled={decompiling}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="gk-btn gk-btn--primary"
+                    onClick={handleDecompile}
+                    disabled={decompiling || (!pyqFile && (!pyqText || pyqText.trim().length < 20))}
+                    style={{
+                      background: "linear-gradient(135deg, var(--terracotta), var(--accent))",
+                      fontWeight: 700,
+                    }}
+                  >
+                    <Wand2 size={15} />
+                    <span>Decompile into Blueprint ⚡</span>
+                  </button>
                 </div>
               </div>
-
-              {/* Paste text area */}
-              <div>
-                <label className="gk-label" htmlFor="pyq-text-input" style={{ marginBottom: 8, display: "block" }}>
-                  2. Or Paste Question Paper Text / Instructions
-                </label>
-                <textarea
-                  id="pyq-text-input"
-                  className="gk-textarea"
-                  rows={5}
-                  placeholder="Paste question paper headers, general instructions, section breakdowns, or question text..."
-                  value={pyqText}
-                  onChange={(e) => setPyqText(e.target.value)}
-                  style={{ fontSize: "13px", fontFamily: "var(--font-mono)" }}
-                />
-              </div>
-
-              {/* Action buttons */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 8 }}>
-                <button
-                  type="button"
-                  className="gk-btn gk-btn--secondary"
-                  onClick={() => setShowDecompilerModal(false)}
-                  disabled={decompiling}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="gk-btn gk-btn--primary"
-                  onClick={handleDecompile}
-                  disabled={decompiling || (!pyqFile && (!pyqText || pyqText.trim().length < 20))}
-                  style={{
-                    background: "linear-gradient(135deg, var(--terracotta), var(--accent))",
-                    fontWeight: 700,
-                  }}
-                >
-                  {decompiling ? (
-                    <>
-                      <span
-                        className="spin"
-                        style={{
-                          display: "inline-block",
-                          width: 14,
-                          height: 14,
-                          border: "2px solid currentColor",
-                          borderTopColor: "transparent",
-                          borderRadius: "50%",
-                        }}
-                      />
-                      <span>Decompiling Blueprint...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 size={15} />
-                      <span>Decompile into Blueprint ⚡</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}

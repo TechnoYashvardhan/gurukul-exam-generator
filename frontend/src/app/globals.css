@@ -2337,6 +2337,24 @@ body {
   }
 }
 
+@keyframes gkShimmerMove {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes gkStripesMove {
+  from {
+    background-position: 16px 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
 /* ── Print Styles ─────────────────────────────────────────────────── */
 @media print {
 
