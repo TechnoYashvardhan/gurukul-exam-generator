@@ -14,6 +14,7 @@ import {
   ShadingType,
   Footer,
   PageNumber,
+  ImageRun,
 } from "docx";
 
 export const SAMPLE_EXAM_JSON: GeneratedExam = {
@@ -269,6 +270,11 @@ export function downloadExamAsMarkdown(exam: GeneratedExam, includeAnswerKey: bo
       lines.push("");
     }
 
+    if (q.chart_image_url) {
+      lines.push(`![Figure / Data Chart](${q.chart_image_url})`);
+      lines.push("");
+    }
+
     if (q.sub_questions && q.sub_questions.length > 0) {
       q.sub_questions.forEach((sub: any, sIdx: number) => {
         const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
@@ -309,6 +315,10 @@ export function downloadExamAsMarkdown(exam: GeneratedExam, includeAnswerKey: bo
         q.or_choice.passage.split("\n").forEach((pLine: string) => {
           lines.push(`> ${pLine}`);
         });
+        lines.push("");
+      }
+      if (q.or_choice.chart_image_url) {
+        lines.push(`![Alternative Figure / Data Chart](${q.or_choice.chart_image_url})`);
         lines.push("");
       }
       if (q.or_choice.sub_questions && q.or_choice.sub_questions.length > 0) {
@@ -1118,6 +1128,36 @@ export async function downloadExamAsDocx(exam: GeneratedExam, includeAnswerKey: 
       );
     }
 
+    // Chart / Figure Image in DOCX
+    if (q.chart_image_url && q.chart_image_url.startsWith("data:image/png;base64,")) {
+      try {
+        const base64Data = q.chart_image_url.split(",")[1];
+        const binaryStr = typeof atob !== "undefined" ? atob(base64Data) : Buffer.from(base64Data, "base64").toString("binary");
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 100, after: 100 },
+            children: [
+              new ImageRun({
+                data: bytes,
+                transformation: {
+                  width: 480,
+                  height: 270,
+                },
+                type: "png",
+              }),
+            ],
+          })
+        );
+      } catch {
+        // continue gracefully if image decoding is unsupported in environment
+      }
+    }
+
     // Sub-Questions (for Case Study / Reading Comprehension)
     if (q.sub_questions && q.sub_questions.length > 0) {
       q.sub_questions.forEach((sub: any, sIdx: number) => {
@@ -1318,6 +1358,36 @@ export async function downloadExamAsDocx(exam: GeneratedExam, includeAnswerKey: 
             ],
           })
         );
+      }
+
+      // Alternative Chart / Figure Image in DOCX
+      if (q.or_choice.chart_image_url && q.or_choice.chart_image_url.startsWith("data:image/png;base64,")) {
+        try {
+          const base64Data = q.or_choice.chart_image_url.split(",")[1];
+          const binaryStr = typeof atob !== "undefined" ? atob(base64Data) : Buffer.from(base64Data, "base64").toString("binary");
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+          children.push(
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 100, after: 100 },
+              children: [
+                new ImageRun({
+                  data: bytes,
+                  transformation: {
+                    width: 480,
+                    height: 270,
+                  },
+                  type: "png",
+                }),
+              ],
+            })
+          );
+        } catch {
+          // continue gracefully if image decoding fails
+        }
       }
 
       // OR choice sub-questions

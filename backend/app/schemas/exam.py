@@ -23,6 +23,8 @@ class SubQuestion(BaseModel):
     answer: str = Field(default="", description="Correct option key or model answer")
     marks: int = Field(default=1, ge=1, description="Marks awarded for this sub-question")
     bloom_level: str = Field(default="understand")
+    chart_image_url: str | None = None
+    chart_spec: dict[str, Any] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -105,6 +107,8 @@ class QuestionChoice(BaseModel):
     answer: str = Field(default="", description="Model answer for the alternative choice")
     bloom_level: str | None = None
     difficulty: str | None = None
+    chart_image_url: str | None = None
+    chart_spec: dict[str, Any] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -144,6 +148,8 @@ class Question(BaseModel):
     bloom_level: str
     difficulty: str
     or_choice: QuestionChoice | None = None
+    chart_image_url: str | None = None
+    chart_spec: dict[str, Any] | None = None
 
     @model_validator(mode="before")
     @classmethod

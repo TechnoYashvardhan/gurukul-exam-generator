@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { History, Printer, X, Edit2, Check, Trash2, FileText, CheckCircle, CheckCircle2, Send, Download, FileCode2 } from "lucide-react";
+import { History, Printer, X, Edit2, Check, Trash2, FileText, CheckCircle, CheckCircle2, Send, Download, FileCode2, BookOpen, Shuffle, BarChart3 } from "lucide-react";
 import { type ExamHistoryEntry } from "@/hooks/useExamHistory";
 import MathText from "./MathText";
 import { generationApi, adminApi } from "@/lib/api";
@@ -103,34 +103,37 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
   };
 
   const renderQuestions = (questions: any[], sections?: any[] | null) => {
-    const uniqueSecIds = Array.from(new Set(questions.map(q => q.section_id)));
+    const uniqueSecIds = Array.from(new Set(questions.map((q) => q.section_id)));
     return questions.map((q, idx) => {
       const isFirstInSec = idx === 0 || q.section_id !== questions[idx - 1].section_id;
+      const isFirstInSubSec =
+        isFirstInSec ||
+        (q.sub_section_title && q.sub_section_title !== questions[idx - 1]?.sub_section_title);
       const secIndex = uniqueSecIds.indexOf(q.section_id);
       const secLetter = String.fromCharCode(65 + (secIndex >= 0 ? secIndex : 0));
-      const sectionMeta = sections?.find(s => s.id === q.section_id);
-      
+      const sectionMeta = sections?.find((s) => s.id === q.section_id);
+
       let secTitle = "";
       if (sectionMeta?.title) {
-        secTitle = sectionMeta.title.trim().toUpperCase().startsWith("SECTION") 
-          ? sectionMeta.title.trim().toUpperCase() 
+        secTitle = sectionMeta.title.trim().toUpperCase().startsWith("SECTION")
+          ? sectionMeta.title.trim().toUpperCase()
           : `SECTION ${secLetter} — ${sectionMeta.title.trim().toUpperCase()}`;
       } else {
-        const typeLabel = q.type === "mcq" 
-          ? "MULTIPLE CHOICE QUESTIONS" 
-          : q.type.replace('_', ' ').toUpperCase();
+        const typeLabel =
+          q.type === "mcq" ? "MULTIPLE CHOICE QUESTIONS" : q.type.replace("_", " ").toUpperCase();
         secTitle = `SECTION ${secLetter} — ${typeLabel}`;
       }
       const secInstructions = sectionMeta?.instructions;
 
       return (
         <div key={`${idx}-${q.question_no}`}>
+          {/* Main Section Header */}
           {isFirstInSec && (
             <div className="exam-section-header">
               <div className="exam-section-header__title">
                 <span>{secTitle}</span>
                 <span style={{ fontSize: "12px", opacity: 0.8, fontWeight: 500 }} className="no-print">
-                  {q.marks} Mark{q.marks > 1 ? 's' : ''} each
+                  {q.marks} Mark{q.marks > 1 ? "s" : ""} each
                 </span>
               </div>
               {secInstructions && (
@@ -139,7 +142,37 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
             </div>
           )}
 
-          <div className="question-card">
+          {/* Sub-Section / Part Divider Badge */}
+          {isFirstInSubSec && !isFirstInSec && q.sub_section_title && (
+            <div
+              style={{
+                marginTop: 16,
+                marginBottom: 12,
+                padding: "6px 14px",
+                borderRadius: "6px",
+                background: "rgba(99, 102, 241, 0.08)",
+                border: "1px solid rgba(99, 102, 241, 0.25)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 800,
+                  color: "var(--primary, #6366f1)",
+                  fontFamily: "var(--font-mono)",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                📑 {q.sub_section_title}
+              </span>
+            </div>
+          )}
+
+          <div className="question-card" style={{ marginBottom: 16 }}>
+            {/* Question Header */}
             <div className="question-card__header">
               <span className="question-card__num">Q.{q.question_no}</span>
               {q.type === "match_the_following" ? (
@@ -153,34 +186,567 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                   />
                 </div>
               ) : (
-                <div className="question-card__text">
+                <div className="question-card__text" style={{ fontSize: "14px", lineHeight: 1.6 }}>
                   <MathText content={q.text} />
                 </div>
               )}
-              <span className="question-card__marks">{q.marks}</span>
-              <span className="question-card__type">{q.type.replace("_", " ")}</span>
+              <span className="question-card__marks">
+                {q.marks} {q.marks === 1 ? "Mark" : "Marks"}
+              </span>
+              <span className="question-card__type no-print">{q.type.replace("_", " ")}</span>
             </div>
 
-            {q.type !== "match_the_following" && q.options && q.options.length > 0 && (
-              <div className="mcq-options">
+            {/* Reading Comprehension / Case Study Passage Box */}
+            {q.passage && (
+              <div
+                style={{
+                  marginTop: 12,
+                  marginBottom: 14,
+                  padding: "14px 18px",
+                  background: "var(--surface-sunken)",
+                  border: "1px solid var(--border)",
+                  borderLeft: "4px solid var(--accent)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    marginBottom: 8,
+                    color: "var(--accent)",
+                    fontWeight: 700,
+                    fontSize: "11.5px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  <BookOpen size={14} />
+                  <span>Comprehension Passage / Case Study Context</span>
+                </div>
+                <div style={{ fontSize: "13.5px", lineHeight: 1.65, color: "var(--text)", whiteSpace: "pre-line" }}>
+                  <MathText content={q.passage} />
+                </div>
+              </div>
+            )}
+
+            {/* Visual Chart / Figure Rendering */}
+            {q.chart_image_url && (
+              <div
+                style={{
+                  marginTop: 12,
+                  marginBottom: 14,
+                  textAlign: "center",
+                  background: "#ffffff",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <img
+                  src={q.chart_image_url}
+                  alt="Figure / Data Chart"
+                  style={{ maxWidth: "100%", maxHeight: "380px", height: "auto", objectFit: "contain", borderRadius: "4px" }}
+                />
+              </div>
+            )}
+
+            {/* Sub-Questions Rendering (for Case Study / Reading Passages) */}
+            {q.sub_questions && q.sub_questions.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                {q.sub_questions.map((sub: any, sIdx: number) => {
+                  const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
+                  return (
+                    <div
+                      key={sIdx}
+                      style={{
+                        padding: "12px 14px",
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-sm)",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1 }}>
+                          <span
+                            style={{
+                              fontWeight: 800,
+                              fontFamily: "var(--font-mono)",
+                              color: "var(--accent)",
+                              minWidth: 24,
+                              fontSize: "13px",
+                            }}
+                          >
+                            {subLabel}
+                          </span>
+                          <div style={{ fontSize: "13.5px", lineHeight: 1.5, flex: 1 }}>
+                            <MathText content={sub.text} />
+                          </div>
+                        </div>
+                        <span className="chip-badge chip-badge--gold" style={{ fontSize: "10.5px", flexShrink: 0 }}>
+                          {sub.marks} Mark{sub.marks > 1 ? "s" : ""}
+                        </span>
+                      </div>
+
+                      {/* Sub-question MCQ Options */}
+                      {sub.options && sub.options.length > 0 && (
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                            gap: 6,
+                            marginTop: 8,
+                            paddingLeft: 32,
+                          }}
+                        >
+                          {sub.options.map((sOpt: any) => (
+                            <div
+                              key={sOpt.key}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                fontSize: "12.5px",
+                                background:
+                                  activeViewMode === "key" && sOpt.key === sub.answer
+                                    ? "var(--forest-light)"
+                                    : "var(--surface-sunken)",
+                                border:
+                                  activeViewMode === "key" && sOpt.key === sub.answer
+                                    ? "1px solid var(--forest)"
+                                    : "1px solid var(--border)",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontWeight: 700,
+                                  fontFamily: "var(--font-mono)",
+                                  color:
+                                    activeViewMode === "key" && sOpt.key === sub.answer
+                                      ? "var(--forest)"
+                                      : "var(--text-3)",
+                                  fontSize: "11.5px",
+                                }}
+                              >
+                                ({sOpt.key})
+                              </span>
+                              <span style={{ fontSize: "12.5px" }}>
+                                <MathText content={sOpt.text} />
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Sub-question Answer Key */}
+                      {activeViewMode === "key" && sub.answer && (
+                        <div
+                          style={{
+                            marginTop: 8,
+                            marginLeft: 32,
+                            padding: "5px 10px",
+                            background: "var(--forest-light)",
+                            border: "1px solid var(--forest)",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            color: "var(--forest)",
+                          }}
+                        >
+                          <CheckCircle size={13} />
+                          <span>
+                            <strong>Model Answer:</strong> <MathText content={sub.answer} />
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Standard Top-Level MCQ Options */}
+            {!q.sub_questions && q.type !== "match_the_following" && q.options && q.options.length > 0 && (
+              <div className="mcq-options" style={{ marginTop: 12 }}>
                 {q.options.map((opt: any) => (
                   <div
                     key={opt.key}
                     className={`mcq-option ${activeViewMode === "key" && opt.key === q.answer ? "mcq-option--correct" : ""}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "8px 12px",
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid var(--border)",
+                      marginBottom: "6px",
+                      background:
+                        activeViewMode === "key" && opt.key === q.answer ? "var(--forest-light)" : "var(--surface)",
+                    }}
                   >
-                    <div className="flex items-start gap-2">
-                      <strong>({opt.key.toLowerCase()})</strong> 
+                    <span
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        fontWeight: 700,
+                        width: "22px",
+                        height: "22px",
+                        borderRadius: "50%",
+                        background:
+                          activeViewMode === "key" && opt.key === q.answer ? "var(--forest)" : "var(--surface-sunken)",
+                        color: activeViewMode === "key" && opt.key === q.answer ? "#fff" : "var(--text)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "12px",
+                      }}
+                    >
+                      {opt.key}
+                    </span>
+                    <span style={{ fontSize: "13.5px" }}>
                       <MathText content={opt.text} />
-                    </div>
+                    </span>
                   </div>
                 ))}
               </div>
             )}
 
-            {activeViewMode === "key" && q.answer && (
-              <div className="question-card__answer flex items-start gap-2">
-                <span className="font-semibold">Answer:</span>
-                <MathText content={q.answer} />
+            {/* Top-Level Answer Key */}
+            {activeViewMode === "key" && q.answer && !q.sub_questions && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "10px 14px",
+                  background: "var(--forest-light)",
+                  border: "1px solid var(--forest)",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "13px",
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 700,
+                    color: "var(--forest)",
+                    marginBottom: 4,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <CheckCircle size={15} />
+                  <span>Model Solution & Marking Scheme:</span>
+                </div>
+                <div style={{ color: "var(--text)" }}>
+                  <MathText content={q.answer} />
+                </div>
+              </div>
+            )}
+
+            {/* Internal Choice ("OR" Question) Academic Display */}
+            {q.or_choice && (
+              <div
+                style={{
+                  marginTop: 18,
+                  paddingTop: 14,
+                  borderTop: "1.5px dashed var(--border)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 14,
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      letterSpacing: "0.08em",
+                      padding: "3px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(99, 102, 241, 0.08)",
+                      border: "1px solid rgba(99, 102, 241, 0.25)",
+                      color: "var(--primary, #6366f1)",
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    — OR — (अथवा)
+                  </span>
+                  <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+                </div>
+
+                {/* OR Choice Passage (if any) */}
+                {q.or_choice.passage && (
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      padding: "12px 16px",
+                      background: "var(--surface-sunken)",
+                      border: "1px solid var(--border)",
+                      borderLeft: "4px solid var(--primary, #6366f1)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginBottom: 6,
+                        color: "var(--primary, #6366f1)",
+                        fontWeight: 700,
+                        fontSize: "11px",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      <BookOpen size={13} />
+                      <span>Alternative Passage / Case Context</span>
+                    </div>
+                    <div style={{ fontSize: "13px", lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-line" }}>
+                      <MathText content={q.or_choice.passage} />
+                    </div>
+                  </div>
+                )}
+
+                {/* OR Choice Visual Chart */}
+                {q.or_choice.chart_image_url && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      marginBottom: 12,
+                      textAlign: "center",
+                      background: "#ffffff",
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <img
+                      src={q.or_choice.chart_image_url}
+                      alt="Alternative Figure / Data Chart"
+                      style={{ maxWidth: "100%", maxHeight: "380px", height: "auto", objectFit: "contain", borderRadius: "4px" }}
+                    />
+                  </div>
+                )}
+
+                {/* OR Choice Question Text */}
+                <div style={{ fontSize: "14px", lineHeight: 1.6, marginBottom: 10, paddingLeft: 4 }}>
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      color: "var(--primary, #6366f1)",
+                      marginRight: 8,
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    [ Option B ]
+                  </span>
+                  <MathText content={q.or_choice.text} />
+                </div>
+
+                {/* OR Choice Sub-Questions (if any) */}
+                {q.or_choice.sub_questions && q.or_choice.sub_questions.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10, marginBottom: 10 }}>
+                    {q.or_choice.sub_questions.map((sub: any, sIdx: number) => {
+                      const subLabel = sub.sub_no ? `(${sub.sub_no})` : `(${sIdx + 1})`;
+                      return (
+                        <div
+                          key={sIdx}
+                          style={{
+                            padding: "10px 12px",
+                            background: "var(--surface)",
+                            border: "1px solid var(--border)",
+                            borderRadius: "var(--radius-sm)",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1 }}>
+                              <span
+                                style={{
+                                  fontWeight: 800,
+                                  fontFamily: "var(--font-mono)",
+                                  color: "var(--primary, #6366f1)",
+                                  minWidth: 24,
+                                  fontSize: "12.5px",
+                                }}
+                              >
+                                {subLabel}
+                              </span>
+                              <div style={{ fontSize: "13px", lineHeight: 1.5, flex: 1 }}>
+                                <MathText content={sub.text} />
+                              </div>
+                            </div>
+                            <span className="chip-badge chip-badge--gold" style={{ fontSize: "10px", flexShrink: 0 }}>
+                              {sub.marks} Mark{sub.marks > 1 ? "s" : ""}
+                            </span>
+                          </div>
+
+                          {sub.options && sub.options.length > 0 && (
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                                gap: 6,
+                                marginTop: 8,
+                                paddingLeft: 32,
+                              }}
+                            >
+                              {sub.options.map((sOpt: any) => (
+                                <div
+                                  key={sOpt.key}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    padding: "4px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "12px",
+                                    background:
+                                      activeViewMode === "key" && sOpt.key === sub.answer
+                                        ? "var(--forest-light)"
+                                        : "var(--surface-sunken)",
+                                    border:
+                                      activeViewMode === "key" && sOpt.key === sub.answer
+                                        ? "1px solid var(--forest)"
+                                        : "1px solid var(--border)",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontWeight: 700,
+                                      fontFamily: "var(--font-mono)",
+                                      color:
+                                        activeViewMode === "key" && sOpt.key === sub.answer
+                                          ? "var(--forest)"
+                                          : "var(--text-3)",
+                                      fontSize: "11px",
+                                    }}
+                                  >
+                                    ({sOpt.key})
+                                  </span>
+                                  <span style={{ fontSize: "12px" }}>
+                                    <MathText content={sOpt.text} />
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {activeViewMode === "key" && sub.answer && (
+                            <div
+                              style={{
+                                marginTop: 8,
+                                marginLeft: 32,
+                                padding: "5px 10px",
+                                background: "var(--forest-light)",
+                                border: "1px solid var(--forest)",
+                                borderRadius: "4px",
+                                fontSize: "11.5px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                color: "var(--forest)",
+                              }}
+                            >
+                              <CheckCircle size={12} />
+                              <span>
+                                <strong>Model Answer:</strong> <MathText content={sub.answer} />
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* OR Choice MCQ Options */}
+                {!q.or_choice.sub_questions && q.or_choice.options && q.or_choice.options.length > 0 && (
+                  <div className="mcq-options" style={{ marginTop: 10 }}>
+                    {q.or_choice.options.map((opt: any) => (
+                      <div
+                        key={opt.key}
+                        className={`mcq-option ${activeViewMode === "key" && opt.key === q.or_choice?.answer ? "mcq-option--correct" : ""}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          padding: "6px 10px",
+                          borderRadius: "var(--radius-sm)",
+                          border: "1px solid var(--border)",
+                          marginBottom: "4px",
+                          background:
+                            activeViewMode === "key" && opt.key === q.or_choice?.answer
+                              ? "var(--forest-light)"
+                              : "var(--surface)",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontWeight: 700,
+                            width: "20px",
+                            height: "20px",
+                            borderRadius: "50%",
+                            background:
+                              activeViewMode === "key" && opt.key === q.or_choice?.answer
+                                ? "var(--forest)"
+                                : "var(--surface-sunken)",
+                            color: activeViewMode === "key" && opt.key === q.or_choice?.answer ? "#fff" : "var(--text)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "11px",
+                          }}
+                        >
+                          {opt.key}
+                        </span>
+                        <span style={{ fontSize: "13px" }}>
+                          <MathText content={opt.text} />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* OR Choice Answer Key in key view */}
+                {activeViewMode === "key" && q.or_choice.answer && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: "8px 12px",
+                      background: "var(--forest-light)",
+                      border: "1px solid var(--forest)",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: "12.5px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        color: "var(--forest)",
+                        marginBottom: 3,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <CheckCircle size={14} />
+                      <span>Option B (OR) Model Solution & Marking Scheme:</span>
+                    </div>
+                    <div style={{ color: "var(--text)" }}>
+                      <MathText content={q.or_choice.answer} />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -89,6 +89,8 @@ export interface SubQuestion {
   answer: string;
   marks: number;
   bloom_level?: string;
+  chart_image_url?: string | null;
+  chart_spec?: any | null;
 }
 
 export interface QuestionChoice {
@@ -99,6 +101,8 @@ export interface QuestionChoice {
   answer: string;
   bloom_level?: string;
   difficulty?: Difficulty;
+  chart_image_url?: string | null;
+  chart_spec?: any | null;
 }
 
 export interface Question {
@@ -116,6 +120,8 @@ export interface Question {
   marks: number;
   bloom_level: string;
   difficulty: Difficulty;
+  chart_image_url?: string | null;
+  chart_spec?: any | null;
 }
 
 export interface GeneratedExam {

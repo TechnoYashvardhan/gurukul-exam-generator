@@ -703,6 +703,27 @@ export default function GeneratePanel({
               </div>
             )}
 
+            {/* Visual Chart / Figure Rendering */}
+            {q.chart_image_url && (
+              <div
+                style={{
+                  marginTop: 12,
+                  marginBottom: 14,
+                  textAlign: "center",
+                  background: "#ffffff",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <img
+                  src={q.chart_image_url}
+                  alt="Figure / Data Chart"
+                  style={{ maxWidth: "100%", maxHeight: "380px", height: "auto", objectFit: "contain", borderRadius: "4px" }}
+                />
+              </div>
+            )}
+
             {/* Sub-Questions Rendering (for Case Study / Reading Passages) */}
             {q.sub_questions && q.sub_questions.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
@@ -894,6 +915,27 @@ export default function GeneratePanel({
                     <div style={{ fontSize: "13px", lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-line" }}>
                       <MathText content={q.or_choice.passage} />
                     </div>
+                  </div>
+                )}
+
+                {/* OR Choice Visual Chart */}
+                {q.or_choice.chart_image_url && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      marginBottom: 12,
+                      textAlign: "center",
+                      background: "#ffffff",
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <img
+                      src={q.or_choice.chart_image_url}
+                      alt="Alternative Figure / Data Chart"
+                      style={{ maxWidth: "100%", maxHeight: "380px", height: "auto", objectFit: "contain", borderRadius: "4px" }}
+                    />
                   </div>
                 )}
 

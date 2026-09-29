@@ -20,6 +20,7 @@ from app.schemas.exam import (
     QuestionBlueprint,
 )
 from app.schemas.template import ExamTemplate, Section
+from app.services.chart_generator import extract_and_generate_chart_from_text, generate_chart_from_spec
 
 logger = logging.getLogger(__name__)
 
@@ -992,6 +993,25 @@ REQUIRED JSON FORMAT
                         else:
                             item["passage"] = None
 
+                        # Automatic Chart Generation / Extraction for Main Question
+                        chart_url = None
+                        if "chart_spec" in item and isinstance(item["chart_spec"], dict):
+                            chart_url = generate_chart_from_spec(item["chart_spec"])
+
+                        if not chart_url and item.get("passage"):
+                            extracted_url, cleaned_passage = extract_and_generate_chart_from_text(item["passage"])
+                            if extracted_url:
+                                chart_url = extracted_url
+                                item["passage"] = cleaned_passage
+
+                        if not chart_url and item.get("text"):
+                            extracted_url, cleaned_text = extract_and_generate_chart_from_text(item["text"])
+                            if extracted_url:
+                                chart_url = extracted_url
+                                item["text"] = cleaned_text
+
+                        item["chart_image_url"] = chart_url
+
                         if "sub_questions" in item and isinstance(item["sub_questions"], list) and len(item["sub_questions"]) > 0:
                             sanitized_subs = []
                             for s_idx, sub in enumerate(item["sub_questions"]):
@@ -1006,7 +1026,7 @@ REQUIRED JSON FORMAT
                                     if "options" in sub_clean and isinstance(sub_clean["options"], list):
                                         for opt in sub_clean["options"]:
                                             if isinstance(opt, dict) and "text" in opt:
-                                                opt["text"] = _sanitize_exam_text(str(opt["text"]))
+                                                 opt["text"] = _sanitize_exam_text(str(opt["text"]))
                                     sanitized_subs.append(sub_clean)
                             item["sub_questions"] = sanitized_subs
                             item["options"] = None
@@ -1028,6 +1048,25 @@ REQUIRED JSON FORMAT
                                 c_dict["passage"] = _sanitize_exam_text(str(c_dict["passage"]))
                             else:
                                 c_dict["passage"] = None
+
+                            # Chart extraction for OR choice
+                            c_chart_url = None
+                            if "chart_spec" in c_dict and isinstance(c_dict["chart_spec"], dict):
+                                c_chart_url = generate_chart_from_spec(c_dict["chart_spec"])
+
+                            if not c_chart_url and c_dict.get("passage"):
+                                extracted_url, cleaned_c_passage = extract_and_generate_chart_from_text(c_dict["passage"])
+                                if extracted_url:
+                                    c_chart_url = extracted_url
+                                    c_dict["passage"] = cleaned_c_passage
+
+                            if not c_chart_url and c_dict.get("text"):
+                                extracted_url, cleaned_c_text = extract_and_generate_chart_from_text(c_dict["text"])
+                                if extracted_url:
+                                    c_chart_url = extracted_url
+                                    c_dict["text"] = cleaned_c_text
+
+                            c_dict["chart_image_url"] = c_chart_url
                             
                             if "sub_questions" in c_dict and isinstance(c_dict["sub_questions"], list) and len(c_dict["sub_questions"]) > 0:
                                 c_subs = []

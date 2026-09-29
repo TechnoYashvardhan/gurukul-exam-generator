@@ -1361,6 +1361,26 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                 </div>
               )}
 
+              {/* Visual Chart / Figure Rendering in Quiz Player */}
+              {activeQContent.chart_image_url && (
+                <div
+                  style={{
+                    marginBottom: 20,
+                    textAlign: "center",
+                    background: "#ffffff",
+                    padding: "14px",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <img
+                    src={activeQContent.chart_image_url}
+                    alt="Question Figure / Data Chart"
+                    style={{ maxWidth: "100%", maxHeight: "340px", height: "auto", objectFit: "contain", borderRadius: "4px" }}
+                  />
+                </div>
+              )}
+
               {/* Sub-Questions Interactive Inputs (for Case Study / Reading Passages) */}
               {activeQContent.sub_questions && activeQContent.sub_questions.length > 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 20 }}>
