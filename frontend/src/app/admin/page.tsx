@@ -13,6 +13,7 @@ import ExamHistory from "@/components/ExamHistory";
 import AdminShishyaManager from "@/components/AdminShishyaManager";
 import AdminPublishedManager from "@/components/AdminPublishedManager";
 import JsonExamImporter from "@/components/JsonExamImporter";
+import SaathiChatbot from "@/components/SaathiChatbot";
 import { useExamHistory } from "@/hooks/useExamHistory";
 import { documentsApi } from "@/lib/api";
 import type { ExamTemplate } from "@/types/template";
@@ -94,29 +95,10 @@ export default function AdminPage() {
           {activeView === "dashboard" && (
             <div>
               {/* Admin Announcement Bar */}
-              <div
-                style={{
-                  margin: "24px 32px 0",
-                  padding: "12px 18px",
-                  background: "var(--terracotta-light)",
-                  border: "1px solid var(--terracotta)",
-                  borderRadius: "var(--radius-lg)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  color: "var(--terracotta)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                }}
-              >
-                <ShieldCheck size={18} />
-                <span>
-                  Admin Control Sanctuary Active: Any quizzes you craft in Vidya will automatically feature online student questions (MCQ, Fill Blanks, True/False, Match the following, One-word).
-                </span>
-              </div>
 
-              <Dashboard 
-                onNavigate={handleViewChange} 
+
+              <Dashboard
+                onNavigate={handleViewChange}
                 historyEntries={historyEntries}
                 role="admin"
               />
@@ -295,6 +277,9 @@ export default function AdminPage() {
             />
           )}
         </div>
+
+        {/* ── Saathi FAQ Companion ── */}
+        <SaathiChatbot onNavigate={handleViewChange} />
       </div>
     </ProtectedRoute>
   );

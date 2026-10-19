@@ -276,90 +276,99 @@ export function ProgressTracker({
         />
       </div>
 
-      {/* Multi-Stage Stepper Pills */}
+      {/* Multi-Stage Stepper & Status Indicator */}
       {stages && stages.length > 0 && (
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${stages.length}, 1fr)`,
-            gap: "8px",
-            marginTop: "2px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            marginTop: "4px",
           }}
         >
-          {stages.map((stg, idx) => {
-            const isCompleted = idx < stageIndex || progress >= 100;
-            const isCurrent = idx === stageIndex && progress < 100;
-            const isUpcoming = idx > stageIndex && progress < 100;
+          {/* Step Progress Pills - Clean, wrapping and responsive without clipping */}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+            }}
+          >
+            {stages.map((stg, idx) => {
+              const isCompleted = idx < stageIndex || progress >= 100;
+              const isCurrent = idx === stageIndex && progress < 100;
 
-            return (
-              <div
-                key={idx}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "6px 8px",
-                  borderRadius: "var(--radius-sm, 6px)",
-                  background: isCurrent
-                    ? "rgba(234, 88, 12, 0.1)"
-                    : isCompleted
-                    ? "rgba(16, 185, 129, 0.08)"
-                    : "var(--surface, #ffffff)",
-                  border: isCurrent
-                    ? "1px solid var(--accent, #ea580c)"
-                    : isCompleted
-                    ? "1px solid rgba(16, 185, 129, 0.4)"
-                    : "1px dashed var(--border, #e2e8f0)",
-                  fontSize: "11px",
-                  fontWeight: isCurrent ? 700 : 500,
-                  color: isCurrent
-                    ? "var(--accent, #ea580c)"
-                    : isCompleted
-                    ? "var(--forest, #10b981)"
-                    : "var(--text-3, #94a3b8)",
-                  transition: "all 0.3s ease",
-                }}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 size={13} style={{ flexShrink: 0 }} />
-                ) : isCurrent ? (
-                  <span
-                    className="spin"
-                    style={{
-                      width: 11,
-                      height: 11,
-                      border: "2px solid currentColor",
-                      borderTopColor: "transparent",
-                      borderRadius: "50%",
-                      display: "inline-block",
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : (
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: "var(--text-3, #cbd5e1)",
-                      display: "inline-block",
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
-                <span
+              return (
+                <div
+                  key={idx}
                   style={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "5px 10px",
+                    borderRadius: "999px",
+                    background: isCurrent
+                      ? "rgba(234, 88, 12, 0.12)"
+                      : isCompleted
+                      ? "rgba(16, 185, 129, 0.1)"
+                      : "var(--surface, #ffffff)",
+                    border: isCurrent
+                      ? "1.5px solid var(--accent, #ea580c)"
+                      : isCompleted
+                      ? "1px solid rgba(16, 185, 129, 0.4)"
+                      : "1px solid var(--border, #e2e8f0)",
+                    fontSize: "11.5px",
+                    fontWeight: isCurrent ? 700 : 500,
+                    color: isCurrent
+                      ? "var(--accent, #ea580c)"
+                      : isCompleted
+                      ? "var(--forest, #10b981)"
+                      : "var(--text-3, #94a3b8)",
+                    transition: "all 0.25s ease",
+                    boxShadow: isCurrent ? "0 2px 8px rgba(234, 88, 12, 0.15)" : "none",
                   }}
-                  title={stg.name}
                 >
-                  {stg.name.replace(/\.{3}$/, "")}
-                </span>
-              </div>
-            );
-          })}
+                  {isCompleted ? (
+                    <CheckCircle2 size={13} style={{ flexShrink: 0, color: "var(--forest, #10b981)" }} />
+                  ) : isCurrent ? (
+                    <span
+                      className="spin"
+                      style={{
+                        width: 10,
+                        height: 10,
+                        border: "2px solid currentColor",
+                        borderTopColor: "transparent",
+                        borderRadius: "50%",
+                        display: "inline-block",
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <span
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: "50%",
+                        background: "var(--border, #e2e8f0)",
+                        color: "var(--text-3, #94a3b8)",
+                        fontSize: "9.5px",
+                        fontWeight: 700,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {idx + 1}
+                    </span>
+                  )}
+                  <span style={{ lineHeight: 1.2 }}>
+                    {stg.name.replace(/\.{3}$/, "")}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

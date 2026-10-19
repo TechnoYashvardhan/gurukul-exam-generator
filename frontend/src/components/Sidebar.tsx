@@ -261,40 +261,66 @@ export default function Sidebar({ activeView, onViewChange, role: propRole }: Si
               className="gk-btn"
               style={{
                 width: "100%",
-                padding: "9px 12px",
-                borderRadius: "var(--radius-sm)",
+                padding: "10px 12px",
+                borderRadius: "var(--radius-md)",
                 justifyContent: "flex-start",
-                gap: 10,
+                gap: 12,
                 background: isActive ? "var(--accent-light)" : "transparent",
                 color: isActive ? "var(--accent)" : "var(--text-2)",
                 border: isActive ? "1px solid var(--accent-mid)" : "1px solid transparent",
                 fontWeight: isActive ? 700 : 500,
-                transition: "all 0.15s ease",
+                transition: "all 0.2s var(--ease-spring)",
                 textAlign: "left",
+                position: "relative",
               }}
               aria-current={isActive ? "page" : undefined}
             >
+              {isActive && (
+                <span
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 6,
+                    bottom: 6,
+                    width: 3.5,
+                    borderRadius: "0 3px 3px 0",
+                    background: "var(--accent)",
+                  }}
+                />
+              )}
               <span
                 style={{
                   color: isActive ? "var(--accent)" : "var(--text-3)",
                   display: "flex",
                   alignItems: "center",
+                  justifyContent: "center",
+                  width: 24,
+                  height: 24,
+                  flexShrink: 0,
                 }}
               >
                 {item.icon}
               </span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0, flex: 1 }}>
+              <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1, gap: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: "13px", lineHeight: 1.2, fontWeight: isActive ? 700 : 600 }}>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-heading)",
+                      fontSize: "13.5px",
+                      lineHeight: 1.2,
+                      fontWeight: isActive ? 700 : 600,
+                      color: isActive ? "var(--accent)" : "var(--text)",
+                    }}
+                  >
                     {item.sanskrit}
                   </span>
                   <span
                     className="shloka"
                     style={{
-                      fontSize: "11.5px",
+                      fontSize: "11px",
                       color: isActive ? "var(--accent)" : "var(--text-3)",
-                      fontStyle: "normal",
                       fontWeight: 600,
+                      opacity: 0.9,
                     }}
                   >
                     {item.hindi}
@@ -303,8 +329,9 @@ export default function Sidebar({ activeView, onViewChange, role: propRole }: Si
                 <span
                   style={{
                     fontSize: "10.5px",
-                    color: isActive ? "var(--accent-hover)" : "var(--text-3)",
-                    fontFamily: "var(--font-mono)",
+                    color: isActive ? "var(--accent)" : "var(--text-3)",
+                    letterSpacing: "0.02em",
+                    lineHeight: 1,
                   }}
                 >
                   {item.english}

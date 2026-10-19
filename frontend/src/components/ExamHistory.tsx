@@ -434,19 +434,19 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                       style={{
                         fontFamily: "var(--font-mono)",
                         fontWeight: 700,
-                        width: "22px",
+                        width: "26px",
                         height: "22px",
-                        borderRadius: "50%",
+                        borderRadius: "4px",
                         background:
-                          activeViewMode === "key" && opt.key === q.answer ? "var(--forest)" : "var(--surface-sunken)",
+                          activeViewMode === "key" && opt.key === q.answer ? "var(--forest)" : "transparent",
                         color: activeViewMode === "key" && opt.key === q.answer ? "#fff" : "var(--text)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: "12px",
+                        fontSize: "12.5px",
                       }}
                     >
-                      {opt.key}
+                      ({opt.key})
                     </span>
                     <span style={{ fontSize: "13.5px" }}>
                       <MathText content={opt.text} />
@@ -746,21 +746,21 @@ export default function ExamHistory({ entries, onRemove, onRename, role = "teach
                           style={{
                             fontFamily: "var(--font-mono)",
                             fontWeight: 700,
-                            width: "20px",
+                            width: "24px",
                             height: "20px",
-                            borderRadius: "50%",
+                            borderRadius: "4px",
                             background:
                               activeViewMode === "key" && opt.key === q.or_choice?.answer
                                 ? "var(--forest)"
-                                : "var(--surface-sunken)",
+                                : "transparent",
                             color: activeViewMode === "key" && opt.key === q.or_choice?.answer ? "#fff" : "var(--text)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            fontSize: "11px",
+                            fontSize: "12px",
                           }}
                         >
-                          {opt.key}
+                          ({opt.key})
                         </span>
                         <span style={{ fontSize: "13px" }}>
                           <MathText content={opt.text} />

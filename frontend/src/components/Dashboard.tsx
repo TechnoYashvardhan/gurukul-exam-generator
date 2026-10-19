@@ -14,12 +14,14 @@ import {
   Printer,
   BrainCircuit,
   ArrowUpRight,
-  CheckCircle,
   Database,
   ScrollText,
   FileCode2,
   Users,
   Send,
+  ArrowRight,
+  Bot,
+  MessageSquare,
 } from "lucide-react";
 import { documentsApi, templatesApi, adminApi } from "@/lib/api";
 import { View } from "./Sidebar";
@@ -75,397 +77,503 @@ export default function Dashboard({ onNavigate, historyEntries = [], role = "tea
     loadStats();
   }, [historyEntries.length, role]);
 
-  const recentExams = historyEntries.slice(0, 4);
+  const recentExams = historyEntries.slice(0, 5);
 
   return (
-    <div className="gurukul-page">
-      {/* ── Warm Welcome Hero ── */}
+    <div className="gurukul-page" style={{ maxWidth: 1240, margin: "0 auto", padding: "32px 36px" }}>
+      {/* ── 1. Hero Zone (Flush & Editorial, No Boxy Card) ── */}
       <div
-        className="lens-card"
         style={{
           position: "relative",
-          padding: "36px 32px",
-          borderRadius: "var(--radius-xl)",
+          padding: "36px 0 28px",
+          borderBottom: "1px solid var(--border)",
           marginBottom: "32px",
-          display: "flex",
-          alignItems: "center",
-          gap: "32px",
         }}
       >
-        <div style={{ flex: 1, position: "relative", zIndex: 2 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <span className="chip-badge chip-badge--accent">
-              <Sparkles size={12} /> Gurukul Assessment Studio
-            </span>
-            <span className="shloka" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
-              गुरुकुल परीक्षा निर्माण
-            </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "3px 10px",
+              borderRadius: 100,
+              background: "var(--accent-light)",
+              border: "1px solid var(--accent-mid)",
+              fontSize: 11,
+              fontFamily: "var(--font-mono)",
+              color: "var(--accent)",
+              fontWeight: 700,
+            }}
+          >
+            <Sparkles size={12} /> Gurukul Assessment Synthesis Desk
+          </span>
+          <span className="shloka" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
+            गुरुकुल परीक्षा निर्माण
+          </span>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 20 }}>
+          <div style={{ maxWidth: 720 }}>
+            <h1
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "clamp(28px, 3.8vw, 40px)",
+                fontWeight: 800,
+                color: "var(--text)",
+                letterSpacing: "-0.02em",
+                lineHeight: 1.15,
+                marginBottom: "12px",
+              }}
+            >
+              Synthesize Balanced Examination Papers <br />
+              <span
+                style={{
+                  background: "linear-gradient(135deg, var(--accent) 0%, var(--gold) 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                Directly from Your Syllabus Texts.
+              </span>
+            </h1>
+
+            <p style={{ fontSize: "15px", color: "var(--text-2)", lineHeight: 1.6, margin: 0 }}>
+              Upload your Granth textbooks or syllabus notes, configure your Vidya blueprint, and generate authenticated question papers with model answers and Bloom&apos;s taxonomy metrics.
+            </p>
           </div>
-
-          <h1
-            style={{
-              fontFamily: "var(--font-heading)",
-              fontSize: "clamp(26px, 3.5vw, 36px)",
-              fontWeight: 800,
-              color: "var(--text)",
-              letterSpacing: "-0.02em",
-              lineHeight: 1.2,
-              marginBottom: "12px",
-            }}
-          >
-            Create Balanced Examination Papers <br className="hidden md:inline" />
-            <span style={{ color: "var(--accent)" }}>From Your Curriculum Syllabus.</span>
-          </h1>
-
-          <p
-            style={{
-              fontSize: "14.5px",
-              color: "var(--text-2)",
-              maxWidth: "620px",
-              lineHeight: 1.6,
-              marginBottom: "24px",
-            }}
-          >
-            Upload your Granth textbooks or syllabus notes, configure your Vidya blueprint, import pre-built JSON papers, and synthesize comprehensive examination papers with model solutions.
-          </p>
 
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button className="gk-btn gk-btn--secondary" onClick={() => onNavigate("library")}>
-              <Library size={16} />
-              Granth (Syllabus Library)
-            </button>
-            <button className="gk-btn gk-btn--secondary" onClick={() => onNavigate("builder")}>
-              <BookOpen size={16} />
-              Vidya (Blueprints)
-            </button>
-            <button className="gk-btn gk-btn--primary" onClick={() => onNavigate("generate")}>
+            <button
+              className="gk-btn gk-btn--primary"
+              onClick={() => onNavigate("generate")}
+              style={{ height: 44, padding: "0 20px", fontSize: 14 }}
+            >
               <Sparkles size={16} />
-              Rachna (Create Exam)
+              <span>Synthesize Exam (रचना)</span>
             </button>
-            <button className="gk-btn gk-btn--secondary" onClick={() => onNavigate("import_json")}>
-              <FileCode2 size={16} />
-              Aayat (JSON Import)
+            <button
+              className="gk-btn gk-btn--secondary"
+              onClick={() => onNavigate("library")}
+              style={{ height: 44, padding: "0 18px", fontSize: 13.5 }}
+            >
+              <Library size={16} />
+              <span>Upload Syllabus (ग्रन्थ)</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Gurukul Action Pillars (Granth -> Vidya -> Rachna Pipeline) ── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: "16px",
-        }}
-      >
-        {/* Granth / Library */}
-        <div
-          className="lens-card"
-          onClick={() => onNavigate("library")}
-          style={{ padding: "20px", cursor: "pointer" }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background: "var(--forest-light)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--forest)",
-                border: "1px solid var(--forest)",
-              }}
-            >
-              <Library size={20} />
-            </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-                  Granth
-                </h3>
-                <span className="shloka" style={{ fontSize: "12px", color: "var(--forest)", fontWeight: 600 }}>
-                  ग्रन्थ
-                </span>
-              </div>
-              <p style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)", margin: 0 }}>
-                {stats.documents} Documents Indexed
-              </p>
-            </div>
+      {/* ── 2. The Curriculum Conduit (2 Rows x 3 Tabs Architecture) ── */}
+      <div style={{ marginBottom: "40px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Layers size={17} color="var(--accent)" />
+            <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "16.5px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
+              Curriculum Synthesis Conduit
+            </h2>
+            <span style={{ fontSize: "11px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}>
+              {role === "admin" ? "Six Core Modules • Pipeline Architecture" : "Core Academic Pipeline • Six Modules"}
+            </span>
           </div>
-          <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-            Upload textbooks, syllabus notes, chapter PDFs, or web links for question extraction.
-          </p>
         </div>
 
-        {/* Vidya / Blueprints */}
-        <div
-          className="lens-card"
-          onClick={() => onNavigate("builder")}
-          style={{ padding: "20px", cursor: "pointer" }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background: "var(--gold-light)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--gold-border)",
-                border: "1px solid var(--gold)",
-              }}
-            >
-              <ScrollText size={20} />
-            </div>
+        {/* Conduit Grid: Exactly 2 Rows with 3 Tabs */}
+        <div className="conduit-grid">
+          {/* Phase 1: Granth */}
+          <div
+            onClick={() => onNavigate("library")}
+            style={{
+              padding: "20px 22px",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-lg)",
+              cursor: "pointer",
+              transition: "all 0.22s var(--ease-spring)",
+              position: "relative",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              minHeight: 146,
+            }}
+            className="conduit-cell"
+          >
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-                  Vidya
-                </h3>
-                <span className="shloka" style={{ fontSize: "12px", color: "var(--gold-border)", fontWeight: 600 }}>
-                  विद्या
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--forest)", letterSpacing: "0.04em" }}>
+                  PHASE 01
                 </span>
-              </div>
-              <p style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)", margin: 0 }}>
-                {stats.templates} Saved Blueprints
-              </p>
-            </div>
-          </div>
-          <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-            Configure section marks, formats, chapter focus scopes, or auto-create from sample papers.
-          </p>
-        </div>
-
-        {/* ── Admin Action Cards: Shishyas & Prakashan ── */}
-        {role === "admin" && (
-          <>
-            {/* Shishyas / Students & Cohorts */}
-            <div
-              className="lens-card"
-              onClick={() => onNavigate("shishyas")}
-              style={{ padding: "20px", cursor: "pointer", border: "1.5px solid var(--accent-mid)" }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
                 <div
                   style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "10px",
-                    background: "rgba(234, 88, 12, 0.12)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "var(--accent)",
-                    border: "1px solid var(--accent-mid)",
-                  }}
-                >
-                  <Users size={20} />
-                </div>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-                      Shishyas
-                    </h3>
-                    <span className="shloka" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
-                      शिष्य
-                    </span>
-                  </div>
-                  <p style={{ fontSize: "12px", color: "var(--accent)", fontFamily: "var(--font-mono)", margin: 0, fontWeight: 700 }}>
-                    {stats.classes} Cohorts Active
-                  </p>
-                </div>
-              </div>
-              <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-                Manage student cohorts, 7-digit scholar IDs, enrollments, and view individual student scorecards.
-              </p>
-            </div>
-
-            {/* Prakashan / Published Quizzes Hub */}
-            <div
-              className="lens-card"
-              onClick={() => onNavigate("publishes")}
-              style={{ padding: "20px", cursor: "pointer", border: "1.5px solid var(--forest)" }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-                <div
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "10px",
+                    width: 34,
+                    height: 34,
+                    borderRadius: 9,
                     background: "var(--forest-light)",
+                    color: "var(--forest)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "var(--forest)",
-                    border: "1px solid var(--forest)",
                   }}
                 >
-                  <Send size={20} />
+                  <Library size={17} />
                 </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Granth</h3>
+                <span className="shloka" style={{ fontSize: 13, color: "var(--forest)", fontWeight: 600 }}>ग्रन्थ</span>
+              </div>
+              <p style={{ fontSize: 12.5, color: "var(--text-3)", margin: "4px 0 12px", lineHeight: 1.45 }}>
+                Syllabus Library & Course Documents
+              </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: "auto" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>
+                {stats.documents} Indexed
+              </span>
+              <ArrowRight size={14} color="var(--text-3)" />
+            </div>
+          </div>
+
+          {/* Phase 2: Vidya */}
+          <div
+            onClick={() => onNavigate("builder")}
+            style={{
+              padding: "20px 22px",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-lg)",
+              cursor: "pointer",
+              transition: "all 0.22s var(--ease-spring)",
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              minHeight: 146,
+            }}
+            className="conduit-cell"
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--gold)", letterSpacing: "0.04em" }}>
+                  PHASE 02
+                </span>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 9,
+                    background: "var(--gold-light)",
+                    color: "var(--gold)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <ScrollText size={17} />
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Vidya</h3>
+                <span className="shloka" style={{ fontSize: 13, color: "var(--gold)", fontWeight: 600 }}>विद्या</span>
+              </div>
+              <p style={{ fontSize: 12.5, color: "var(--text-3)", margin: "4px 0 12px", lineHeight: 1.45 }}>
+                Blueprints & Section Structures
+              </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: "auto" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>
+                {stats.templates} Blueprints
+              </span>
+              <ArrowRight size={14} color="var(--text-3)" />
+            </div>
+          </div>
+
+          {/* Phase 3: Rachna */}
+          <div
+            onClick={() => onNavigate("generate")}
+            style={{
+              padding: "20px 22px",
+              background: "var(--surface)",
+              border: "1.5px solid var(--accent)",
+              borderRadius: "var(--radius-lg)",
+              cursor: "pointer",
+              transition: "all 0.22s var(--ease-spring)",
+              position: "relative",
+              boxShadow: "0 4px 18px rgba(234, 88, 12, 0.12)",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              minHeight: 146,
+            }}
+            className="conduit-cell"
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--accent)", letterSpacing: "0.04em" }}>
+                  PHASE 03 (CORE)
+                </span>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 9,
+                    background: "var(--accent-light)",
+                    color: "var(--accent)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Sparkles size={17} />
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Rachna</h3>
+                <span className="shloka" style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600 }}>रचना</span>
+              </div>
+              <p style={{ fontSize: 12.5, color: "var(--text-3)", margin: "4px 0 12px", lineHeight: 1.45 }}>
+                AI Exam Synthesis Studio
+              </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: "auto" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 700, color: "var(--accent)" }}>
+                Active Studio
+              </span>
+              <ArrowRight size={14} color="var(--accent)" />
+            </div>
+          </div>
+
+          {/* Admin Specific Segments: Shishyas & Prakashan */}
+          {role === "admin" ? (
+            <>
+              {/* Card 4: Shishyas */}
+              <div
+                onClick={() => onNavigate("shishyas")}
+                style={{
+                  padding: "20px 22px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
+                  cursor: "pointer",
+                  transition: "all 0.22s var(--ease-spring)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  minHeight: 146,
+                }}
+                className="conduit-cell"
+              >
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-                      Prakashan
-                    </h3>
-                    <span className="shloka" style={{ fontSize: "12px", color: "var(--forest)", fontWeight: 600 }}>
-                      प्रकाशन
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.04em" }}>
+                      COHORTS
                     </span>
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--surface-sunken)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Users size={17} />
+                    </div>
                   </div>
-                  <p style={{ fontSize: "12px", color: "var(--forest)", fontFamily: "var(--font-mono)", margin: 0, fontWeight: 700 }}>
-                    {stats.published} Published Quizzes
-                  </p>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Shishyas</h3>
+                    <span className="shloka" style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 600 }}>शिष्य</span>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: "var(--text-3)", margin: "4px 0 12px", lineHeight: 1.45 }}>Students & Class Rosters</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: "auto" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>{stats.classes} Classes</span>
+                  <ArrowRight size={14} color="var(--text-3)" />
                 </div>
               </div>
-              <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-                Monitor live delivery windows, student attempt percentages, time spent, and performance analytics.
-              </p>
-            </div>
-          </>
-        )}
 
-        {/* Rachna / Generate */}
-        <div
-          className="lens-card"
-          onClick={() => onNavigate("generate")}
-          style={{ padding: "20px", cursor: "pointer" }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background: "var(--accent-light)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--accent)",
-                border: "1px solid var(--accent-mid)",
-              }}
-            >
-              <Sparkles size={20} />
-            </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-                  Rachna
-                </h3>
-                <span className="shloka" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
-                  रचना
-                </span>
+              {/* Card 5: Prakashan */}
+              <div
+                onClick={() => onNavigate("publishes")}
+                style={{
+                  padding: "20px 22px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
+                  cursor: "pointer",
+                  transition: "all 0.22s var(--ease-spring)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  minHeight: 146,
+                }}
+                className="conduit-cell"
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.04em" }}>
+                      LIVE HUB
+                    </span>
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--surface-sunken)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Send size={17} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Prakashan</h3>
+                    <span className="shloka" style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 600 }}>प्रकाशन</span>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: "var(--text-3)", margin: "4px 0 12px", lineHeight: 1.45 }}>Published Assessments & Quizzes</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: "auto" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>{stats.published} Online</span>
+                  <ArrowRight size={14} color="var(--text-3)" />
+                </div>
               </div>
-              <p style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)", margin: 0 }}>
-                Exam Synthesis Studio
+            </>
+          ) : (
+            <>
+              {/* Teacher Card 4: Aayat (JSON Importer) */}
+              <div
+                onClick={() => onNavigate("import_json")}
+                style={{
+                  padding: "20px 22px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
+                  cursor: "pointer",
+                  transition: "all 0.22s var(--ease-spring)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  minHeight: 146,
+                }}
+                className="conduit-cell"
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.04em" }}>
+                      IMPORTER
+                    </span>
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--surface-sunken)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <FileCode2 size={17} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Aayat</h3>
+                    <span className="shloka" style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 600 }}>आयात</span>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: "var(--text-3)", margin: "4px 0 12px", lineHeight: 1.45 }}>JSON Exam & Question Importer</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: "auto" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>Instant Import</span>
+                  <ArrowRight size={14} color="var(--text-3)" />
+                </div>
+              </div>
+
+              {/* Teacher Card 5: Saathi Companion */}
+              <div
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent("open-saathi-chatbot"));
+                }}
+                style={{
+                  padding: "20px 22px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
+                  cursor: "pointer",
+                  transition: "all 0.22s var(--ease-spring)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  minHeight: 146,
+                }}
+                className="conduit-cell"
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--accent)", letterSpacing: "0.04em" }}>
+                      COMPANION
+                    </span>
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Bot size={17} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Saathi</h3>
+                    <span className="shloka" style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600 }}>साथी</span>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: "var(--text-3)", margin: "4px 0 12px", lineHeight: 1.45 }}>Interactive FAQ & AI Assistant</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: "auto" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 700, color: "var(--accent)" }}>Ask Assistant</span>
+                  <ArrowRight size={14} color="var(--accent)" />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Phase 4 / Final Card: Itihas */}
+          <div
+            onClick={() => onNavigate("history")}
+            style={{
+              padding: "20px 22px",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-lg)",
+              cursor: "pointer",
+              transition: "all 0.22s var(--ease-spring)",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              minHeight: 146,
+            }}
+            className="conduit-cell"
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.04em" }}>
+                  PHASE 04
+                </span>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 9,
+                    background: "var(--surface-sunken)",
+                    color: "var(--text-2)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <History size={17} />
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Itihas</h3>
+                <span className="shloka" style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 600 }}>इतिहास</span>
+              </div>
+              <p style={{ fontSize: 12.5, color: "var(--text-3)", margin: "4px 0 12px", lineHeight: 1.45 }}>
+                Exam Paper Archives & Prints
               </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: "auto" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>
+                {historyEntries.length} Saved
+              </span>
+              <ArrowRight size={14} color="var(--text-3)" />
             </div>
           </div>
-          <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-            Synthesize question papers and marking schemes from your selected syllabus source.
-          </p>
-        </div>
-
-        {/* Aayat / JSON Import */}
-        <div
-          className="lens-card"
-          onClick={() => onNavigate("import_json")}
-          style={{ padding: "20px", cursor: "pointer" }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background: "rgba(217, 119, 6, 0.12)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--accent)",
-                border: "1px solid rgba(217, 119, 6, 0.3)",
-              }}
-            >
-              <FileCode2 size={20} />
-            </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-                  Aayat
-                </h3>
-                <span className="shloka" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
-                  आयात
-                </span>
-              </div>
-              <p style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)", margin: 0 }}>
-                JSON Paper Generator
-              </p>
-            </div>
-          </div>
-          <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-            Import question sets via JSON, validate schema live, download standard templates, and render papers.
-          </p>
-        </div>
-
-        {/* Itihas / Saved Papers */}
-        <div
-          className="lens-card"
-          onClick={() => onNavigate("history")}
-          style={{ padding: "20px", cursor: "pointer" }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background: "var(--surface-sunken)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--text-2)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <History size={20} />
-            </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "16px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
-                  Itihas
-                </h3>
-                <span className="shloka" style={{ fontSize: "12px", color: "var(--text-2)", fontWeight: 600 }}>
-                  इतिहास
-                </span>
-              </div>
-              <p style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)", margin: 0 }}>
-                {historyEntries.length} Saved Papers
-              </p>
-            </div>
-          </div>
-          <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-            Access previous examination papers, review solutions, export JSON, or print papers.
-          </p>
         </div>
       </div>
 
-      {/* ── Recent Exam Papers ── */}
-      <div style={{ marginTop: "44px" }}>
+      {/* ── 3. Recent Question Papers (Scannable Horizontal Rows, No Card Clutter) ── */}
+      <div style={{ marginBottom: "48px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "19px", fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
-                <History size={18} style={{ color: "var(--accent)" }} />
-                Recent Question Papers
+              <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "17px", fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                Recent Examination Archives
               </h2>
-              <span className="shloka" style={{ fontSize: "13px", color: "var(--accent)", fontWeight: 600 }}>
+              <span className="shloka" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>
                 (नवीन प्रश्नपत्र)
               </span>
             </div>
-            <p style={{ fontSize: "13px", color: "var(--text-3)", marginTop: "2px" }}>
-              Latest question papers created and saved to your Itihas archive
+            <p style={{ fontSize: "13px", color: "var(--text-3)", marginTop: "2px", margin: 0 }}>
+              Question papers synthesized and saved to your persistent archives
             </p>
           </div>
           {recentExams.length > 0 && (
@@ -473,105 +581,138 @@ export default function Dashboard({ onNavigate, historyEntries = [], role = "tea
               className="gk-btn gk-btn--secondary gk-btn--sm"
               onClick={() => onNavigate("history")}
             >
-              View Archives ({historyEntries.length}) <ChevronRight size={13} />
+              All Archives ({historyEntries.length}) <ChevronRight size={13} />
             </button>
           )}
         </div>
 
         {recentExams.length === 0 ? (
           <div
-            className="lens-card"
             style={{
-              padding: "32px 20px",
+              padding: "36px 24px",
               textAlign: "center",
-              borderRadius: "14px",
+              border: "1.5px dashed var(--border)",
+              borderRadius: "var(--radius-lg)",
+              background: "var(--surface)",
             }}
           >
-            <FileText size={32} style={{ opacity: 0.35, margin: "0 auto 10px auto", display: "block", color: "var(--text-3)" }} />
-            <h4 style={{ fontFamily: "var(--font-heading)", fontSize: "15px", fontWeight: 700, color: "var(--text)", marginBottom: "4px" }}>
-              No question papers created yet
+            <FileText size={28} style={{ opacity: 0.35, margin: "0 auto 8px auto", display: "block" }} />
+            <h4 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
+              No examination papers synthesized yet
             </h4>
-            <p style={{ fontSize: "13px", color: "var(--text-2)", maxWidth: "380px", margin: "0 auto 16px auto" }}>
-              Upload your syllabus in Granth or pick a blueprint in Vidya to generate your first examination paper.
+            <p style={{ fontSize: 13, color: "var(--text-3)", maxWidth: 420, margin: "0 auto 16px auto" }}>
+              Upload your syllabus in Granth or pick a blueprint in Vidya to synthesize your first examination paper.
             </p>
             <button className="gk-btn gk-btn--primary gk-btn--sm" onClick={() => onNavigate("generate")}>
-              <Sparkles size={14} />
-              Rachna (Create First Exam)
+              <Sparkles size={14} /> Create First Paper
             </button>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: "16px" }}>
-            {recentExams.map((entry) => (
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-lg)",
+              overflow: "hidden",
+            }}
+          >
+            {recentExams.map((entry, index) => (
               <div
                 key={entry.id}
-                className="lens-card"
                 onClick={() => onNavigate("history")}
                 style={{
-                  padding: "18px 16px",
-                  cursor: "pointer",
                   display: "flex",
-                  flexDirection: "column",
+                  alignItems: "center",
                   justifyContent: "space-between",
-                  boxShadow: "var(--shadow-sm)",
+                  padding: "16px 20px",
+                  borderBottom: index < recentExams.length - 1 ? "1px solid var(--border)" : "none",
+                  cursor: "pointer",
+                  transition: "background 0.15s ease",
+                  gap: 16,
                 }}
+                className="recent-exam-row"
               >
-                <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0, flex: 1 }}>
                   <div
                     style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      background: "var(--accent-light)",
+                      color: "var(--accent)",
                       display: "flex",
-                      justifyContent: "space-between",
                       alignItems: "center",
-                      gap: "10px",
-                      marginBottom: "10px",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      fontSize: 14,
+                      fontWeight: 700,
                     }}
                   >
-                    <span
-                      className="chip-badge chip-badge--accent"
-                      style={{
-                        maxWidth: "175px",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        display: "inline-block",
-                      }}
-                      title={entry.subject || "General"}
-                    >
-                      {entry.subject || "General"}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        color: "var(--text-3)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        fontFamily: "var(--font-mono)",
-                        whiteSpace: "nowrap",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Clock size={11} />
-                      {new Date(entry.created_at).toLocaleDateString()}
-                    </span>
+                    <FileText size={18} />
                   </div>
-
-                  <h4 style={{ fontFamily: "var(--font-heading)", fontSize: "14.5px", fontWeight: 700, color: "var(--text)", marginBottom: "4px", lineHeight: 1.35 }}>
-                    {entry.title}
-                  </h4>
-
-                  <p style={{ fontSize: "12px", color: "var(--text-2)", marginBottom: "12px" }}>
-                    {entry.grade ? `${entry.grade} • ` : ""}
-                    {entry.exam?.total_marks ? `${entry.exam.total_marks} Marks • ` : ""}
-                    {entry.exam?.questions?.length ? `${entry.exam.questions.length} Questions` : "Exam Paper"}
-                  </p>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <span
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: 700,
+                          color: "var(--text)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {entry.title}
+                      </span>
+                      <span
+                        style={{
+                          padding: "1px 8px",
+                          borderRadius: 100,
+                          background: "var(--surface-sunken)",
+                          border: "1px solid var(--border)",
+                          fontSize: 11,
+                          fontFamily: "var(--font-mono)",
+                          color: "var(--text-3)",
+                          fontWeight: 600,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {entry.subject || "General"}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text-3)" }}>
+                      {entry.grade ? `${entry.grade} • ` : ""}
+                      {entry.exam?.total_marks ? `${entry.exam.total_marks} Marks • ` : ""}
+                      {entry.exam?.questions?.length ? `${entry.exam.questions.length} Questions` : "Exam Paper"}
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "8px", marginTop: "auto" }}>
-                  <span style={{ fontSize: "11px", color: "var(--accent)", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
-                    Open in Itihas <ArrowUpRight size={12} />
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+                  <span
+                    style={{
+                      fontSize: 11.5,
+                      color: "var(--text-3)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    <Clock size={12} />
+                    {new Date(entry.created_at).toLocaleDateString()}
                   </span>
-                  <span className="chip-badge" style={{ fontSize: "10px", padding: "1px 6px" }}>
-                    {entry.exam?.duration_minutes ? `${entry.exam.duration_minutes}m` : "Ready"}
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--accent)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    Open Archive <ArrowUpRight size={13} />
                   </span>
                 </div>
               </div>
@@ -580,195 +721,62 @@ export default function Dashboard({ onNavigate, historyEntries = [], role = "tea
         )}
       </div>
 
-      {/* ── 4-Pillar Synthesis Flow ── */}
-      <div style={{ marginTop: "48px" }}>
-        <div style={{ marginBottom: "18px" }}>
-          <div className="flex items-center gap-2" style={{ fontFamily: "var(--font-heading)", fontSize: "18px", fontWeight: 700, color: "var(--text)" }}>
-            <Layers size={18} style={{ color: "var(--accent)" }} />
-            <span>Four Pillars of Gurukul Assessment Synthesis</span>
-          </div>
-          <p style={{ fontSize: "13px", color: "var(--text-3)", marginTop: "2px" }}>
-            The streamlined pedagogical path from raw curriculum texts to ready-to-print question papers
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "14px",
-          }}
-        >
-          <div className="lens-card" style={{ padding: "18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-              <div style={{ width: 34, height: 34, borderRadius: "8px", background: "var(--gold-light)", color: "var(--gold-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <BookOpen size={16} />
-              </div>
-              <span className="chip-badge chip-badge--gold" style={{ fontSize: "10px" }}>1. VIDYA</span>
-            </div>
-            <h4 style={{ fontFamily: "var(--font-heading)", fontSize: "14.5px", fontWeight: 700, color: "var(--text)", marginBottom: "4px" }}>
-              1. Blueprint Structure
-            </h4>
-            <p style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.5 }}>
-              Define sections, question types (MCQ, Short, Long, Case Study), and marks allocation.
-            </p>
-          </div>
-
-          <div className="lens-card" style={{ padding: "18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-              <div style={{ width: 34, height: 34, borderRadius: "8px", background: "var(--forest-light)", color: "var(--forest)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Database size={16} />
-              </div>
-              <span className="chip-badge chip-badge--forest" style={{ fontSize: "10px" }}>2. GRANTH</span>
-            </div>
-            <h4 style={{ fontFamily: "var(--font-heading)", fontSize: "14.5px", fontWeight: 700, color: "var(--text)", marginBottom: "4px" }}>
-              2. Granth Indexing
-            </h4>
-            <p style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.5 }}>
-              Upload syllabus PDFs or study guides. Content is indexed with semantic search.
-            </p>
-          </div>
-
-          <div className="lens-card" style={{ padding: "18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-              <div style={{ width: 34, height: 34, borderRadius: "8px", background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Sparkles size={16} />
-              </div>
-              <span className="chip-badge chip-badge--accent" style={{ fontSize: "10px" }}>3. RACHNA</span>
-            </div>
-            <h4 style={{ fontFamily: "var(--font-heading)", fontSize: "14.5px", fontWeight: 700, color: "var(--text)", marginBottom: "4px" }}>
-              3. AI Question Synthesis
-            </h4>
-            <p style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.5 }}>
-              Gurukul reads your books and drafts authentic questions aligned with your blueprint.
-            </p>
-          </div>
-
-          <div className="lens-card" style={{ padding: "18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-              <div style={{ width: 34, height: 34, borderRadius: "8px", background: "var(--surface-sunken)", color: "var(--text-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Printer size={16} />
-              </div>
-              <span className="chip-badge" style={{ fontSize: "10px" }}>4. ITIHAS</span>
-            </div>
-            <h4 style={{ fontFamily: "var(--font-heading)", fontSize: "14.5px", fontWeight: 700, color: "var(--text)", marginBottom: "4px" }}>
-              4. Review & Eco-Print
-            </h4>
-            <p style={{ fontSize: "12.5px", color: "var(--text-2)", lineHeight: 1.5 }}>
-              Review the question paper and answer key, export to JSON, or print clean copies.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Key Advantages ── */}
-      <div style={{ marginTop: "48px" }}>
-        <div style={{ marginBottom: "18px" }}>
-          <div className="flex items-center gap-2" style={{ fontFamily: "var(--font-heading)", fontSize: "18px", fontWeight: 700, color: "var(--text)" }}>
-            <BrainCircuit size={18} style={{ color: "var(--gold)" }} />
-            <span>Why Teachers Trust Gurukul</span>
-          </div>
-          <p style={{ fontSize: "13px", color: "var(--text-3)", marginTop: "2px" }}>
-            Built for teacher productivity, academic rigor, and privacy
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "16px",
-          }}
-        >
-          <div className="lens-card" style={{ padding: "20px" }}>
-            <div style={{ width: 36, height: 36, borderRadius: "8px", background: "var(--forest-light)", color: "var(--forest)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" }}>
-              <Shield size={18} />
-            </div>
-            <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "15.5px", fontWeight: 700, color: "var(--text)", marginBottom: "6px" }}>
-              Privacy-First & Secure
-            </h3>
-            <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-              Your teaching material, question papers, and student data stay private and safely isolated.
-            </p>
-          </div>
-
-          <div className="lens-card" style={{ padding: "20px" }}>
-            <div style={{ width: 36, height: 36, borderRadius: "8px", background: "var(--accent-light)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" }}>
-              <BrainCircuit size={18} />
-            </div>
-            <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "15.5px", fontWeight: 700, color: "var(--text)", marginBottom: "6px" }}>
-              Bloom's Taxonomy Alignment
-            </h3>
-            <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-              Questions test critical thinking, analysis, and problem-solving, not just memorization.
-            </p>
-          </div>
-
-          <div className="lens-card" style={{ padding: "20px" }}>
-            <div style={{ width: 36, height: 36, borderRadius: "8px", background: "var(--gold-light)", color: "var(--gold-border)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" }}>
-              <Printer size={18} />
-            </div>
-            <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "15.5px", fontWeight: 700, color: "var(--text)", marginBottom: "6px" }}>
-              Eco-Friendly Print Layouts
-            </h3>
-            <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.5 }}>
-              Automatically strips color backgrounds and compacts vertical margins to save toner and paper.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Footer ── */}
-      <footer
+      {/* ── 4. Four Pillars Architectural Legend ── */}
+      <div
         style={{
-          marginTop: "56px",
-          paddingTop: "20px",
-          borderTop: "1px solid var(--border)",
-          color: "var(--text-3)",
-          fontSize: "12.5px",
+          padding: "24px 28px",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "14px", marginBottom: "14px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div
-              style={{
-                width: "26px",
-                height: "26px",
-                borderRadius: "7px",
-                background: "linear-gradient(135deg, var(--accent) 0%, var(--gold) 100%)",
-                color: "#ffffff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 800,
-                fontSize: "13px",
-              }}
-            >
-              G
-            </div>
-            <span style={{ fontWeight: 700, color: "var(--text)", fontSize: "13.5px", fontFamily: "var(--font-heading)" }}>
-              Gurukul AI Ecosystem
-            </span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <BrainCircuit size={17} color="var(--accent)" />
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>
+              Pedagogical Standards & Academic Integrity
+            </h3>
           </div>
-
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            <button onClick={() => onNavigate("generate")} className="gk-btn gk-btn--ghost" style={{ padding: "3px 6px", fontSize: "12px" }}>Rachna (Generate)</button>
-            <button onClick={() => onNavigate("builder")} className="gk-btn gk-btn--ghost" style={{ padding: "3px 6px", fontSize: "12px" }}>Vidya (Blueprints)</button>
-            <button onClick={() => onNavigate("library")} className="gk-btn gk-btn--ghost" style={{ padding: "3px 6px", fontSize: "12px" }}>Granth (Library)</button>
-            <button onClick={() => onNavigate("history")} className="gk-btn gk-btn--ghost" style={{ padding: "3px 6px", fontSize: "12px" }}>Itihas (History)</button>
-          </div>
+          <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "var(--font-mono)" }}>
+            Bloom&apos;s Taxonomy Aligned
+          </span>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", borderTop: "1px solid var(--border)", paddingTop: "12px", fontSize: "11.5px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18 }}>
           <div>
-            © 2026 Gurukul AI • Assessment Generator
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
+              1. Bloom&apos;s Cognitive Mapping
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.5, margin: 0 }}>
+              Questions assess analytical reasoning and application, not superficial memorization.
+            </p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>
-            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--forest)", display: "inline-block" }}></span>
-            <span>FastAPI Connected</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
+              2. Semantic Syllabus Citation
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.5, margin: 0 }}>
+              Questions strictly cite textbook chapters indexed in Granth without AI hallucination.
+            </p>
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
+              3. Model Solutions & Rubrics
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.5, margin: 0 }}>
+              Complete marking schemes and step-by-step scoring breakdown generated alongside.
+            </p>
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
+              4. Eco-Print Layout Engine
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.5, margin: 0 }}>
+              Compact typography and color stripping optimize toner and paper for physical exams.
+            </p>
           </div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import StudentDashboard from "@/components/StudentDashboard";
 import StudentQuizArena from "@/components/StudentQuizArena";
 import StudentHistory from "@/components/StudentHistory";
 import QuizPlayer from "@/components/QuizPlayer";
-
+import SaathiChatbot from "@/components/SaathiChatbot";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 const ParticleBackground = dynamic(
@@ -19,6 +19,8 @@ export default function StudentPage() {
   const [activeView, setActiveView] = useState<View>("dashboard");
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
   const [activeAttemptId, setActiveAttemptId] = useState<string | null>(null);
+
+  const isInQuizMode = Boolean(activeQuizId || activeAttemptId);
 
   const handleStartQuiz = (quizId?: string) => {
     setActiveAttemptId(null);
@@ -38,19 +40,33 @@ export default function StudentPage() {
     <ProtectedRoute allowedRoles={["student"]}>
       <ParticleBackground />
       <div className="gurukul-app">
-        {/* Persistent Sidebar */}
-        <Sidebar
-          activeView={activeView}
-          onViewChange={(view) => {
-            setActiveView(view);
-            setActiveQuizId(null);
-            setActiveAttemptId(null);
-          }}
-          role="student"
-        />
+        {/* ── Remove Sidebar Completely During Active Quiz / Attempt ── */}
+        {!isInQuizMode && (
+          <Sidebar
+            activeView={activeView}
+            onViewChange={(view) => {
+              setActiveView(view);
+              setActiveQuizId(null);
+              setActiveAttemptId(null);
+            }}
+            role="student"
+          />
+        )}
 
-        {/* Main Content Area */}
-        <div className="gurukul-content">
+        {/* ── Main Content Area (Full Viewport during Quiz) ── */}
+        <div
+          className="gurukul-content"
+          style={
+            isInQuizMode
+              ? {
+                  width: "100vw",
+                  maxWidth: "100vw",
+                  padding: 0,
+                  margin: 0,
+                }
+              : undefined
+          }
+        >
           {activeAttemptId ? (
             <QuizPlayer
               attemptId={activeAttemptId}
@@ -88,6 +104,9 @@ export default function StudentPage() {
             </>
           )}
         </div>
+
+        {/* Saathi Knowledge Companion (Accessible outside active exams) */}
+        {!isInQuizMode && <SaathiChatbot onNavigate={(v) => setActiveView(v)} />}
       </div>
     </ProtectedRoute>
   );

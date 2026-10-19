@@ -926,6 +926,7 @@ SECTION RULES:
     - Set "text" to an introductory direction (e.g. "Read the following passage carefully and answer the questions that follow:" or "Read the following extracts and solve ANY ONE of the given two, (A) or (B).").
     - In "passage", write a rich, authentic, high-quality narrative, literature extract, or factual case passage (250-450 words) based on the syllabus.
       * For Literature: Use REAL textbook extracts from prescribed texts (e.g. NCERT Flamingo/Vistas for English Core: 'My Mother at Sixty-six', 'Aunt Jennifer's Tigers', 'The Rattrap', 'The Third Level', 'Going Places', 'The Enemy'). NEVER make up fake poetry.
+      * For Mathematics / Sciences: The 'passage' MUST ONLY contain the real-world problem scenario, architectural dimensions, geometry/physics setup, or contextual background. NEVER write mathematical calculations, step-by-step derivatives, equations solutions, or final answers inside the passage. The passage must ONLY set up the scenario for students to solve.
       * Include source attribution at the bottom if appropriate: "Source: [Title] by [Author] / [Word Count] words" or "Created for academic usage / [Word Count] words".
     - In "sub_questions", provide a structured list of sub-questions totaling {case_marks_calc} marks.
       Use uppercase Roman numerals for "sub_no": "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X".

@@ -173,7 +173,8 @@ export function formatMathText(raw: string): string {
 
   // 7. Wrap LaTeX environments like \begin{cases}...\end{cases}, \begin{pmatrix}...\end{pmatrix} if not already wrapped
   text = text.replace(/(\\begin\{(?:cases|pmatrix|vmatrix|bmatrix|matrix|aligned|array)\}[\s\S]*?\\end\{(?:cases|pmatrix|vmatrix|bmatrix|matrix|aligned|array)\})/g, (env) => {
-    const fixedEnv = env.replace(/(?<!\\)\\\s+(?![a-zA-Z])/g, " \\\\ ");
+    let fixedEnv = env.replace(/(?<!\\)\\\s+(?![a-zA-Z])/g, " \\\\ ");
+    fixedEnv = fixedEnv.replace(/(?<!\\)\\\n/g, " \\\\ \n");
     return `$$${fixedEnv}$$`;
   });
 
@@ -225,8 +226,11 @@ export function formatMathText(raw: string): string {
     segment = segment.replace(/(\\int(?:_\{[^{}]*\}|_[0-9a-zA-Z])?(?:\^\{[^{}]*\}|\^[0-9a-zA-Z])?)/g, (_, g1) => `$${g1}$`);
     segment = segment.replace(/(\\sum(?:_\{[^{}]*\}|_[0-9a-zA-Z])?(?:\^\{[^{}]*\}|\^[0-9a-zA-Z])?)/g, (_, g1) => `$${g1}$`);
     segment = segment.replace(/(\\lim(?:_\{[^{}]*\}|_[0-9a-zA-Z])?)/g, (_, g1) => `$${g1}$`);
-    // Replace functions: \ln, \log, \sin, \cos, \tan, \arctan
-    segment = segment.replace(/(\\(?:ln|log|exp|sin|cos|tan|sec|csc|cot|arcsin|arccos|arctan)\b)/g, (_, g1) => `$${g1}$`);
+    // Replace functions with powers / arguments: \sin^2(x), \cos^{-1}(x), \tan(x), \ln(x), etc.
+    segment = segment.replace(/(\\(?:ln|log|exp|sin|cos|tan|sec|csc|cot|arcsin|arccos|arctan|sinh|cosh|tanh)(?:\^\{[^}]+\}|\^[0-9a-zA-Z]+)?(?:\([^)]*\)|_\{[^}]+\}|_[0-9a-zA-Z]+)?)/g, (_, g1) => `$${g1}$`);
+
+    // Replace inverse trig without leading backslash: cos^{-1}(...), tan^{-1}(...), sin^{-1}(...)
+    segment = segment.replace(/\b((?:cos|sin|tan|sec|csc|cot)\^\{-?1\}\s*(?:\([^)]*\)|[a-zA-Z0-9]+)?)/gi, (_, g1) => `$\\${g1}$`);
     // Replace standalone greek symbols & operators
     segment = segment.replace(/(\\(?:alpha|beta|gamma|delta|epsilon|theta|lambda|mu|nu|xi|pi|rho|sigma|tau|phi|chi|psi|omega|Delta|Gamma|Theta|Lambda|Sigma|Phi|Omega)\b)/g, (_, g1) => `$${g1}$`);
 

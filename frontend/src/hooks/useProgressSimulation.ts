@@ -79,7 +79,7 @@ export function useProgressSimulation({
 
     const progressInterval = setInterval(() => {
       setProgress((currentProgress) => {
-        // If external progress is passed, smoothly interpolate toward it
+        // If external numeric progress is passed, smoothly interpolate toward it
         if (typeof externalProgress === "number" && externalProgress > 0) {
           if (currentProgress < externalProgress) {
             const step = Math.max(0.5, (externalProgress - currentProgress) * 0.2);
@@ -88,14 +88,19 @@ export function useProgressSimulation({
           return currentProgress;
         }
 
-        // Determine current target based on stages and elapsed time
+        // Determine current target based on active stage
         const currentStage = stages[stageIndex] || stages[stages.length - 1];
-        const target = currentStage ? currentStage.targetProgress : 95;
+        let target = currentStage ? currentStage.targetProgress : 95;
 
-        // Asymptotically approach target
+        // If in synthesis/batch writing phase, let it slowly creep between 30% and 65% based on elapsed time
+        if (stageIndex === 1 && target <= 65) {
+          target = Math.min(68, 35 + Math.floor(elapsedSeconds * 1.2));
+        }
+
+        // Asymptotically approach target with natural slowing
         if (currentProgress < target) {
           const delta = target - currentProgress;
-          const increment = Math.max(0.2, delta * 0.08);
+          const increment = Math.max(0.15, delta * 0.07);
           return Math.min(target, currentProgress + increment);
         }
 
@@ -104,39 +109,55 @@ export function useProgressSimulation({
     }, 200);
 
     return () => clearInterval(progressInterval);
-  }, [active, externalProgress, stages, stageIndex]);
+  }, [active, externalProgress, stages, stageIndex, elapsedSeconds]);
 
-  // Stage advancement based on elapsed time if no external override
+  // Stage advancement based on external status keywords or fallback timer
   useEffect(() => {
     if (!active || typeof externalProgress === "number") return;
 
+    if (externalStatus) {
+      const lower = externalStatus.toLowerCase();
+      let matchedIdx = -1;
+
+      // Smart semantic keyword mapping for backend status streams
+      if (lower.includes("architect") || lower.includes("blueprint") || lower.includes("init") || lower.includes("connect")) {
+        matchedIdx = 0;
+      } else if (lower.includes("writing") || lower.includes("batch") || lower.includes("synthesiz") || lower.includes("parallel") || lower.includes("generat")) {
+        matchedIdx = Math.min(1, stages.length - 1);
+      } else if (lower.includes("validat") || lower.includes("repair") || lower.includes("rescu") || lower.includes("latex") || lower.includes("rubric")) {
+        matchedIdx = Math.min(2, stages.length - 1);
+      } else if (lower.includes("final") || lower.includes("touch") || lower.includes("polish") || lower.includes("assembl")) {
+        matchedIdx = Math.min(3, stages.length - 1);
+      } else {
+        // Fallback substring matching
+        matchedIdx = stages.findIndex(
+          (s) =>
+            lower.includes(s.name.toLowerCase().replace(/\.{3}$/, "")) ||
+            s.name.toLowerCase().replace(/\.{3}$/, "").includes(lower)
+        );
+      }
+
+      if (matchedIdx !== -1 && matchedIdx !== stageIndex) {
+        setStageIndex(matchedIdx);
+      }
+      return;
+    }
+
+    // Fallback timer-based stage progression (capped before the final stage so it never prematurely claims 95%)
     const stageCount = stages.length;
     if (stageCount <= 1) return;
 
-    const stageIntervalSec = Math.max(2, autoAdvanceSeconds);
+    const stageIntervalSec = Math.max(4, autoAdvanceSeconds);
+    const maxTimerStage = Math.max(0, stageCount - 2); // Cap at second-to-last stage
     const calculatedStage = Math.min(
-      stageCount - 1,
+      maxTimerStage,
       Math.floor(elapsedSeconds / stageIntervalSec)
     );
 
-    if (calculatedStage !== stageIndex) {
+    if (calculatedStage !== stageIndex && calculatedStage > stageIndex) {
       setStageIndex(calculatedStage);
     }
-  }, [active, elapsedSeconds, stages, stageIndex, autoAdvanceSeconds, externalProgress]);
-
-  // Map external status to stage if it matches
-  useEffect(() => {
-    if (!externalStatus) return;
-    const lower = externalStatus.toLowerCase();
-    const matchedIdx = stages.findIndex(
-      (s) =>
-        lower.includes(s.name.toLowerCase()) ||
-        s.name.toLowerCase().includes(lower)
-    );
-    if (matchedIdx !== -1 && matchedIdx !== stageIndex) {
-      setStageIndex(matchedIdx);
-    }
-  }, [externalStatus, stages, stageIndex]);
+  }, [active, elapsedSeconds, stages, stageIndex, autoAdvanceSeconds, externalProgress, externalStatus]);
 
   const currentStage = stages[stageIndex] || stages[0];
   const currentStatusMessage = externalStatus || currentStage?.name || "Processing...";

@@ -3,16 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { useAuth } from "@/components/AuthProvider";
-import { ArrowRight, Lock, User as UserIcon, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Lock, User as UserIcon, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import Toast, { ToastVariant } from "@/components/Toast";
 import GurukulLogo from "@/components/GurukulLogo";
-
-const ParticleBackground = dynamic(
-  () => import("@/components/ParticleBackground"),
-  { ssr: false }
-);
+import DiyaAnimation from "@/components/DiyaAnimation";
+import ParticleBackground from "@/components/ParticleBackground";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -35,97 +31,181 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      setToast({ message: "Please enter both email and password.", variant: "error" });
+      setToast({ message: "Please enter both credentials.", variant: "error" });
       return;
     }
 
     setLoading(true);
     try {
-      const user = await login(email, password);
-      setToast({ message: `Welcome back, ${user.full_name || "Scholar"}!`, variant: "success" });
+      const loggedUser = await login(email, password);
+      setToast({ message: `Welcome back, ${loggedUser.full_name || "Scholar"}!`, variant: "success" });
       setTimeout(() => {
-        if (user.role === "admin") router.push("/admin");
-        else if (user.role === "student") router.push("/student");
+        if (loggedUser.role === "admin") router.push("/admin");
+        else if (loggedUser.role === "student") router.push("/student");
         else router.push("/teacher");
-      }, 500);
+      }, 400);
     } catch (err: any) {
-      setToast({ message: err.message || "Failed to login. Please try again.", variant: "error" });
+      setToast({ message: err.message || "Failed to sign in. Please verify your details.", variant: "error" });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
+    <div
+      className="flex flex-col lg:flex-row min-h-screen"
+      style={{
+        background: "var(--bg)",
+        position: "relative",
+        overflowX: "hidden",
+      }}
+    >
       <ParticleBackground />
       {toast && <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
 
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px 16px",
-        position: "relative",
-        zIndex: 1,
-      }}>
+      {/* ── Visual Hero Panel (Cinematic Diya Animation, Always Active) ── */}
+      <div
+        className="w-full lg:w-1/2 flex-shrink-0"
+        style={{
+          position: "relative",
+          minHeight: "360px",
+          display: "flex",
+          borderRight: "1px solid var(--border)",
+          background: "linear-gradient(135deg, rgba(234, 88, 12, 0.04) 0%, rgba(217, 119, 6, 0.02) 100%)",
+          zIndex: 2,
+        }}
+      >
+        <DiyaAnimation
+          title="Gurukul AI"
+          subtitle="Curriculum Synthesis & Verified Examination Sanctuary"
+          shloka="तमसो मा ज्योतिर्गमय"
+          translation="Lead me from darkness unto light"
+        />
+      </div>
+
+      {/* ── Right Auth Form Panel ── */}
+      <div
+        className="w-full lg:w-1/2 flex-1"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "36px 28px",
+          background: "var(--surface)",
+          position: "relative",
+          zIndex: 3,
+          overflowY: "auto",
+        }}
+      >
         <div
-          className="lens-card"
           style={{
             width: "100%",
             maxWidth: 440,
-            padding: "36px 32px",
-            backdropFilter: "blur(12px)",
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          {/* Logo & Header */}
-          <div style={{ textAlign: "center", marginBottom: 28 }}>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-              <GurukulLogo size={54} />
+          {/* Brand Header */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <GurukulLogo size={46} showText={true} subtitle="Curriculum Engine" />
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "4px 10px",
+                  borderRadius: 100,
+                  background: "var(--surface-sunken)",
+                  border: "1px solid var(--border)",
+                  fontSize: 11,
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--text-3)",
+                  fontWeight: 600,
+                }}
+              >
+                <ShieldCheck size={12} color="var(--forest)" /> v2.4 Secured
+              </span>
             </div>
-            <h1 style={{
-              fontFamily: "var(--font-heading)",
-              fontSize: 24,
-              fontWeight: 800,
-              color: "var(--text)",
-              letterSpacing: "-0.02em",
-              marginBottom: 4,
-            }}>
-              Gurukul AI
+
+            <h1
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 28,
+                fontWeight: 800,
+                color: "var(--text)",
+                letterSpacing: "-0.02em",
+                lineHeight: 1.2,
+                marginBottom: 6,
+              }}
+            >
+              Enter the Sanctuary
             </h1>
-            <p style={{ fontSize: 13, color: "var(--text-3)" }}>
-              Sign in to your curriculum synthesis workspace
+            <p style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.5 }}>
+              Sign in with your credentials to access your academic desk.
             </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Identity / Identifier Field */}
             <div className="gk-field">
-              <label className="gk-label" htmlFor="email">Email / 7-Digit Scholar ID / Admin Username</label>
+              <label
+                className="gk-label"
+                htmlFor="email"
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  letterSpacing: "0.02em",
+                  color: "var(--text-2)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span>Scholar ID / Email / Username</span>
+                <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 500 }}>e.g. 2410852</span>
+              </label>
               <div style={{ position: "relative" }}>
                 <input
                   id="email"
                   type="text"
                   className="gk-input"
-                  placeholder="e.g. 2410852, scholar ID, or email"
+                  placeholder="7-digit Scholar ID or institutional email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  style={{ paddingLeft: 38 }}
+                  style={{
+                    paddingLeft: 40,
+                    height: 46,
+                    fontSize: 14,
+                    borderRadius: "var(--radius-md)",
+                    transition: "all 0.2s var(--ease-smooth)",
+                  }}
                   required
                 />
-                <UserIcon size={16} style={{
-                  position: "absolute",
-                  left: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-3)",
-                }} />
+                <UserIcon
+                  size={17}
+                  style={{
+                    position: "absolute",
+                    left: 14,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--text-3)",
+                  }}
+                />
               </div>
             </div>
 
+            {/* Password Field */}
             <div className="gk-field">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <label className="gk-label" htmlFor="password" style={{ marginBottom: 0 }}>Password</label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <label
+                  className="gk-label"
+                  htmlFor="password"
+                  style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: "0.02em", color: "var(--text-2)" }}
+                >
+                  Password
+                </label>
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -136,15 +216,13 @@ export default function LoginPage() {
                     color: showPassword ? "var(--accent)" : "var(--text-3)",
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 5,
+                    gap: 4,
                     fontSize: 12,
-                    fontWeight: 500,
-                    padding: "2px 4px",
-                    borderRadius: "var(--radius-sm)",
+                    fontWeight: 600,
                   }}
-                  title={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
                   <span>{showPassword ? "Hide" : "Show"}</span>
                 </button>
               </div>
@@ -156,86 +234,111 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingLeft: 38, paddingRight: 38 }}
+                  style={{
+                    paddingLeft: 40,
+                    paddingRight: 40,
+                    height: 46,
+                    fontSize: 14,
+                    borderRadius: "var(--radius-md)",
+                    transition: "all 0.2s var(--ease-smooth)",
+                  }}
                   required
                 />
-                <Lock size={16} style={{
-                  position: "absolute",
-                  left: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-3)",
-                }} />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                <Lock
+                  size={17}
                   style={{
                     position: "absolute",
-                    right: 12,
+                    left: 14,
                     top: "50%",
                     transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: showPassword ? "var(--accent)" : "var(--text-3)",
-                    padding: 4,
-                    display: "flex",
-                    alignItems: "center",
+                    color: "var(--text-3)",
                   }}
-                  tabIndex={-1}
-                  title={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+                />
               </div>
             </div>
 
-            {/* Student sign-in guide */}
+            {/* Scholar / Student Guidance Strip */}
             <div
               style={{
-                padding: "10px 12px",
+                padding: "12px 14px",
                 borderRadius: "var(--radius-md)",
                 background: "var(--accent-light)",
                 border: "1px solid var(--accent-mid)",
                 fontSize: 12,
                 color: "var(--text-2)",
-                lineHeight: 1.4,
+                lineHeight: 1.5,
+                display: "flex",
+                gap: 10,
+                alignItems: "flex-start",
               }}
             >
-              🎓 <strong>Students <span className="shloka" style={{ fontWeight: 600, fontSize: "12px", color: "var(--accent)" }}>(शिष्य)</span>:</strong> Sign in with your <strong>7-Digit Scholar ID</strong> (or registered email) and your account password. You can change your password anytime from your dashboard.
+              <span style={{ fontSize: 16 }}>🎓</span>
+              <div>
+                <strong>Students <span className="shloka" style={{ color: "var(--accent)", fontWeight: 600 }}>(शिष्य)</span>:</strong>{" "}
+                Sign in with your <strong>7-Digit Scholar ID</strong> and account password assigned by your institution.
+              </div>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               className="gk-btn gk-btn--primary"
               disabled={loading}
-              style={{ width: "100%", justifyContent: "center", marginTop: 4, height: 42 }}
+              style={{
+                width: "100%",
+                height: 46,
+                fontSize: 14.5,
+                fontWeight: 700,
+                borderRadius: "var(--radius-md)",
+                boxShadow: "0 4px 14px rgba(234, 88, 12, 0.25)",
+              }}
             >
               {loading ? (
-                <span className="spin" style={{
-                  width: 16,
-                  height: 16,
-                  border: "2px solid currentColor",
-                  borderTopColor: "transparent",
-                  borderRadius: "50%",
-                }} />
+                <span
+                  className="spin"
+                  style={{
+                    width: 18,
+                    height: 18,
+                    border: "2.5px solid currentColor",
+                    borderTopColor: "transparent",
+                    borderRadius: "50%",
+                  }}
+                />
               ) : (
                 <>
-                  Sign In <ArrowRight size={16} />
+                  <span>Sign In</span>
+                  <ArrowRight size={16} />
                 </>
               )}
             </button>
           </form>
 
-          {/* Footer Link */}
-          <div style={{ textAlign: "center", marginTop: 24, fontSize: 13, color: "var(--text-2)" }}>
-            Don't have an account?{" "}
-            <Link href="/register" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "none" }}>
-              Sign Up
+          {/* Footer Note */}
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: 28,
+              paddingTop: 20,
+              borderTop: "1px solid var(--border)",
+              fontSize: 13,
+              color: "var(--text-2)",
+            }}
+          >
+            Looking to register a new Educator workspace?{" "}
+            <Link
+              href="/register"
+              style={{
+                color: "var(--accent)",
+                fontWeight: 700,
+                textDecoration: "none",
+                marginLeft: 4,
+              }}
+            >
+              Register Here →
             </Link>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

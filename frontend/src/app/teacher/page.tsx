@@ -11,6 +11,7 @@ import DocumentCard from "@/components/DocumentCard";
 import GeneratePanel from "@/components/GeneratePanel";
 import ExamHistory from "@/components/ExamHistory";
 import JsonExamImporter from "@/components/JsonExamImporter";
+import SaathiChatbot from "@/components/SaathiChatbot";
 import { useExamHistory } from "@/hooks/useExamHistory";
 import { documentsApi } from "@/lib/api";
 import type { ExamTemplate } from "@/types/template";
@@ -257,6 +258,9 @@ export default function TeacherPage() {
             />
           )}
         </div>
+
+        {/* ── Saathi FAQ Companion ── */}
+        <SaathiChatbot onNavigate={handleViewChange} />
       </div>
     </ProtectedRoute>
   );

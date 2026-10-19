@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import Toast, { ToastVariant } from "./Toast";
 import MatchQuestionView from "./MatchQuestionView";
+import ConfettiBurst from "./ConfettiBurst";
 import { ProgressBar, ProgressTracker } from "./ProgressBar";
 import { useProgressSimulation, type ProgressStage } from "@/hooks/useProgressSimulation";
 
@@ -529,6 +530,7 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
     return (
       <div className="gurukul-page" style={{ maxWidth: 860, margin: "0 auto", position: "relative" }}>
         {toast && <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+        {!isDisqualified && result.percentage >= 70 && <ConfettiBurst />}
 
         {/* Disqualified Hero Banner or Standard Hero Score Card */}
         {isDisqualified ? (
@@ -1341,18 +1343,20 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
             />
           ) : (
             <div>
-              {/* Question Text with KaTeX Math rendering */}
+              {/* Question Text with KaTeX Math rendering & Editorial Serif Typography */}
               <div
                 style={{
-                  fontSize: 16,
+                  fontFamily: "var(--font-serif)",
+                  fontSize: 17.5,
                   fontWeight: 600,
-                  color: "var(--text-1)",
-                  lineHeight: 1.6,
-                  marginBottom: 16,
+                  color: "var(--text)",
+                  lineHeight: 1.65,
+                  marginBottom: 20,
+                  letterSpacing: "-0.01em",
                 }}
               >
                 {currentQ.or_choice && (
-                  <span style={{ color: "var(--primary, #6366f1)", fontWeight: 700, marginRight: 8, fontFamily: "var(--font-mono)" }}>
+                  <span style={{ color: "var(--accent)", fontWeight: 700, marginRight: 8, fontFamily: "var(--font-mono)", fontSize: 13 }}>
                     [{activeChoice === "B" ? "Option B" : "Option A"}]
                   </span>
                 )}
@@ -1528,37 +1532,39 @@ export default function QuizPlayer({ quizId, attemptId, onExit }: QuizPlayerProp
                             style={{
                               padding: "14px 18px",
                               borderRadius: "var(--radius-lg)",
-                              border: isSelected ? "2px solid var(--forest)" : "1px solid var(--border)",
-                              background: isSelected ? "rgba(22, 101, 52, 0.08)" : "var(--surface-sunken)",
-                              color: "var(--text-1)",
+                              border: isSelected ? "2px solid var(--accent)" : "1.5px solid var(--border)",
+                              background: isSelected ? "var(--accent-light)" : "var(--surface)",
+                              color: isSelected ? "var(--accent)" : "var(--text)",
                               display: "flex",
                               alignItems: "center",
-                              gap: 12,
+                              gap: 14,
                               textAlign: "left",
                               cursor: "pointer",
-                              transition: "all 0.15s ease",
-                              boxShadow: isSelected ? "var(--shadow-sm)" : "none",
+                              transition: "all 0.18s var(--ease-spring)",
+                              boxShadow: isSelected ? "0 4px 16px rgba(234, 88, 12, 0.12)" : "var(--shadow-sm)",
+                              transform: isSelected ? "scale(1.008)" : "scale(1)",
                             }}
                           >
                             <span
                               style={{
-                                width: 26,
-                                height: 26,
+                                width: 28,
+                                height: 28,
                                 borderRadius: "50%",
-                                background: isSelected ? "var(--forest)" : "var(--surface)",
+                                background: isSelected ? "var(--accent)" : "var(--surface-sunken)",
                                 color: isSelected ? "#fff" : "var(--text-2)",
-                                border: `1px solid ${isSelected ? "var(--forest)" : "var(--border)"}`,
+                                border: `1.5px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
                                 display: "inline-flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 fontWeight: 700,
-                                fontSize: 12,
+                                fontSize: 13,
                                 flexShrink: 0,
+                                transition: "all 0.18s var(--ease-spring)",
                               }}
                             >
                               {opt.key}
                             </span>
-                            <div style={{ flex: 1, fontSize: 14 }}>
+                            <div style={{ flex: 1, fontSize: 14.5, fontWeight: isSelected ? 600 : 500 }}>
                               <MathText content={opt.text} />
                             </div>
                           </button>

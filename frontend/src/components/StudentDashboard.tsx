@@ -89,149 +89,61 @@ export default function StudentDashboard({ onNavigateToQuiz, onNavigateToAttempt
         </p>
       </div>
 
-      {/* ── Statistics Grid ──────────────────────────────────── */}
+      {/* ── Unified Performance Console Strip (No Boxy Card Clutter) ── */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: 16,
-          marginBottom: 32,
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          overflow: "hidden",
+          marginBottom: 36,
+          boxShadow: "var(--shadow-sm)",
         }}
       >
-        <div
-          className="lens-card"
-          style={{
-            padding: "20px 18px",
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "10px",
-              background: "var(--accent-light)",
-              color: "var(--accent)",
-              border: "1px solid var(--accent-mid)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Trophy size={22} />
+        <div style={{ padding: "20px 24px", borderRight: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            <Trophy size={13} color="var(--accent)" />
+            <span>Quizzes Taken</span>
           </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>
-              Quizzes Taken
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-mono)" }}>
-              {stats?.total_quizzes_attempted ?? 0}
-            </div>
+          <div style={{ fontSize: 30, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-mono)", lineHeight: 1.1 }}>
+            {stats?.total_quizzes_attempted ?? 0}
           </div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Verified attempts</div>
         </div>
 
-        <div
-          className="lens-card"
-          style={{
-            padding: "20px 18px",
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "10px",
-              background: "var(--forest-light)",
-              color: "var(--forest)",
-              border: "1px solid var(--forest)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Target size={22} />
+        <div style={{ padding: "20px 24px", borderRight: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            <Target size={13} color="var(--forest)" />
+            <span>Average Score</span>
           </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>
-              Average Score
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-mono)" }}>
-              {stats?.average_percentage ?? 0}%
-            </div>
+          <div style={{ fontSize: 30, fontWeight: 700, color: "var(--forest)", fontFamily: "var(--font-mono)", lineHeight: 1.1 }}>
+            {stats?.average_percentage ?? 0}<span style={{ fontSize: 18 }}>%</span>
           </div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Class benchmark</div>
         </div>
 
-        <div
-          className="lens-card"
-          style={{
-            padding: "20px 18px",
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "10px",
-              background: "var(--gold-light)",
-              color: "var(--gold-border)",
-              border: "1px solid var(--gold)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Award size={22} />
+        <div style={{ padding: "20px 24px", borderRight: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            <Award size={13} color="var(--gold)" />
+            <span>Highest Score</span>
           </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>
-              Top Score
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-mono)" }}>
-              {stats?.highest_percentage ?? 0}%
-            </div>
+          <div style={{ fontSize: 30, fontWeight: 700, color: "var(--gold)", fontFamily: "var(--font-mono)", lineHeight: 1.1 }}>
+            {stats?.highest_percentage ?? 0}<span style={{ fontSize: 18 }}>%</span>
           </div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Personal record</div>
         </div>
 
-        <div
-          className="lens-card"
-          style={{
-            padding: "20px 18px",
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "10px",
-              background: "var(--terracotta-light)",
-              color: "var(--terracotta)",
-              border: "1px solid var(--terracotta)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Clock size={22} />
+        <div style={{ padding: "20px 24px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            <Clock size={13} color="var(--accent)" />
+            <span>Practice Time</span>
           </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>
-              Practice Time
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-mono)" }}>
-              {stats?.total_time_spent_minutes ?? 0}m
-            </div>
+          <div style={{ fontSize: 30, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-mono)", lineHeight: 1.1 }}>
+            {stats?.total_time_spent_minutes ?? 0}<span style={{ fontSize: 18 }}>m</span>
           </div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Total focus duration</div>
         </div>
       </div>
 

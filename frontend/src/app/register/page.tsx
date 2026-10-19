@@ -3,17 +3,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import { useAuth } from "@/components/AuthProvider";
 import type { UserRole } from "@/types/auth";
-import { BookOpen, ShieldCheck, GraduationCap, ArrowRight, Lock, Mail, User as UserIcon, Eye, EyeOff } from "lucide-react";
+import { GraduationCap, ArrowRight, Lock, Mail, User as UserIcon, Eye, EyeOff, BookOpen } from "lucide-react";
 import Toast, { ToastVariant } from "@/components/Toast";
 import GurukulLogo from "@/components/GurukulLogo";
-
-const ParticleBackground = dynamic(
-  () => import("@/components/ParticleBackground"),
-  { ssr: false }
-);
+import DiyaAnimation from "@/components/DiyaAnimation";
+import ParticleBackground from "@/components/ParticleBackground";
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
@@ -39,22 +35,22 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password || !fullName) {
-      setToast({ message: "Please fill out all fields.", variant: "error" });
+      setToast({ message: "Please fill out all required fields.", variant: "error" });
       return;
     }
     if (role === "student" && (!scholarId || !scholarId.match(/^\d{7}$/))) {
-      setToast({ message: "Students must enter a valid 7-digit Scholar ID.", variant: "error" });
+      setToast({ message: "Students must provide a valid 7-digit Scholar ID.", variant: "error" });
       return;
     }
 
     setLoading(true);
     try {
-      const user = await signup(email, password, fullName, role, role === "student" ? scholarId : undefined);
-      setToast({ message: `Account ready for ${user.full_name}!`, variant: "success" });
+      const newUser = await signup(email, password, fullName, role, role === "student" ? scholarId : undefined);
+      setToast({ message: `Sanctuary initialized for ${newUser.full_name}!`, variant: "success" });
       setTimeout(() => {
-        if (user.role === "student") router.push("/student");
+        if (newUser.role === "student") router.push("/student");
         else router.push("/teacher");
-      }, 500);
+      }, 400);
     } catch (err: any) {
       setToast({ message: err.message || "Failed to create account.", variant: "error" });
     } finally {
@@ -63,103 +59,138 @@ export default function RegisterPage() {
   };
 
   return (
-    <>
+    <div
+      className="flex flex-col lg:flex-row min-h-screen"
+      style={{
+        background: "var(--bg)",
+        position: "relative",
+        overflowX: "hidden",
+      }}
+    >
       <ParticleBackground />
       {toast && <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
 
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px 16px",
-        position: "relative",
-        zIndex: 1,
-      }}>
+      {/* ── Visual Hero Panel (Cinematic Diya Animation, Always Active) ── */}
+      <div
+        className="w-full lg:w-1/2 flex-shrink-0"
+        style={{
+          position: "relative",
+          minHeight: "360px",
+          display: "flex",
+          borderRight: "1px solid var(--border)",
+          background: "linear-gradient(135deg, rgba(234, 88, 12, 0.04) 0%, rgba(217, 119, 6, 0.02) 100%)",
+          zIndex: 2,
+        }}
+      >
+        <DiyaAnimation
+          title="Gurukul AI"
+          subtitle="Empowering Educators to Forge Deeply Balanced Assessments"
+          shloka="विद्ययाऽमृतमश्नुते"
+          translation="Through knowledge, immortality is attained"
+        />
+      </div>
+
+      {/* ── Right Registration Form Panel ── */}
+      <div
+        className="w-full lg:w-1/2 flex-1"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "36px 28px",
+          background: "var(--surface)",
+          position: "relative",
+          overflowY: "auto",
+        }}
+      >
         <div
-          className="lens-card"
           style={{
             width: "100%",
-            maxWidth: 480,
-            padding: "36px 32px",
-            backdropFilter: "blur(12px)",
+            maxWidth: 460,
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          {/* Header */}
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-              <GurukulLogo size={54} />
+          {/* Brand Header */}
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <GurukulLogo size={46} showText={true} subtitle="Assessment Studio" />
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "4px 10px",
+                  borderRadius: 100,
+                  background: "var(--forest-light)",
+                  border: "1px solid var(--forest)",
+                  fontSize: 11,
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--forest)",
+                  fontWeight: 700,
+                }}
+              >
+                <BookOpen size={12} /> Teacher Portal
+              </span>
             </div>
-            <h1 style={{
-              fontFamily: "var(--font-heading)",
-              fontSize: 24,
-              fontWeight: 800,
-              color: "var(--text)",
-              letterSpacing: "-0.02em",
-              marginBottom: 4,
-            }}>
-              Join Gurukul AI
+
+            <h1
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 28,
+                fontWeight: 800,
+                color: "var(--text)",
+                letterSpacing: "-0.02em",
+                lineHeight: 1.2,
+                marginBottom: 6,
+              }}
+            >
+              Join the Faculty
             </h1>
-            <p style={{ fontSize: 13, color: "var(--text-3)" }}>
-              Create your educator or administrator workspace
+            <p style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.5 }}>
+              Create your educator workspace to synthesize blueprints and generate question papers.
             </p>
           </div>
 
-          <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* Student Info Notice */}
+          <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {/* Student Provisioning Alert Banner */}
             <div
               style={{
-                padding: "14px 16px",
-                borderRadius: "var(--radius-lg)",
+                padding: "12px 14px",
+                borderRadius: "var(--radius-md)",
                 background: "var(--accent-light)",
                 border: "1px solid var(--accent-mid)",
                 display: "flex",
                 flexDirection: "column",
-                gap: 6,
+                gap: 5,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)", fontWeight: 700, fontSize: 13 }}>
-                <GraduationCap size={18} />
-                <span>Student Accounts <span className="shloka" style={{ fontWeight: 600, fontSize: "12px", color: "var(--accent)" }}>(शिष्य)</span></span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--accent)", fontWeight: 700, fontSize: 12.5 }}>
+                <GraduationCap size={16} />
+                <span>Notice for Students <span className="shloka" style={{ fontWeight: 600, fontSize: "11px" }}>(शिष्य)</span></span>
               </div>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
-                Students cannot self-register. Your account has been provisioned by your institution admin with your <strong>7-Digit Scholar ID</strong> and default password (<code>student@dsvv123</code>).
+              <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.45 }}>
+                Student accounts are managed and provisioned directly by institution administrators. If you are a scholar, please sign in with your 7-digit Scholar ID.
               </p>
               <Link
                 href="/login"
                 style={{
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: 700,
                   color: "var(--accent)",
-                  marginTop: 4,
+                  marginTop: 2,
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 4,
                   textDecoration: "underline",
                 }}
               >
-                Sign In With Scholar ID <ArrowRight size={13} />
+                Sign in with Scholar ID <ArrowRight size={12} />
               </Link>
             </div>
 
-            <div className="gk-field">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <label className="gk-label">Registration Role</label>
-                <span
-                  style={{
-                    fontSize: 11,
-                    padding: "2px 8px",
-                    borderRadius: 100,
-                    background: "var(--forest-light)",
-                    color: "var(--forest)",
-                    fontWeight: 700,
-                  }}
-                >
-                  Teacher (Guru)
-                </span>
-              </div>
-            </div>
-
+            {/* Full Name */}
             <div className="gk-field">
               <label className="gk-label" htmlFor="fullName">Full Name</label>
               <div style={{ position: "relative" }}>
@@ -167,48 +198,56 @@ export default function RegisterPage() {
                   id="fullName"
                   type="text"
                   className="gk-input"
-                  placeholder="e.g. Acharya Chanakya / Arjuna"
+                  placeholder="e.g. Dr. Raghav Sharma / Prof. Garg"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  style={{ paddingLeft: 38 }}
+                  style={{ paddingLeft: 40, height: 44 }}
                   required
                 />
-                <UserIcon size={16} style={{
-                  position: "absolute",
-                  left: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-3)",
-                }} />
+                <UserIcon
+                  size={16}
+                  style={{
+                    position: "absolute",
+                    left: 14,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--text-3)",
+                  }}
+                />
               </div>
             </div>
 
+            {/* Email Address */}
             <div className="gk-field">
-              <label className="gk-label" htmlFor="email">Email Address</label>
+              <label className="gk-label" htmlFor="email">Institutional Email</label>
               <div style={{ position: "relative" }}>
                 <input
                   id="email"
                   type="email"
                   className="gk-input"
-                  placeholder="e.g. you@gurukul.local"
+                  placeholder="e.g. educator@institution.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  style={{ paddingLeft: 38 }}
+                  style={{ paddingLeft: 40, height: 44 }}
                   required
                 />
-                <Mail size={16} style={{
-                  position: "absolute",
-                  left: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-3)",
-                }} />
+                <Mail
+                  size={16}
+                  style={{
+                    position: "absolute",
+                    left: 14,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--text-3)",
+                  }}
+                />
               </div>
             </div>
 
+            {/* Password */}
             <div className="gk-field">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <label className="gk-label" htmlFor="password" style={{ marginBottom: 0 }}>Password</label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <label className="gk-label" htmlFor="password">Password</label>
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -219,15 +258,13 @@ export default function RegisterPage() {
                     color: showPassword ? "var(--accent)" : "var(--text-3)",
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 5,
+                    gap: 4,
                     fontSize: 12,
-                    fontWeight: 500,
-                    padding: "2px 4px",
-                    borderRadius: "var(--radius-sm)",
+                    fontWeight: 600,
                   }}
-                  title={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
                   <span>{showPassword ? "Hide" : "Show"}</span>
                 </button>
               </div>
@@ -239,70 +276,83 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingLeft: 38, paddingRight: 38 }}
+                  style={{ paddingLeft: 40, paddingRight: 40, height: 44 }}
                   required
                 />
-                <Lock size={16} style={{
-                  position: "absolute",
-                  left: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-3)",
-                }} />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                <Lock
+                  size={16}
                   style={{
                     position: "absolute",
-                    right: 12,
+                    left: 14,
                     top: "50%",
                     transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: showPassword ? "var(--accent)" : "var(--text-3)",
-                    padding: 4,
-                    display: "flex",
-                    alignItems: "center",
+                    color: "var(--text-3)",
                   }}
-                  tabIndex={-1}
-                  title={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+                />
               </div>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               className="gk-btn gk-btn--primary"
               disabled={loading}
-              style={{ width: "100%", justifyContent: "center", marginTop: 6, height: 42 }}
+              style={{
+                width: "100%",
+                height: 46,
+                fontSize: 14.5,
+                fontWeight: 700,
+                borderRadius: "var(--radius-md)",
+                boxShadow: "0 4px 14px rgba(234, 88, 12, 0.25)",
+                marginTop: 6,
+              }}
             >
               {loading ? (
-                <span className="spin" style={{
-                  width: 16,
-                  height: 16,
-                  border: "2px solid currentColor",
-                  borderTopColor: "transparent",
-                  borderRadius: "50%",
-                }} />
+                <span
+                  className="spin"
+                  style={{
+                    width: 18,
+                    height: 18,
+                    border: "2.5px solid currentColor",
+                    borderTopColor: "transparent",
+                    borderRadius: "50%",
+                  }}
+                />
               ) : (
                 <>
-                  Create Account <ArrowRight size={16} />
+                  <span>Create Educator Account</span>
+                  <ArrowRight size={16} />
                 </>
               )}
             </button>
           </form>
 
-          <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "var(--text-2)" }}>
-            Already have an account?{" "}
-            <Link href="/login" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "none" }}>
-              Sign In
+          {/* Footer Navigation */}
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: 24,
+              paddingTop: 18,
+              borderTop: "1px solid var(--border)",
+              fontSize: 13,
+              color: "var(--text-2)",
+            }}
+          >
+            Already an accredited member?{" "}
+            <Link
+              href="/login"
+              style={{
+                color: "var(--accent)",
+                fontWeight: 700,
+                textDecoration: "none",
+                marginLeft: 4,
+              }}
+            >
+              Sign In Here →
             </Link>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
